@@ -1,6 +1,6 @@
 {
   "name": "hopper",
-  "version": "0.35.1",
+  "version": "0.36.0",
   "description": "Thin plugin layer over the llm-hopper file-based protocol. Dispatches task-typed work to vendor CLI subprocesses (codex, kimi, opencode, copilot, agy, grok, mimo, claude). No harness reaction core; vendor CLIs bring their own runtime. State lives in plain markdown under .hopper/. See https://github.com/surebeli/hopper-plugin.",
   "author": {
     "name": "surebeli (litianyi)",

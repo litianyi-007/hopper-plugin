@@ -19,6 +19,23 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.36.0] - 2026-07-24
+
+### Fixed
+
+- **OpenCode on Windows no longer receives truncated task briefs.** On the win-cmd-shim regime (`cmd.exe /c opencode.cmd`), a multi-line composed prompt now takes the pointer-file channel regardless of size when the vendor cannot read the prompt from stdin — previously only prompts over the byte budget used the pointer, so small multi-line briefs arrived cut to their first segment and opencode answered "your message seems to be cut off" (commit `6aa10d3`, ISSUE-opencode-windows-multiline-prompt-truncation).
+- **Grok no longer false-fails successful runs.** `parseResult` now recovers a pretty-printed multi-line JSON result envelope framed by runner log lines, instead of declaring `adapter-protocol-invalid` on an exit-0 run with a complete `EndTurn` answer (commit `6aa10d3`, ISSUE-grok-adapter-protocol-invalid-false-fail).
+- **OpenCode exit-0 successes are no longer misclassified from log-shaped output.** The adapter drops `--print-logs` so stdout stays a clean NDJSON event stream, strips ANSI escape sequences before per-line JSON parsing, and conservatively recovers readable plain text (as unverified evidence, never flipping a run to success) when zero JSON events parse (commit `a1fe9fd`, ISSUE-opencode-ansi-log-output-not-parsed).
+
+### Improved
+
+- Pointer instructions are single-line with the prompt-file path front-loaded, so the pointer itself is safe on the same argv channel it works around; prompt-delivery results now carry consistent `channel` labels (`stdin` / `argv-inline` / `argv-pointer`) (commit `7a1e9b2`).
+
+### Added
+
+- **Kimi Work plugin support**: `plugins/hopper/kimi.plugin.json` lets Kimi Work install hopper as a managed plugin (skills under `plugins/hopper/skills/`).
+- 19 new unit tests across prompt-delivery, grok, and opencode parsing (suite: 1024 tests total; the 7 dashboard-* environment suites + 1 flaky lifecycle test that fail also fail on the unmodified baseline).
+
 ## [0.35.1] - 2026-07-24
 
 ### Improved
