@@ -81,7 +81,16 @@ export const opencodeAdapter = {
           ? ['--variant', opts.reasoning]
           : [])),
       ...(opts.conversationId ? ['-s', opts.conversationId] : []),
-      '--print-logs',
+      // ISSUE-opencode-ansi-log-output-not-parsed: `--print-logs` REMOVED. Its
+      // INFO logs already go to stderr, but hopper's runner tees stdout+stderr
+      // into ONE log file and passes that interleaved stream to parseResult —
+      // and in the observed failure run this opencode build emitted ANSI-colored
+      // pretty log lines with ZERO NDJSON, defeating the JSON event parser.
+      // Verified experimentally (2026-07-24, opencode 1.18.4, tokenbox/
+      // deepseek-v4-pro): WITHOUT --print-logs stdout is a clean NDJSON event
+      // stream and stderr is empty; WITH it stderr carries INFO logs (log
+      // noise, no parse value). The event stream alone feeds both parsing and
+      // log-growth liveness.
       '--format', 'json',
       '--pure',
     ];
@@ -127,7 +136,7 @@ export const opencodeAdapter = {
     const parsed = parseOpencodeAnswerEvents(raw.stdout);
     const outputEvidence = parsed.text
       ? (parsed.terminalMarker === 'none'
-        ? { completeness: 'unknown-completeness', source: 'event-stream', terminalMarker: 'none' }
+        ? { completeness: 'unknown-completeness', source: parsed.recoveredFromPlainText ? 'ansi-stripped-plain-text' : 'event-stream', terminalMarker: 'none' }
         : { completeness: 'verified-complete', source: 'event-stream', terminalMarker: parsed.terminalMarker })
       : undefined;
     if (raw.timedOut) {
@@ -136,7 +145,7 @@ export const opencodeAdapter = {
     if (raw.exitCode === 127) {
       return adapterFailure('permission-fail', 'adapter-binary-missing');
     }
-    if (raw.exitCode === 0 && parsed.text && parsed.terminalMarker !== 'none') {
+    if (raw.exitCode === 0 && parsed.text && parsed.terminalMarker !== 'none' && !parsed.recoveredFromPlainText) {
       const modelAttestation = extractOpencodeModelAttestation(raw.stdout);
       return modelAttestation
         ? { text: parsed.text, status: 'success', diagnosticCode: 'none', outputEvidence, modelAttestation }
@@ -150,11 +159,37 @@ export const opencodeAdapter = {
   },
 };
 
+/**
+ * Strip ANSI escape sequences (CSI color/cursor codes emitted by opencode's
+ * pretty log mode) and stray carriage returns so a line can be JSON.parsed or
+ * read as plain text. ISSUE-opencode-ansi-log-output-not-parsed: a captured
+ * background log on Windows contained ANSI-wrapped lines instead of clean
+ * NDJSON.
+ * @param {string} line
+ * @returns {string}
+ */
+function stripOpencodeAnsi(line) {
+  return String(line)
+    // CSI sequences: ESC [ params intermediates final-byte
+    .replace(/\x1B\[[0-9;?]*[ -/]*[@-~]/g, '')
+    // OSC sequences: ESC ] … (BEL|ESC\) terminated
+    .replace(/\x1B\][^\x07\x1B]*(?:\x07|\x1B\\)/g, '')
+    .replace(/\r/g, '');
+}
+
 function parseOpencodeAnswerEvents(stdout) {
   const trimmed = (stdout || '').trim();
-  if (!trimmed) return { text: '', terminalMarker: 'none' };
+  if (!trimmed) return { text: '', terminalMarker: 'none', recoveredFromPlainText: false };
 
-  const lines = trimmed.split(/\r?\n/).filter((line) => line.trim());
+  const rawLines = trimmed.split(/\r?\n/);
+  // Only an input that actually LOOKS like an opencode log (ANSI escapes,
+  // `> build` banner, `→` tool traces, <thinking> blocks) qualifies for
+  // plain-text recovery — arbitrary raw stdout must stay fail-closed and
+  // never becomes parser evidence (vendors-contract privacy test).
+  const looksLikeOpencodeLog = rawLines.some((line) =>
+    /\x1B\[/.test(line) || /^\s*>\s*\S/.test(stripOpencodeAnsi(line)) ||
+    /^[→▶]/.test(stripOpencodeAnsi(line).trim()) || line.includes('<thinking>'));
+  const lines = rawLines.map(stripOpencodeAnsi).filter((line) => line.trim());
   const chunks = [];
   let terminalMarker = 'none';
 
@@ -172,7 +207,45 @@ function parseOpencodeAnswerEvents(stdout) {
     }
   }
 
-  return { text: chunks.join('').trim(), terminalMarker };
+  const text = chunks.join('').trim();
+  if (text || terminalMarker !== 'none') {
+    return { text, terminalMarker, recoveredFromPlainText: false };
+  }
+
+  // Conservative plain-text recovery (ISSUE-opencode-ansi-log-output-not-
+  // parsed): when ZERO JSON events parse — the observed failure mode was an
+  // ANSI pretty log instead of an NDJSON stream — keep the readable residue
+  // as recovered text so the run record shows what the vendor actually said.
+  // This NEVER flips the classification to success: terminalMarker stays
+  // 'none' and recoveredFromPlainText marks the text as unverified.
+  const recovered = looksLikeOpencodeLog ? recoverOpencodePlainText(lines) : '';
+  return { text: recovered, terminalMarker: 'none', recoveredFromPlainText: Boolean(recovered) };
+}
+
+/**
+ * Best-effort readable text from a non-JSON (ANSI-stripped) log: drop runner
+ * notices, structured INFO logs, the `> build` banner, `→` tool-trace lines,
+ * and <thinking> blocks; keep the remaining substantive lines.
+ * @param {string[]} lines ANSI-stripped, non-empty lines
+ * @returns {string}
+ */
+function recoverOpencodePlainText(lines) {
+  const kept = [];
+  let inThinking = false;
+  for (const line of lines) {
+    const l = line.trim();
+    if (!l) continue;
+    if (l.includes('<thinking>') && l.includes('</thinking>')) continue;      // single-line thinking block
+    if (l.includes('<thinking>')) { inThinking = true; continue; }
+    if (l.includes('</thinking>')) { inThinking = false; continue; }
+    if (inThinking) continue;
+    if (/^hopper-runner:/.test(l)) continue;                                  // runner notices
+    if (/^timestamp=.*\blevel=(INFO|WARN|ERROR|DEBUG)\b/.test(l)) continue;   // opencode structured logs
+    if (/^>\s*\S/.test(l)) continue;                                          // `> build · <model>` banner
+    if (/^[→▶]/.test(l)) continue;                                            // `→ Read <path>` tool traces
+    kept.push(l);
+  }
+  return kept.join('\n').trim();
 }
 
 /**
@@ -182,7 +255,7 @@ function parseOpencodeAnswerEvents(stdout) {
  * @returns {{observedModels:string[],source:string,observedAt:string}|undefined}
  */
 function extractOpencodeModelAttestation(stdout) {
-  const lines = String(stdout || '').split(/\r?\n/).filter((line) => line.trim());
+  const lines = String(stdout || '').split(/\r?\n/).map(stripOpencodeAnsi).filter((line) => line.trim());
   for (let index = lines.length - 1; index >= 0; index--) {
     let envelope;
     try { envelope = JSON.parse(lines[index]); } catch (_) { continue; }

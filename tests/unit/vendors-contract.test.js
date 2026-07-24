@@ -171,7 +171,9 @@ test('opencode adapter args() uses run subcommand', () => {
   const a = getAdapter('opencode');
   const argv = a.args('test', {});
   assert.equal(argv[0], 'run');
-  assert.ok(argv.includes('--print-logs'));
+  // --print-logs removed (ISSUE-opencode-ansi-log-output-not-parsed): stdout
+  // must stay a clean NDJSON event stream for the JSON event parser.
+  assert.ok(!argv.includes('--print-logs'));
   assert.ok(argv.includes('--format'));
   assert.ok(argv.includes('json'));
   assert.ok(argv.includes('--pure'));

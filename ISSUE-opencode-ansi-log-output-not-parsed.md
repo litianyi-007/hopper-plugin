@@ -4,7 +4,7 @@
 > Date: 2026-07-24
 > Severity: medium-high — the vendor COMPLETES the task correctly (full answer on stdout), but hopper records `failed` / `adapter-protocol-invalid`; orchestration that gates on task status cannot chain on opencode results
 > Env: Windows; opencode via cmd.exe shim `C:\nvm4w\nodejs\opencode.cmd`; model `tokenbox/deepseek-v4-pro`; hopper-dispatch `0.35.1+6aa10d3`; CLI = `<hopper>/cli/bin/hopper-dispatch` (loads `cli/src/vendors/opencode.js`)
-> Status: open — confirmed root cause, NOT fixed in 6aa10d3 (analysis + fix candidates below)
+> Status: **CLOSED** — fixed in the audit-close commit (candidates 1+2 implemented; see Resolution)
 
 ## Context
 
@@ -120,3 +120,70 @@ hopper-dispatch --adhoc --task-type code-review-adversarial --vendor opencode \
 hopper-dispatch --result <taskId>   # → exit_code 0, answer in .log, status failed / adapter-protocol-invalid
 # inspect the raw log: ANSI-colored "→ Read …" log lines, zero JSON event lines
 ```
+
+---
+
+## Resolution (2026-07-24 — hopper 0.35.1+)
+
+**FIXED** in `cli/src/vendors/opencode.js` (synced to `plugins/hopper/cli/src/`), implementing candidates 1+2.
+
+### Controlled experiments (opencode 1.18.4, tokenbox/deepseek-v4-pro, this host — one run each)
+
+| Invocation | stdout | stderr |
+|---|---|---|
+| `--format json --pure --print-logs` (direct shell, no `--dir`) | clean NDJSON event stream (`step_start` / `text` / `step_finish` lines) | structured `level=INFO` logs |
+| `--format json --pure` (no `--print-logs`) | clean NDJSON event stream | empty |
+| full hopper argv (`--dir … --print-logs --format json --pure`, direct shell) | clean NDJSON event stream incl. `tool_use` events | structured `level=INFO` logs |
+
+So the CURRENT build honors `--format json` on stdout in every directly
+reproducible configuration, and `--print-logs` writes to **stderr**. The
+evidence run's all-ANSI/zero-JSON output could not be reproduced (same
+opencode 1.18.4 binary, installed 2026-07-22, before the evidence run). Two
+aggravating platform facts WERE confirmed: hopper's runner **tees vendor
+stdout AND stderr into one log file** and passes that interleaved stream to
+`parseResult` as `raw.stdout` — so any stderr log output reaches the parser;
+and whatever mode produced the evidence log emitted its pretty stream with
+zero NDJSON, leaving nothing parseable.
+
+### Changes shipped
+
+1. **`args()`: `--print-logs` removed** (candidate 2). Its INFO logs already
+   went to stderr, but the tee puts stderr into the parse input and the
+   shared evidence log; the NDJSON event stream alone feeds both parsing and
+   log-growth liveness. `--format json --pure` retained.
+2. **Parser strips ANSI escapes + CR before per-line `JSON.parse`** (candidate
+   1) in both `parseOpencodeAnswerEvents` and
+   `extractOpencodeModelAttestation` — ANSI-wrapped NDJSON now parses.
+3. **Conservative plain-text recovery**: when ZERO JSON events parse AND the
+   input looks like an opencode log (ANSI escapes / `> build` banner / `→`
+   tool traces / `<thinking>` blocks), the readable residue (final answer
+   lines minus noise) is attached to the FAILURE result as `text` with
+   `outputEvidence { completeness: 'unknown-completeness', source:
+   'ansi-stripped-plain-text', terminalMarker: 'none' }`. It NEVER flips the
+   classification to success, and arbitrary raw stdout stays fail-closed (the
+   vendors-contract privacy test: unstructured raw/private text must not
+   become parser evidence — gated by the log-shape check).
+
+Verified against the REAL `adhoc-code-review-adversarial-mryr4dsd-output.log`:
+still (correctly) `unknown-fail / adapter-protocol-invalid` for that
+unverifiable run, but the final answer sentence is now recovered into the run
+record instead of `recovered_output_state: no-text`.
+
+### Tests
+
+New `tests/unit/opencode-adapter.test.js` (8 cases): `--print-logs` absent
+from argv; clean NDJSON → success; ANSI-wrapped NDJSON → success; ANSI
+pretty log with no JSON → still `adapter-protocol-invalid` but final answer
+recovered (noise/banner/tool-trace/thinking excluded); noise-only stdout →
+no recovered text; non-zero exit; timeout; empty stdout.
+`tests/unit/vendors-contract.test.js` opencode argv case updated for the
+`--print-logs` removal. Full unit suite: no regressions vs the unmodified
+baseline (the 7 dashboard-* env suites + 1 flaky lifecycle test fail
+identically before and after).
+
+### Live verification (one dispatch, 2026-07-24)
+
+`hopper-dispatch --adhoc --task-type code-review-adversarial --vendor opencode --model tokenbox/deepseek-v4-pro --background --brief "<tiny read-only task>"`
+→ task `adhoc-code-review-adversarial-mryswwzj`: **status done, adapter
+diagnostic none** — the false `adapter-protocol-invalid` on a successful
+opencode run is gone.
