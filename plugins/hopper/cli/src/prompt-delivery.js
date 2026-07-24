@@ -20,6 +20,12 @@
 // across every interpretation (UTF-16 units, GBK/ANSI bytes, mixed scripts,
 // emoji), so the gate is safe for English / Chinese / other languages / mixed
 // content with one formula and no per-script branching.
+//
+// NEWLINE-GATED companion rule (ISSUE-opencode-windows-multiline-prompt-
+// truncation): on the win-cmd-shim regime cmd.exe ALSO truncates a multi-line
+// argv positional at the FIRST newline, at any size. Vendors that cannot read
+// the prompt from stdin (no `promptStdin: 'supported'`) therefore take the
+// pointer-file channel for ANY multi-line composed prompt, even a tiny one.
 
 import { writeFileSync, mkdirSync, chmodSync, existsSync, lstatSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
@@ -167,7 +173,21 @@ export function resolvePromptDelivery({
   const budget = inlineBudgetBytes(regime, env);
   const bytes = commandLineBytes([String(resolvedCmd || ''), ...prependArgs, ...inlineArgs]);
 
-  if (bytes <= budget) {
+  // win-cmd-shim MULTI-LINE truncation gate (ISSUE-opencode-windows-multiline-
+  // prompt-truncation): `cmd.exe /c <vendor>.CMD "<prompt>"` truncates a
+  // multi-line argv positional at the FIRST newline regardless of size, so a
+  // small multi-line brief arrives cut off at its header. Stdin-capable
+  // vendors were handled above; vendors whose CLI CANNOT read the prompt from
+  // stdin (opencode: message is argv-positional-only, `stdinMode: 'none'`)
+  // must take the pointer-file channel for ANY multi-line prompt — the size
+  // gate alone never fires because the truncation victim is usually small.
+  // Native-exe and POSIX argv are multi-line-safe → untouched.
+  const multilineCmdShimTruncationRisk =
+    regime === 'cmd-shim'
+    && adapter.promptStdin !== 'supported'
+    && /\r?\n/.test(composedPrompt);
+
+  if (bytes <= budget && !multilineCmdShimTruncationRisk) {
     return { args: inlineArgs, channel: 'argv-inline', stdinPrompt: null, promptFilePath: null, inlined: true, regime, bytes, budget };
   }
 

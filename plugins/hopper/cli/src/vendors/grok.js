@@ -286,6 +286,21 @@ function extractGrokText(stdout) {
   const trailing = lines[lines.length - 1] || '';
   const tail = trailing === trimmed ? null : parseCandidate(trailing);
   if (tail) return tail;
+
+  // Framed multi-line object (ISSUE-grok-adapter-protocol-invalid-false-fail):
+  // grok --output-format json pretty-prints the result envelope across MANY
+  // lines, and hopper's own runner prepends log lines (e.g. the idle-watchdog
+  // notice) to the captured stdout. Neither the whole-stdout parse nor the
+  // single trailing line sees the object → false adapter-protocol-invalid on
+  // a genuinely successful run. Recover by parsing the span from the FIRST
+  // '{' to the LAST '}' — grok's envelope is one top-level object, and the
+  // recognized-envelope-keys gate above still rejects a mismatched slice.
+  const open = trimmed.indexOf('{');
+  const close = trimmed.lastIndexOf('}');
+  if (open !== -1 && close > open && (open !== 0 || close !== trimmed.length - 1)) {
+    const framed = parseCandidate(trimmed.slice(open, close + 1));
+    if (framed) return framed;
+  }
   return noSelectedObject;
 }
 

@@ -352,3 +352,87 @@ test('resolvePromptDelivery writes the prompt file owner-only (0600) on POSIX', 
     assert.equal(mode, 0o600, 'prompt file must be owner-only (contains the sensitive brief)');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+// ── win-cmd-shim MULTI-LINE truncation gate (ISSUE-opencode-windows-multiline-prompt-truncation) ──
+test('resolvePromptDelivery: a SMALL multi-line prompt takes the pointer on cmd-shim for a non-stdin adapter', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pd-'));
+  try {
+    const multiline = 'header line\nsecond line with the real task\nthird line';
+    assert.ok(commandLineBytes(['cmd.exe', '/c', 'fake.cmd', 'run', '--flag', multiline]) < DEFAULT_INLINE_BUDGETS['cmd-shim'],
+      'precondition: prompt is well under the size budget — size gate alone would inline it');
+    const res = resolvePromptDelivery({
+      adapter: fakeAdapter, composedPrompt: multiline, opts: {},
+      resolvedCmd: 'cmd.exe', prependArgs: ['/c', 'fake.cmd'],
+      handoffsDir: dir, taskId: 'T-ML', isWindows: true, env: {},
+    });
+    assert.equal(res.inlined, false, 'cmd.exe truncates a multi-line argv positional at the first newline — must use the pointer');
+    assert.equal(readFileSync(res.promptFilePath, 'utf-8'), multiline, 'prompt file holds the FULL multi-line prompt');
+    assert.ok(!res.args.includes(multiline), 'multi-line prompt must be OFF the command line');
+    assert.ok(res.args.some((a) => typeof a === 'string' && a.includes('T-ML-prompt.md')), 'argv points at the prompt file');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('resolvePromptDelivery: a single-line prompt still INLINES on cmd-shim for a non-stdin adapter (no regression)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pd-'));
+  try {
+    const res = resolvePromptDelivery({
+      adapter: fakeAdapter, composedPrompt: 'do the thing', opts: {},
+      resolvedCmd: 'cmd.exe', prependArgs: ['/c', 'fake.cmd'],
+      handoffsDir: dir, taskId: 'T-1L', isWindows: true, env: {},
+    });
+    assert.equal(res.inlined, true);
+    assert.equal(res.channel, 'argv-inline');
+    assert.deepEqual(res.args, ['run', '--flag', 'do the thing']);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('resolvePromptDelivery: multi-line prompt still INLINES on native-exe and posix (no cmd.exe truncation there)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pd-'));
+  try {
+    const multiline = 'line one\nline two\nline three';
+    const native = resolvePromptDelivery({
+      adapter: fakeAdapter, composedPrompt: multiline, opts: {},
+      resolvedCmd: 'C:\\bin\\kimi.EXE', prependArgs: [],
+      handoffsDir: dir, taskId: 'T-ML-EXE', isWindows: true, env: {},
+    });
+    assert.equal(native.inlined, true, 'native-exe argv is multi-line-safe');
+    const posix = resolvePromptDelivery({
+      adapter: fakeAdapter, composedPrompt: multiline, opts: {},
+      resolvedCmd: '/usr/bin/fake', prependArgs: [],
+      handoffsDir: dir, taskId: 'T-ML-POSIX', isWindows: false, env: {},
+    });
+    assert.equal(posix.inlined, true, 'posix argv is multi-line-safe');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('resolvePromptDelivery: stdin-capable adapters are UNAFFECTED by the multi-line gate (still stdin, not pointer)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pd-'));
+  try {
+    const multiline = 'one\ntwo\nthree';
+    const res = resolvePromptDelivery({
+      adapter: codexAdapter, composedPrompt: multiline, opts: { sandbox: 'read-only' },
+      resolvedCmd: 'cmd.exe', prependArgs: ['/c', 'codex.cmd'],
+      handoffsDir: dir, taskId: 'T-ML-STDIN', isWindows: true, env: {},
+    });
+    assert.equal(res.channel, 'stdin', 'codex keeps the stdin channel on cmd-shim');
+    assert.equal(res.stdinPrompt, multiline);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('REAL opencode adapter: cmd-shim routes a multi-line composed prompt to the POINTER file (the reported bug)', async () => {
+  const { opencodeAdapter } = await import('../../cli/src/vendors/opencode.js');
+  const dir = mkdtempSync(join(tmpdir(), 'pd-'));
+  try {
+    const multiline = 'Task: review the diff\nFocus on defect classes A and B\nWrite findings to the output file';
+    const res = resolvePromptDelivery({
+      adapter: opencodeAdapter, composedPrompt: multiline, opts: { sandbox: 'read-only' },
+      resolvedCmd: 'cmd.exe', prependArgs: ['/c', 'C:\\nvm4w\\nodejs\\opencode.cmd'],
+      handoffsDir: dir, taskId: 'T-OC-ML', isWindows: true, env: {},
+    });
+    assert.equal(res.inlined, false, 'opencode has no stdin prompt channel — multi-line must go pointer-file');
+    assert.equal(readFileSync(res.promptFilePath, 'utf-8'), multiline);
+    assert.ok(!res.args.includes(multiline), 'truncation-prone prompt must be off argv');
+    assert.equal(res.args[0], 'run', 'opencode argv shape preserved');
+    assert.ok(res.args.some((a) => typeof a === 'string' && a.includes('T-OC-ML-prompt.md')), 'pointer instruction references the prompt file');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
