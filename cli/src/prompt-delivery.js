@@ -115,16 +115,17 @@ export function useStdinPrompt(adapter, regime, env = process.env) {
  * The small instruction that replaces a large prompt on the command line: it
  * points the vendor agent at the on-disk prompt file. Forceful wording (the
  * file IS the task) because this is a soft, behavioral delivery.
+ *
+ * SINGLE LINE, path front-loaded (audit follow-up to ISSUE-opencode-windows-
+ * multiline-prompt-truncation): the pointer itself travels as an argv
+ * positional — on the win-cmd-shim regime that is exactly the channel whose
+ * multi-line handling proved unreliable, so the pointer must never contain a
+ * newline, and the path must survive as early as possible in the line.
  * @param {string} absPromptPath  forward-slashed absolute path
  * @returns {string}
  */
 export function buildPointerInstruction(absPromptPath) {
-  return [
-    'Your complete task brief — including all instructions and any governance — is in the file at the absolute path below.',
-    'FIRST read that entire file, then follow its instructions exactly. That file is your only source of the task; do not ask for it and do not act before reading it.',
-    '',
-    'Task file: ' + absPromptPath,
-  ].join('\n');
+  return `Your complete task brief is the file at ${absPromptPath} — FIRST read that entire file, then follow its instructions exactly; that file is your only source of the task; do not ask for it and do not act before reading it.`;
 }
 
 /**
@@ -137,7 +138,8 @@ export function buildPointerInstruction(absPromptPath) {
  * a write failure falls back to inline delivery (never breaks dispatch — the
  * runner's over-long-cmdline WARNING remains the backstop).
  *
- * @returns {{ args: string[], promptFilePath: string|null, inlined: boolean,
+ * @returns {{ args: string[], channel: 'stdin'|'argv-inline'|'argv-pointer',
+ *             promptFilePath: string|null, inlined: boolean,
  *             regime: string, bytes: number, budget: number, fallbackReason?: string }}
  */
 export function resolvePromptDelivery({
@@ -205,7 +207,7 @@ export function resolvePromptDelivery({
     const target = resolve(promptFilePath);
     if (target !== vendorCwd && !target.startsWith(vendorCwd + sep)) {
       return {
-        args: inlineArgs, promptFilePath: null, inlined: true, regime, bytes, budget,
+        args: inlineArgs, channel: 'argv-inline', promptFilePath: null, inlined: true, regime, bytes, budget,
         fallbackReason: `prompt file ${promptFilePath} is outside the vendor cwd ${opts.cwd} (HOPPER_VENDOR_CWD?) — kept inline so the agent still receives the prompt`,
       };
     }
@@ -223,9 +225,9 @@ export function resolvePromptDelivery({
     // re-tighten explicitly. Advisory on Windows (rely on the parent dir ACL).
     try { chmodSync(promptFilePath, 0o600); } catch (_) { /* best-effort */ }
     const pointer = buildPointerInstruction(promptFilePath.replace(/\\/g, '/'));
-    return { args: adapter.args(pointer, opts), promptFilePath, inlined: false, regime, bytes, budget };
+    return { args: adapter.args(pointer, opts), channel: 'argv-pointer', promptFilePath, inlined: false, regime, bytes, budget };
   } catch (err) {
-    return { args: inlineArgs, promptFilePath: null, inlined: true, regime, bytes, budget, fallbackReason: err.message };
+    return { args: inlineArgs, channel: 'argv-inline', promptFilePath: null, inlined: true, regime, bytes, budget, fallbackReason: err.message };
   }
 }
 

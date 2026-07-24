@@ -4,7 +4,7 @@
 > Date: 2026-07-24
 > Severity: high on Windows — every opencode dispatch with a multi-line brief is a silent no-op; the vendor answers "your message seems to be cut off" and hopper records `adapter-protocol-invalid`
 > Env: Windows; opencode reached via cmd.exe shim `C:\nvm4w\nodejs\opencode.cmd`; hopper-dispatch `0.35.1`; CLI = `<hopper>/cli/bin/hopper-dispatch` (loads `cli/src/prompt-delivery.js` + `cli/src/vendors/opencode.js`)
-> Status: **CLOSED** — fixed in this commit (see Resolution)
+> Status: **CLOSED** — fixed in 6aa10d3; pointer-instruction hardening added in the audit-follow-up commit (see Resolution)
 
 ## Evidence
 
@@ -26,28 +26,46 @@ hopper-dispatch --adhoc --task-type code-review-adversarial --vendor opencode --
 hopper-dispatch --result <taskId>   # → opencode: "message cut off …", status failed
 ```
 
-## Root cause (confirmed chain)
+## Root cause (symptom proven; precise mechanism partially characterized)
 
-1. On Windows, `opencode` resolves to a **cmd.exe `.cmd` shim**
-   (`C:\nvm4w\nodejs\opencode.cmd`), so `commandLineRegime()` puts the spawn in
-   the `cmd-shim` regime (`cli/src/prompt-delivery.js`).
-2. The win-cmd-shim channel **truncates a multi-line argv positional at the
-   FIRST newline**, at any size (documented in the prompt-delivery header and
-   `useStdinPrompt()`'s comment, lines 89–94). The size-gated pointer
-   mechanism does NOT catch this: the truncation victim is usually a SMALL
-   prompt that sits far under the 4000-byte inline budget.
-3. For vendors that declared `promptStdin: 'supported'` (codex/claude/mimo,
-   opt-in copilot), hopper already pipes the prompt over stdin to dodge the
-   truncation. **`cli/src/vendors/opencode.js` has no `promptStdin`
-   declaration** (only `stdinMode: 'none'`), so opencode stayed on
-   `argv-inline`.
+**What is empirically proven:** on this Windows host, a multi-line composed
+brief delivered as an argv positional to opencode (a cmd.exe `.cmd` shim at
+`C:\nvm4w\nodejs\opencode.cmd`) arrives **cut to its first segment** — the
+vendor consistently receives only the header/preamble and asks for the rest.
+The failure is 100% reproducible for multi-line briefs and absent for
+single-line ones.
+
+**What is NOT precisely established** (wording corrected after independent
+audit): the exact cutting mechanism. An earlier version of this ISSUE stated
+flatly that "cmd.exe truncates a multi-line argv positional at the first
+newline at any size." That is too strong: the pointer instruction shipped in
+the original fix was itself multi-line and DID reach the vendor intact
+(opencode read the prompt file and completed the task), so "cmd.exe
+truncates any multi-line argv at the first newline" cannot be the whole
+story. The precise mechanism — cmd.exe line-length/quoting interaction,
+Node's win32 argv escaping through a `.cmd` shim, or opencode's own argv
+parsing of embedded newlines — is left to a follow-up repro experiment
+(`cmd.exe /c opencode.cmd run "<controlled multi-line string>"` with varying
+lengths/quoting). What matters operationally is unchanged: **argv-inline
+delivery of multi-line briefs to cmd-shim vendors is unreliable**, so the
+pointer-file channel is the correct fix regardless of which exact layer cuts
+the text.
+
+Confirmed contributing facts:
+
+1. On Windows, `opencode` resolves to a **cmd.exe `.cmd` shim**, so
+   `commandLineRegime()` puts the spawn in the `cmd-shim` regime
+   (`cli/src/prompt-delivery.js`).
+2. The size-gated pointer mechanism did NOT catch the truncation: the
+   truncation victim is usually a SMALL prompt far under the 4000-byte inline
+   budget, so it stayed on `argv-inline`.
+3. Vendors that declared `promptStdin: 'supported'` (codex/claude/mimo,
+   opt-in copilot) were already routed to stdin delivery and unaffected.
+   **`cli/src/vendors/opencode.js` has no `promptStdin` declaration** (only
+   `stdinMode: 'none'`), so opencode stayed on argv-inline.
 4. opencode CLI genuinely **cannot read the message from stdin** (verified
    `opencode run --help`: the message is an argv positional array only), so
    routing it to stdin was never an option.
-
-Net effect: a multi-line composed brief was inlined into argv, cmd.exe cut it
-at the first `\n`, opencode received only the header, and correctly asked for
-the rest.
 
 ## Resolution (2026-07-24 — hopper 0.35.1+)
 
@@ -81,3 +99,21 @@ Tests added in `tests/unit/prompt-delivery.test.js`:
 All 33 prompt-delivery tests pass; the full unit suite shows no new failures
 (the 7 dashboard-* suites + 1 flaky lifecycle test that fail also fail on the
 unmodified baseline).
+
+### Audit follow-up (2026-07-24, pointer hardening)
+
+An independent audit (approve-with-comments) noted that the ORIGINAL
+`buildPointerInstruction` itself produced a 4-line pointer — inconsistent with
+this ISSUE's own "multi-line argv is at risk" theory (and, per the corrected
+root-cause wording above, evidence that the precise cutting mechanism is not
+fully characterized). Hardening shipped in the follow-up commit:
+
+- `buildPointerInstruction` now emits a **single line** with the prompt-file
+  absolute path **front-loaded**: even if some layer ever cuts an argv
+  positional mid-string, the file path survives as early as possible.
+- Pointer delivery results now carry `channel: 'argv-pointer'` (inline
+  fallbacks carry `channel: 'argv-inline'`), consistent with the `'stdin'`
+  channel label.
+- New regression tests: the pointer instruction contains no newline, the path
+  sits in the first half of the line, and a cmd-shim pointer delivery has NO
+  newline in ANY argv element.

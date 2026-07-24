@@ -89,6 +89,29 @@ test('buildPointerInstruction references the path and tells the agent to read+fo
   assert.match(s, /follow/i);
 });
 
+test('buildPointerInstruction is a SINGLE line with the path front-loaded (cmd-shim argv safety)', () => {
+  const p = 'F:/repo/.hopper/handoffs/T-1-prompt.md';
+  const s = buildPointerInstruction(p);
+  assert.ok(!/\r?\n/.test(s), 'the pointer itself travels as an argv positional — it must contain NO newline');
+  assert.ok(s.indexOf(p) < s.length / 2, 'the prompt file path must appear in the first half of the line');
+});
+
+test('regression: cmd-shim pointer delivery puts NO newline anywhere in argv (the pointer is truncation-safe itself)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pd-'));
+  try {
+    const res = resolvePromptDelivery({
+      adapter: fakeAdapter, composedPrompt: 'header line\nsecond line\nthird line', opts: {},
+      resolvedCmd: 'cmd.exe', prependArgs: ['/c', 'fake.cmd'],
+      handoffsDir: dir, taskId: 'T-PTR-1L', isWindows: true, env: {},
+    });
+    assert.equal(res.channel, 'argv-pointer');
+    assert.equal(res.inlined, false, 'multi-line prompt on cmd-shim forces pointer delivery');
+    for (const a of res.args) {
+      assert.ok(!/\r?\n/.test(String(a)), `argv element must not contain a newline: ${JSON.stringify(a).slice(0, 80)}`);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 // ── resolvePromptDelivery: the gating decision ──
 test('resolvePromptDelivery INLINES a small prompt (no file written)', () => {
   const dir = mkdtempSync(join(tmpdir(), 'pd-'));
