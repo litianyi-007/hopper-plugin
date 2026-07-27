@@ -305,6 +305,26 @@ export const codexAdapter = {
       ? ['--skip-git-repo-check']
       : [];
     return [
+      // Web search (research/PRD/market dispatches). `--search` opts into LIVE
+      // web search (web_search=live); codex enables CACHED search by default, so
+      // the old `--enable web_search_cached` was a deprecated no-op (2026 vendor
+      // research).
+      //
+      // POSITION IS LOAD-BEARING: `--search` is a TOP-LEVEL codex flag, accepted
+      // only BEFORE the subcommand. Placed after `exec` (where it sat until
+      // 0.37.0) codex aborts on argv with `error: unexpected argument '--search'
+      // found` and the dispatch never starts -- so every prd-research /
+      // market-research task routed to codex died before doing any work, because
+      // those task-types auto-enable webSearch. Verified live on codex-cli
+      // 0.145.0: `codex exec --search <prompt>` -> unexpected argument;
+      // `codex --search exec <prompt>` -> rc=0 with real output; `codex exec
+      // --help` does not list it while `codex --help` does.
+      //
+      // The pre-0.37.0 test asserted only that '--search' appeared SOMEWHERE in
+      // argv, which it always did -- presence was never the defect. Its
+      // replacement asserts the index, and asserts no other top-level-only flag
+      // drifts behind the subcommand.
+      ...(opts.webSearch ? ['--search'] : []),
       'exec',
       // Forward an explicit model when the dispatch sets one. `codex exec -m <MODEL>`
       // (ISSUE-codex-vendor-model-effort). ChatGPT-account auth accepts BARE names
@@ -326,10 +346,6 @@ export const codexAdapter = {
       // HOPPER-3: isolate the dispatched codex from the HOST's global config so
       // dispatch stays deterministic (Host != Vendor, spec §3 #4).
       ...codexIsolationConfig(),
-      // Web search (research/PRD/market dispatches). codex enables CACHED search BY
-      // DEFAULT, so the old `--enable web_search_cached` was a deprecated no-op (2026
-      // vendor research). `--search` opts into LIVE web search (web_search=live).
-      ...(opts.webSearch ? ['--search'] : []),
       // ISSUE-codex-bypass-flag-missing-from-argv (ROOT CAUSE): the PROMPT
       // positional MUST be the LAST argv element. On Windows `codex` is reached
       // through a cmd.exe `.cmd` shim whose command line is capped at ~8191 chars;

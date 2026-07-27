@@ -324,7 +324,12 @@ export function resolveAdapterOptsForTask(resolved, adapterOpts = {}) {
   // Web search: auto-enable for web-needing task-types (prd-research / market-research)
   // unless the caller already decided. An explicit --web-search sets out.webSearch=true
   // before this runs; only web-capable adapters (codex/claude/copilot) act on it.
-  if (out.webSearch == null && taskType && WEB_SEARCH_TASK_TYPES.includes(taskType)) {
+  // HOPPER_WEB_SEARCH=0 opts out of the auto-enable (not out of an explicit
+  // --web-search, which is set above and is a decision rather than a default).
+  // A research task over a purely local corpus does not want live web search
+  // pulling external content in.
+  if (out.webSearch == null && process.env.HOPPER_WEB_SEARCH !== '0'
+      && taskType && WEB_SEARCH_TASK_TYPES.includes(taskType)) {
     out.webSearch = true;
   }
   // ── --reasoning fallback chain (batch 2): flag > AGENTS.md Effort policy cell >

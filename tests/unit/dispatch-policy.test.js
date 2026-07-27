@@ -87,3 +87,56 @@ test('policy: codex forwards webSearch as --search (not the deprecated web_searc
   const off = codexAdapter.args('x', {});
   assert.ok(!off.includes('--search'), 'no --search without webSearch');
 });
+
+test('policy: codex --search precedes the `exec` subcommand (top-level-only flag)', () => {
+  // The assertion above (presence anywhere in argv) passed for the entire time
+  // this was broken: `--search` WAS in argv, just after `exec`, where codex
+  // rejects it outright -- `error: unexpected argument '--search' found`, so the
+  // dispatch died before starting. Since prd-research / market-research
+  // auto-enable webSearch, that meant no research task could reach codex at all.
+  // Verified live on codex-cli 0.145.0. Presence was never the property that
+  // mattered; position is.
+  const on = codexAdapter.args('x', { webSearch: true, model: 'gpt-5.5' });
+  const searchAt = on.indexOf('--search');
+  const execAt = on.indexOf('exec');
+  assert.ok(searchAt !== -1 && execAt !== -1, 'both tokens present');
+  assert.ok(
+    searchAt < execAt,
+    `--search must precede 'exec' (top-level flag); got --search@${searchAt}, exec@${execAt}`,
+  );
+});
+
+test('policy: no known top-level-only codex flag drifts behind the subcommand', () => {
+  // Generalizes the check above so the next top-level flag added to the adapter
+  // cannot repeat the same mistake silently.
+  const TOP_LEVEL_ONLY = ['--search'];
+  const argv = codexAdapter.args('x', { webSearch: true, model: 'gpt-5.5', cwd: '/tmp' });
+  const execAt = argv.indexOf('exec');
+  for (const flag of TOP_LEVEL_ONLY) {
+    const at = argv.indexOf(flag);
+    if (at === -1) continue;
+    assert.ok(at < execAt, `${flag} is top-level-only and must precede 'exec' (found at ${at})`);
+  }
+});
+
+test('policy: HOPPER_WEB_SEARCH=0 disables the auto-enable, and only the auto-enable', () => {
+  // Separate from the argv fix above: with `--search` now positioned correctly,
+  // a research task over a purely LOCAL corpus still may not want live web
+  // search pulling external content in. This opts out of the default only --
+  // an explicit --web-search still wins, and only the exact string '0' opts out.
+  withEnv('HOPPER_WEB_SEARCH', '0', () => {
+    assert.equal(resolveAdapterOptsForTask(resolvedOf('prd-research')).webSearch, undefined);
+    assert.equal(resolveAdapterOptsForTask(resolvedOf('market-research')).webSearch, undefined);
+    assert.equal(
+      resolveAdapterOptsForTask(resolvedOf('prd-research'), { webSearch: true }).webSearch,
+      true,
+      'an explicit request is a decision, not a default -- the env var must not override it',
+    );
+  });
+  withEnv('HOPPER_WEB_SEARCH', '1', () => {
+    assert.equal(resolveAdapterOptsForTask(resolvedOf('prd-research')).webSearch, true);
+  });
+  withEnv('HOPPER_WEB_SEARCH', undefined, () => {
+    assert.equal(resolveAdapterOptsForTask(resolvedOf('prd-research')).webSearch, true);
+  });
+});

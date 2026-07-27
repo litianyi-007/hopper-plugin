@@ -19,6 +19,42 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.37.0] - 2026-07-28
+
+### Fixed
+
+- **codex `--search` was placed after the `exec` subcommand, so every web-search
+  dispatch to codex died on argv.** `--search` is a TOP-LEVEL codex flag; codex
+  rejects it after the subcommand with `error: unexpected argument '--search'
+  found` and never starts. Because `prd-research` / `market-research` auto-enable
+  webSearch, **no research task could be dispatched to codex at all** — it failed
+  before doing any work. Verified live on codex-cli 0.145.0: `codex exec --search
+  <prompt>` → unexpected argument; `codex --search exec <prompt>` → rc=0 with real
+  output; `codex exec --help` does not list the flag while `codex --help` does.
+  The adapter now emits `--search` before `exec`, verified end-to-end by spawning
+  the adapter's own argv (rc=0, expected output, no argv error).
+
+  The pre-existing test — under a section header literally reading "the
+  load-bearing `--search` fix" — asserted only that `--search` appeared
+  *somewhere* in argv. It did; presence was never the defect. That test stayed
+  green for the entire time the feature was broken. Its replacement asserts the
+  index, plus a generalized guard that no known top-level-only flag drifts behind
+  the subcommand.
+
+### Added
+
+- **`HOPPER_WEB_SEARCH=0`** opts out of the research-task web-search auto-enable.
+  Distinct from the fix above: with argv now correct, a research task over a
+  purely local corpus still may not want live web search pulling external content
+  in. Suppresses only the *default* — an explicit `--web-search` still wins, and
+  only the exact string `0` opts out.
+
+### Changed
+
+- `package-lock.json`'s own `version` field is now part of the release bump. It
+  had been left at `0.8.1` across two dozen releases — harmless to npm, but it
+  made the lockfile useless as a record of which release it belongs to.
+
 ## [0.36.0] - 2026-07-24
 
 ### Fixed
