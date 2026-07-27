@@ -1,0 +1,38 @@
+CHANGELOG.md
+  s_9b9532ed48c3cb::t_946004b053713f 22-33
+  s_9b9532ed48c3cb::t_697d81f7f4e6fe 34-49
+.claude-plugin/marketplace.json
+  s_9b9532ed48c3cb::t_b023d766dfe938 4,48
+.claude-plugin/plugin.json
+  s_9b9532ed48c3cb::t_30f937981484b8 3
+.codex-plugin/plugin.json
+  s_9b9532ed48c3cb::t_a2956e22a70a46 3
+cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_e371889a6b1fcd 60
+commands/smoke.md
+  s_9b9532ed48c3cb::t_4fde827b34798f 14
+commands/vendors.md
+  s_9b9532ed48c3cb::t_aba1122e6583ff 14
+package.json
+  s_9b9532ed48c3cb::t_784ece84e1fea1 3
+plugins/hopper/.codex-plugin/plugin.json
+  s_9b9532ed48c3cb::t_8aeaef7a5d9553 3
+plugins/hopper/cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_6c58c11ca433ff 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "26fc2f0ae1cf698f2c9ef1171a41d30028332885",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

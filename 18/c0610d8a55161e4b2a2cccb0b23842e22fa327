@@ -1,0 +1,35 @@
+cli/src/vendors/index.js
+  s_9b9532ed48c3cb::t_f1d767d59be4c4 71-74,95-106,117-121
+cli/src/vendors/grok.js
+  s_9b9532ed48c3cb::t_f1d767d59be4c4 45-67,290,298,302
+  s_9b9532ed48c3cb::t_db134e9cada55f 31,44,169-179,182-183,196,199,202-210,212-216,241-242,244,252-253,258,270,272,274,280,287,289,291-297,299-301,304-307
+tests/unit/vendor-model-auth.test.js
+  s_9b9532ed48c3cb::t_ce60996f6eee06 8
+  s_9b9532ed48c3cb::t_f8232424c31089 107-127
+cli/src/setup.js
+  s_9b9532ed48c3cb::t_02f40a5cdd723a 100-101
+cli/src/types.js
+  s_9b9532ed48c3cb::t_f6c0a1d0da2117 64
+tests/unit/discovery.test.js
+  s_9b9532ed48c3cb::t_6562c11fbc1fb8 164-167
+tests/unit/setup.test.js
+  s_9b9532ed48c3cb::t_447c35e4438d1a 27-40
+tests/unit/vendors-contract.test.js
+  s_9b9532ed48c3cb::t_fc13ffba393a91 80,96,111-112,578,595-637
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "18c0610d8a55161e4b2a2cccb0b23842e22fa327",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+cli/src/vendors/claude.js
+  s_9b9532ed48c3cb::t_e095ea10eddc5d 193-194,201,208,217-218,220,222,235,239-246,249-252,257,260-261,263,266,269-270,272-274,277,279,286-292,297-318
+cli/src/vendors/opencode.js
+  s_9b9532ed48c3cb::t_70be651d3e6c64 127-132,134,139,142-143,145-149,153,155,159,164-169,171,175,229-236,240-241,247,249-251,312
+tests/unit/vendors-contract.test.js
+  s_9b9532ed48c3cb::t_f790637dde21da 222-283,295,297,304-305,323-334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "27d9ebc7b970b4bbb0e4b9ae873dcd97148ed517",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

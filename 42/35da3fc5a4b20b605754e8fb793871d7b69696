@@ -1,0 +1,33 @@
+tests/unit/dashboard-sse.test.js
+  s_9b9532ed48c3cb::t_f9aef02513570e 63-67
+  s_9b9532ed48c3cb::t_81b4de9d2d5b60 60-62,68-83,206-210
+dashboard/server/routes/actions.js
+  s_9b9532ed48c3cb::t_3c45d81073f9df 2,6,9,11-17,35-40,62-67,77-81,84-105
+  s_9b9532ed48c3cb::t_b88e7f2feed377 109-114,116,118-126,128
+dashboard/server/events/sse.js
+  s_9b9532ed48c3cb::t_d46e31df3910a0 5,17-25,31-33,45-46,52-55,60-78,84-97,103-105,112,114
+  s_9b9532ed48c3cb::t_8b16c177dd62c9 98,107,116
+  s_9b9532ed48c3cb::t_27c553e176b55f 99-102,106,108-111,113,115,117-118
+dashboard/server/lib/spawn-cli.js
+  s_9b9532ed48c3cb::t_77538d3d122b2a 21
+dashboard/server/routes/task.js
+  s_9b9532ed48c3cb::t_8ba985fa36f240 146-147
+tests/unit/dashboard-vendors.test.js
+  s_9b9532ed48c3cb::t_28f21fc44e42b9 17-36,275,325-331,336-340,342-350,359,363-365,367-386,393-474,476
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "4235da3fc5a4b20b605754e8fb793871d7b69696",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

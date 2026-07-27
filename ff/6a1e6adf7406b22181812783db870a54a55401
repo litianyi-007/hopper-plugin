@@ -1,0 +1,36 @@
+docs/research/vendor-introspection/permission-matrix-0.34.2.md
+  0000019f8e5d151d 1-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "ff6a1e6adf7406b22181812783db870a54a55401",
+  "prompts": {
+    "s_5ce24b69abe431::t_43aa0638725e1b": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1784799889927185100",
+        "model": "unknown"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019f8e5d151d": {
+      "agent_id": {
+        "model": "gpt-5.6-sol",
+        "id": "ai-thread-codex-gpt-5.6-sol-1784799892765",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 181,
+      "total_deletions": 0,
+      "accepted_lines": 181,
+      "overriden_lines": 0
+    }
+  }
+}

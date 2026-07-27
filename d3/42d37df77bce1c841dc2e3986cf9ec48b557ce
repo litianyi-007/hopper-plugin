@@ -1,0 +1,31 @@
+tests/unit/dashboard-vendors.test.js
+  s_9b9532ed48c3cb::t_6f12a3af943a76 17-34
+  s_9b9532ed48c3cb::t_0f686e46bbfaa3 268-269,296-298,334-336,342-386
+dashboard/server/routes/actions.js
+  s_9b9532ed48c3cb::t_e722cd55ad79ca 3-4,16-19,21,27,29-30,39-45
+  s_9b9532ed48c3cb::t_b16e34b32e0751 46-47,61,63,67,69-72,79,82
+dashboard/server/routes/task.js
+  s_9b9532ed48c3cb::t_e722cd55ad79ca 4
+  s_9b9532ed48c3cb::t_2d3685bef581e1 27-29,73-84
+tests/unit/dashboard-task.test.js
+  s_9b9532ed48c3cb::t_6f12a3af943a76 11,32-53,61-81
+  s_9b9532ed48c3cb::t_4c674656186a3a 82,89-92,94-114,123-124,134-135,137-138,153
+cli/src/inventory-contract.js
+  s_9b9532ed48c3cb::t_72a16f15836ed1 73-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "d342d37df77bce1c841dc2e3986cf9ec48b557ce",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+dashboard/server/lib/hopper-dir.js
+  s_9b9532ed48c3cb::t_6ea3c7f23f71fb 4-12
+tests/helpers/wait-for-pid-exit.js
+  s_9b9532ed48c3cb::t_6ea3c7f23f71fb 29-41
+tests/integration/background-e2e.test.js
+  s_9b9532ed48c3cb::t_f9552437cbf5e8 32
+  s_9b9532ed48c3cb::t_6ea3c7f23f71fb 60-65,68-71,76
+  s_9b9532ed48c3cb::t_66ccff125f6122 59,72-75,77-82,115,171,173,180,220,222,299,322,324,331,357,359
+tests/unit/dashboard-server.test.js
+  s_9b9532ed48c3cb::t_4b26cd5a534bda 7
+  s_9b9532ed48c3cb::t_5067fe6d075560 8-9,71-84
+cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_f1c2fca200ea32 152-160,1312-1321,1383,1598,1647,1649
+plugins/hopper/cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_74557c1499f37d 152-160,1312-1321,1383,1598,1647,1649
+tests/unit/progress-cli.test.js
+  s_9b9532ed48c3cb::t_a3aa000cff98ed 9,193-207
+tests/unit/progress-watch.test.js
+  s_9b9532ed48c3cb::t_a9e426ddbecb91 438-439,441-444,447-448,452-495
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "3d74ce0f202d860aaae42722c2d25eb87435b2b0",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

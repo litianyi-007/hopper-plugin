@@ -1,0 +1,24 @@
+tests/integration/runner-single-spawn.test.js
+  s_9b9532ed48c3cb::t_5468a6b6d54832 30,37
+  s_9b9532ed48c3cb::t_2fdadd13632aa7 830-890
+cli/bin/hopper-runner
+  s_9b9532ed48c3cb::t_bfdfb4f8435d1b 638,642,645
+plugins/hopper/cli/bin/hopper-runner
+  s_9b9532ed48c3cb::t_a52b2e14f58844 638,642,645
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "2d5d9f91a3449fc110fd479e8a501b5e807e18df",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

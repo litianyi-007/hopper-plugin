@@ -1,0 +1,25 @@
+cli/src/output-evidence.js
+  s_9b9532ed48c3cb::t_887486ee7812b7 1-52,54-93
+  s_9b9532ed48c3cb::t_4db9b2c27ce717 53
+tests/unit/output-evidence.test.js
+  s_9b9532ed48c3cb::t_d6c7d06260b51d 1-3,7-25,45-92
+  s_9b9532ed48c3cb::t_c85046b367e4c2 4-6,26-44
+cli/src/types.js
+  s_9b9532ed48c3cb::t_1106aa0061ae11 95-102,110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "e683afd08a34f1648d5fe0c9cd086e482a81edb0",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+tests/unit/handoff-attestation.test.js
+  s_9b9532ed48c3cb::t_a9940f7fdf7539 88-97
+  s_9b9532ed48c3cb::t_be633361414f65 165-193,456-521
+cli/src/handoff-attestation.js
+  s_9b9532ed48c3cb::t_29e9d092d916bd 14
+  s_9b9532ed48c3cb::t_9ae1d45042ceb3 127-168,366-371,382,395,436,461,534,567,579
+cli/src/progress.js
+  s_9b9532ed48c3cb::t_9b340346ff403f 113-115
+tests/integration/runner-single-spawn.test.js
+  s_9b9532ed48c3cb::t_9b9a31496f24d0 914-930,936-948
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "133706246b1e5b5228361069176f9d50f65d7520",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

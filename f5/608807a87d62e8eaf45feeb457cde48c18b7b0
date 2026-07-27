@@ -1,0 +1,87 @@
+tests/unit/public-identifiers.test.js
+  s_9b9532ed48c3cb::t_93fc029bc44cab 1-41
+plugins/hopper/cli/src/handoff-attestation.js
+  s_a5734479633b5c::t_7736ca8c57d5ec 66-69
+  s_9b9532ed48c3cb::t_d4595952e34fab 12-13,134-135,143-144,152,157,209-212,295,297-298,310-311,319-322,332,344,384,405-408,468-469,475,483-487,500,523
+cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_98e5f6fbdbf67d 53
+  s_9b9532ed48c3cb::t_5c421d6ba6c928 95,101,923,948,1266,1314,1316-1317,1320-1323,1325-1326,1377,1561,1565-1570,1575,1579-1580,1582,1588-1592,1594
+cli/src/public-identifiers.js
+  s_9b9532ed48c3cb::t_a9ca48fb413d9f 40
+  s_9b9532ed48c3cb::t_b814bfb5713cec 1-39,41-65
+plugins/hopper/cli/src/public-identifiers.js
+  s_a5734479633b5c::t_7736ca8c57d5ec 1-65
+cli/src/handoff-attestation.js
+  s_9b9532ed48c3cb::t_f9e653d49c9862 12-13
+  s_9b9532ed48c3cb::t_b32b2502d37dd9 66-69
+  s_9b9532ed48c3cb::t_6150d0ca884ec4 134-135,143-144,152,157,209-212,295,297-298,310-311,319-322,332,344,384,405-408,468-469,475,483-487,500,523
+dashboard/server/events/watcher.js
+  s_9b9532ed48c3cb::t_3792e668467d6e 4-6
+  s_9b9532ed48c3cb::t_5f030997aee2f7 62,67-68,72,79,86,90-94,98
+cli/bin/hopper-runner
+  s_9b9532ed48c3cb::t_85530305096455 585
+cli/src/background.js
+  s_9b9532ed48c3cb::t_06b751e928bad3 24,520
+cli/src/output.js
+  s_9b9532ed48c3cb::t_d594bc4577bdda 26,200,274
+cli/src/progress.js
+  s_9b9532ed48c3cb::t_1a5f1ddbc12a1b 95
+cli/src/validation.js
+  s_9b9532ed48c3cb::t_8b3e12109f459b 17-18,204-205
+dashboard/README.md
+  s_9b9532ed48c3cb::t_219003d54fa7fe 61-64,180
+dashboard/client/src/lib/types.ts
+  s_9b9532ed48c3cb::t_d2a9a97b80ac17 47
+dashboard/server/routes/actions.js
+  s_9b9532ed48c3cb::t_cfb350593f69c6 78-79,100-101,108-111
+dashboard/server/routes/task.js
+  s_9b9532ed48c3cb::t_817f0f0c9daec7 5-6,86-87,91,98,108-111
+plugins/hopper/cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_3e3f4cce856b6f 53,95,101,923,948,1266,1314,1316-1317,1320-1323,1325-1326,1377,1561,1565-1570,1575,1579-1580,1582,1588-1592,1594
+plugins/hopper/cli/bin/hopper-runner
+  s_9b9532ed48c3cb::t_1c26efb4304fb4 585
+plugins/hopper/cli/src/background.js
+  s_9b9532ed48c3cb::t_096ce87793d24d 24,520
+plugins/hopper/cli/src/output.js
+  s_9b9532ed48c3cb::t_a7da89963cfb9b 26,200,274
+plugins/hopper/cli/src/progress.js
+  s_9b9532ed48c3cb::t_144c743b6eca20 95
+plugins/hopper/cli/src/validation.js
+  s_9b9532ed48c3cb::t_2e277e67023f5f 17-18,204-205
+tests/unit/dashboard-sse.test.js
+  s_9b9532ed48c3cb::t_27592e2494febd 130,137,176-177,234-235
+tests/unit/dashboard-task.test.js
+  s_9b9532ed48c3cb::t_9f4ac7d49020b1 107-108,382
+tests/unit/dashboard-vendors.test.js
+  s_9b9532ed48c3cb::t_094a70101194e6 292,326-388,562-565
+tests/unit/handoff-attestation.test.js
+  s_9b9532ed48c3cb::t_f7d5458cddcd03 155-195,269,271-273,278,363-383
+tests/unit/output-writer.test.js
+  s_9b9532ed48c3cb::t_95d9b2a735e6f9 549-556
+tests/unit/progress-watch.test.js
+  s_9b9532ed48c3cb::t_a77a52afe415e9 51,65,242-244,431-451,483
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f5608807a87d62e8eaf45feeb457cde48c18b7b0",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    },
+    "s_a5734479633b5c": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1784703599568654500",
+        "model": "unknown"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

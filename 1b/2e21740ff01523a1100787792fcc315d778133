@@ -1,0 +1,27 @@
+docs/superpowers/specs/2026-07-23-recovered-output-grok-auth-diagnostics-design.md
+  s_9b9532ed48c3cb::t_5cb3655bf3a267 199-228
+  s_9b9532ed48c3cb::t_e41b2d44e23992 256-260
+  s_9b9532ed48c3cb::t_e6c4fe3236db84 325-332,336-340
+  s_9b9532ed48c3cb::t_20b1e5cc7cd9ca 137-142,147-151,162-168,172-173,178-180,182-194
+  s_9b9532ed48c3cb::t_bc6e305a2dddef 155-161
+  s_9b9532ed48c3cb::t_60886801e3dd21 231-236
+  s_9b9532ed48c3cb::t_6a8c90d53812dd 229-230
+  s_9b9532ed48c3cb::t_7f9455d0203de2 365-369
+  s_9b9532ed48c3cb::t_cad44244dfbafc 401-410
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "1b2e21740ff01523a1100787792fcc315d778133",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

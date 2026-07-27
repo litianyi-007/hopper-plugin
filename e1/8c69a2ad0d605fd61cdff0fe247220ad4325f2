@@ -1,0 +1,25 @@
+cli/src/handoff-attestation.js
+  s_9b9532ed48c3cb::t_a1cb1a707418a0 454,465,520,537
+tests/unit/claude-code-host.test.js
+  s_9b9532ed48c3cb::t_65f700b8217b72 22-25,67,78
+tests/unit/codex-plugin.test.js
+  s_9b9532ed48c3cb::t_e94d62b498f3e5 31-34,99
+tests/unit/handoff-attestation.test.js
+  s_9b9532ed48c3cb::t_6bcaec50e8939d 126-127,162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "e18c69a2ad0d605fd61cdff0fe247220ad4325f2",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

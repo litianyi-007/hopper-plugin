@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-07-23-recovered-output-grok-auth-diagnostics-design.md
+  s_9b9532ed48c3cb::t_7d181a558932d3 1-355
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "c595c53b7a7dd32c0e2a9fa45d1acfc9c0dbf917",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

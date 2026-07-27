@@ -1,0 +1,23 @@
+dashboard/server/routes/task.js
+  s_9b9532ed48c3cb::t_7c254007de75eb 5,9-18
+  s_9b9532ed48c3cb::t_3c699ee41f3b0e 91,97-98,102,109-112,115,119,126-142
+tests/unit/dashboard-task.test.js
+  s_9b9532ed48c3cb::t_1c33d48aeb729a 185-254,256,264-266,268,271-272,275-276,283-285,301
+  s_9b9532ed48c3cb::t_0f91efe2ac650c 255,257-263,267,269-270,273-274,277-282,286-300,302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "1fa70d2ad8b91ded86f9bbed87b60137e2c68920",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

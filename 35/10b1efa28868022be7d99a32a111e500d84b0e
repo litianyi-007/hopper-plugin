@@ -1,0 +1,19 @@
+tests/unit/phase6c.test.js
+  s_9b9532ed48c3cb::t_8407e6614eb185 189-191,239-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "3510b1efa28868022be7d99a32a111e500d84b0e",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "unknown"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

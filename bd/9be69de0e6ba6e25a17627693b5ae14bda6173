@@ -1,0 +1,35 @@
+tests/helpers/wait-for-pid-exit.js
+  s_9b9532ed48c3cb::t_1bccf7acd3895b 1-28
+tests/unit/progress-cli.test.js
+  s_9b9532ed48c3cb::t_1bccf7acd3895b 27
+  s_9b9532ed48c3cb::t_e4c4a1e498a285 31,170-192
+tests/unit/dashboard-server.test.js
+  s_9b9532ed48c3cb::t_1bccf7acd3895b 3,5
+  s_9b9532ed48c3cb::t_27fa5ffd95fe97 7,44-68
+tests/integration/background-e2e.test.js
+  s_9b9532ed48c3cb::t_f9552437cbf5e8 32
+  s_9b9532ed48c3cb::t_53b64aea568bab 58-59,61-62,96,151,153,159,198,200,298,300,306,308,331,333
+dashboard/server/lib/hopper-dir.js
+  s_9b9532ed48c3cb::t_249ecf672da665 1,4-8
+  s_9b9532ed48c3cb::t_30a12eb5415038 12,18
+cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_c4793c444c9369 152-156,163,173
+tests/unit/stop-job.test.js
+  s_9b9532ed48c3cb::t_50afc8159da7fc 11,14,120,123-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "bd9be69de0e6ba6e25a17627693b5ae14bda6173",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

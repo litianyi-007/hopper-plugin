@@ -1,0 +1,42 @@
+tests/unit/setup.test.js
+  s_2edb8bdda7b44f::t_c8dd0a6a18e5ef 11-13,17-20
+  s_9b9532ed48c3cb::t_1af41965af8bfc 48-65
+cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_cdc64d809e8e0e 1618-1649,1663,1665,1667,1842,1844,1846
+commands/setup.md
+  s_9b9532ed48c3cb::t_25c51d26375f00 24,37
+hosts/grok-cli/README.md
+  s_9b9532ed48c3cb::t_7a06e3761403b7 44,47-58
+hosts/grok-cli/bin/hopper-grok
+  s_9b9532ed48c3cb::t_60ee28d77e36e8 25,153
+plugins/hopper/skills/hopper-setup/SKILL.md
+  s_9b9532ed48c3cb::t_3c57c97dd06e7b 18,25
+skills/hopper-setup/SKILL.md
+  s_9b9532ed48c3cb::t_ee178bb7b81999 18,25
+tests/unit/extra-hosts.test.js
+  s_9b9532ed48c3cb::t_dd24c5b64c2b19 173-208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "11d6c7d3df4246cd83a91f701a14da02ca5f329e",
+  "prompts": {},
+  "sessions": {
+    "s_2edb8bdda7b44f": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1784792484995508000",
+        "model": "unknown"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    },
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}
