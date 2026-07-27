@@ -1,0 +1,133 @@
+cli/src/vendors/codex.js
+  s_c587ecf7bbc3e2::t_8cf7abfa91a1b0 308-327
+tests/unit/dispatch-policy.test.js
+  s_c587ecf7bbc3e2::t_857d707dfedd28 90-142
+cli/src/dispatch.js
+  s_c587ecf7bbc3e2::t_6930fe0b8b862b 327-332
+.claude-plugin/marketplace.json
+  s_c587ecf7bbc3e2::t_8992e0ecc2b4d2 4-4,48-48
+.claude-plugin/plugin.json
+  s_c587ecf7bbc3e2::t_8992e0ecc2b4d2 3-3
+.codex-plugin/plugin.json
+  s_c587ecf7bbc3e2::t_8992e0ecc2b4d2 3-3
+cli/bin/hopper-dispatch
+  s_c587ecf7bbc3e2::t_8992e0ecc2b4d2 60-60
+commands/smoke.md
+  s_c587ecf7bbc3e2::t_8992e0ecc2b4d2 14-14
+commands/vendors.md
+  s_c587ecf7bbc3e2::t_8992e0ecc2b4d2 14-14
+package.json
+  s_c587ecf7bbc3e2::t_8992e0ecc2b4d2 3-3
+CHANGELOG.md
+  s_c587ecf7bbc3e2::t_0e0df497e3680b 22-57
+plugins/hopper/.codex-plugin/plugin.json
+  s_c587ecf7bbc3e2::t_0e0df497e3680b 3-3
+plugins/hopper/cli/bin/hopper-dispatch
+  s_c587ecf7bbc3e2::t_0e0df497e3680b 60-60
+plugins/hopper/cli/src/dispatch.js
+  s_c587ecf7bbc3e2::t_0e0df497e3680b 327-332
+plugins/hopper/cli/src/vendors/codex.js
+  s_c587ecf7bbc3e2::t_0e0df497e3680b 308-327
+tests/unit/vendored-plugin-sync.test.js
+  s_c587ecf7bbc3e2::t_32929435112c62 25-26
+package-lock.json
+  0000019fa497d861 1-3752
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "086386d89224a57945a46c2b306ddd6683e144d7",
+  "prompts": {
+    "s_c587ecf7bbc3e2::t_8cf7abfa91a1b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39f5bf8-f328-41b3-b5fd-eb01a465a399",
+        "model": "claude-opus-5"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 20,
+      "total_deletions": 0,
+      "accepted_lines": 20,
+      "overriden_lines": 0
+    },
+    "s_c587ecf7bbc3e2::t_857d707dfedd28": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39f5bf8-f328-41b3-b5fd-eb01a465a399",
+        "model": "claude-opus-5"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 53,
+      "total_deletions": 0,
+      "accepted_lines": 53,
+      "overriden_lines": 0
+    },
+    "s_c587ecf7bbc3e2::t_6930fe0b8b862b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39f5bf8-f328-41b3-b5fd-eb01a465a399",
+        "model": "claude-opus-5"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 0,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    },
+    "s_c587ecf7bbc3e2::t_8992e0ecc2b4d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39f5bf8-f328-41b3-b5fd-eb01a465a399",
+        "model": "claude-opus-5"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 8,
+      "total_deletions": 0,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    },
+    "s_c587ecf7bbc3e2::t_0e0df497e3680b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39f5bf8-f328-41b3-b5fd-eb01a465a399",
+        "model": "claude-opus-5"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 64,
+      "total_deletions": 0,
+      "accepted_lines": 64,
+      "overriden_lines": 0
+    },
+    "s_c587ecf7bbc3e2::t_32929435112c62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39f5bf8-f328-41b3-b5fd-eb01a465a399",
+        "model": "claude-opus-5"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 0,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "0000019fa497d861": {
+      "agent_id": {
+        "tool": "claude",
+        "model": "claude-opus-5",
+        "id": "ai-thread-claude-claude-opus-5-1785172842593"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 3752,
+      "total_deletions": 0,
+      "accepted_lines": 3752,
+      "overriden_lines": 0
+    }
+  }
+}
