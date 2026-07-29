@@ -1,7 +1,7 @@
 {
   "name": "agent-hopper",
   "displayName": "Hopper",
-  "version": "0.37.0",
+  "version": "0.38.0",
   "description": "Vendor-neutral background dispatch for AI agent tasks using the llm-hopper file protocol.",
   "category": "Coding",
   "tags": [
@@ -45,7 +45,7 @@
       "displayName": "Hopper",
       "source": "./",
       "description": "Thin plugin layer over the llm-hopper file protocol. Dispatches task-typed work to vendor CLIs and reports progress through file-backed terminal events.",
-      "version": "0.37.0",
+      "version": "0.38.0",
       "category": "Coding",
       "tags": [
         "multi-vendor",

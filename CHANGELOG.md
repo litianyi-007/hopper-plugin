@@ -19,6 +19,79 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.38.0] - 2026-07-29
+
+### Fixed
+
+- **User-facing docs asserted a "read-only" sandbox was enforced when it isn't,
+  for the two vendors that route there by default.** `commands/review.md`,
+  `research.md`, `market.md`, `swarm.md`, and `README.md` said things like
+  "so the reviewer never edits the repo" and labeled `/hopper:review` /
+  `research` / `market` as flatly "(ad-hoc, read-only)". That was false for
+  **codex** (the default reviewer for acceptance review, research, and market;
+  a common swarm panelist) and **grok** (the default adversarial reviewer; also
+  a common swarm panelist): codex *always* runs full-access via
+  `--dangerously-bypass-approvals-and-sandbox` (`cli/src/vendors/codex.js:292`
+  — a deliberate Windows-sandbox workaround, not a bug), and grok *always* runs
+  `--permission-mode bypassPermissions` (`cli/src/vendors/grok.js`) regardless
+  of the requested sandbox. The engine's own generated dispatch rules already
+  said this honestly (`cli/src/rules.js:153`, `.hopper/DISPATCH.md`); the
+  plugin's own command docs and README did not, until now.
+
+  All five files now say "read-only" is a *request* carried by the executor
+  prompt frame, name codex/grok's actual always-full-access behavior, and point
+  at `--subject-root` (macOS, opt-in) for a genuine per-process guard —
+  including its own already-documented limits (pre-existing hard links, reads,
+  and network/IPC are out of scope; not a confidentiality boundary). No vendor
+  sandbox behavior changed — only the doc's description of it.
+
+  `commands/setup.md:25,39` and `skills/hopper-setup/SKILL.md:20` were audited
+  too ("prefer a vendor whose Sandbox=argv so read-only is actually enforced").
+  That phrasing itself is a conditional vendor-*selection* recommendation, not
+  an unconditional claim about every dispatch — but the audit found the
+  classification it leans on, `cli/src/setup.js`'s `sandboxControl()`, was
+  itself wrong for grok (see the same-day follow-up fix directly below).
+
+- **`sandboxControl()` classified grok as `'argv'` (downgradable via flags)
+  when grok never actually honors a read-only request.** The classifier's only
+  test was "does the argv differ between full-access and read-only requests" —
+  true for grok (`--always-approve` toggles), so it read as downgradable. But
+  grok's `--permission-mode` stays `bypassPermissions` regardless of the
+  requested sandbox (`cli/src/vendors/grok.js`), so the "read-only" argv it was
+  comparing never actually restricted anything — the exact gap the pin tests
+  added above already proved at the argv level, just not yet reflected in the
+  classifier a human (or `/hopper:setup`) would read. Fixed by having
+  `sandboxControl()` additionally check whether the *read-only* argv itself
+  still carries an unconditional-access flag/permission-mode
+  (`argvPinsUnconditionalAccess()`, covering `--dangerously-bypass-*`,
+  `--dangerously-skip-*`, `--always-approve`, and `--permission-mode
+  bypassPermissions`); grok now reports `'full'` — the same bucket as codex,
+  which the fix leaves unchanged. Verified this does not point "prefer
+  Sandbox=argv" at an empty set: `opencode`, `copilot`, `agy`, `mimo`, and
+  `claude` all remain genuinely `'argv'` (their read-only argv carries no such
+  flag), so the recommendation stays true and actionable in general — it's
+  just that hopper's two *built-in reviewer defaults* (codex, grok) were never
+  (codex) or are no longer misreported as (grok) members of that set.
+  `commands/setup.md:25,39` and `skills/hopper-setup/SKILL.md:20` were updated
+  in the same change to spell out the `'full'` value and name codex+grok as
+  both `'full'`.
+
+### Added
+
+- **`tests/unit/vendor-security-claims.test.js`** — pins codex/grok's real
+  argv for a `sandbox: 'read-only'` request (so a future genuine fix to either
+  vendor's read-only support fails this test, forcing the docs above to be
+  updated in the same change) and denylist-scans `commands/*.md` (excl.
+  `setup.md`) + `README.md` for recurrence of the exact false phrasings fixed
+  above. Explicitly documented as a denylist, not a semantic checker: it
+  catches recurrence of these phrasings, not a differently-worded false claim.
+  Same-day follow-up added T-a/T-b/T-c: `sandboxControl(grok)` must not be
+  `'argv'` (must be `'full'`); `sandboxControl(codex)` stays `'full'`
+  (no regression); and a fake adapter with a genuinely downgradable read-only
+  argv still reports `'argv'` (positive control — proves the fix targets the
+  specific unconditional-access-flag case rather than collapsing every vendor
+  into `'full'`).
+
 ## [0.37.0] - 2026-07-28
 
 ### Fixed

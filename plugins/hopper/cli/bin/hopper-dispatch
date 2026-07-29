@@ -57,7 +57,7 @@ import { resolve, join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
-const VERSION = '0.37.0';
+const VERSION = '0.38.0';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -1748,11 +1748,12 @@ async function runSetup({ only = null, deep = false } = {}) {
   console.log('Legend: Auth=ok → verified via env var or credential file; warn → installed & assumed authed but');
   console.log('  not verifiable on disk (keychain/session-backed — still dispatchable, confirmed at run time); NO → not authed.');
   console.log('  Sandbox=argv → hopper can force read-only/full-access via flags; full → always');
-  console.log('  full-access, no read-only scenario (codex; not downgradable); native → vendor');
-  console.log('  enforces its own policy (not argv-downgradable). WebSrch=yes → adapter plumbs a web-search');
-  console.log('  toggle (needed for research tasks): yes=available headlessly; manual=vendor can');
-  console.log('  search but needs env/config; no=unsupported. Models: run `--probe <vendor>` to populate; `--rules`');
-  console.log('  for the full model/effort/sandbox matrix.');
+  console.log('  full-access, no real read-only scenario (codex: -s sandbox broken on Windows; grok:');
+  console.log('  --permission-mode stays bypassPermissions regardless of sandbox; neither downgradable);');
+  console.log('  native → vendor enforces its own policy (not argv-downgradable, e.g. kimi).');
+  console.log('  WebSrch=yes → adapter plumbs a web-search toggle (needed for research tasks): yes=available');
+  console.log('  headlessly; manual=vendor can search but needs env/config; no=unsupported. Models: run');
+  console.log('  `--probe <vendor>` to populate; `--rules` for the full model/effort/sandbox matrix.');
 
   if (sum.notInstalled.length) console.log(`\nNot installed: ${sum.notInstalled.join(', ')}  (PATH is shell-dependent on Windows — see \`--check\`)`);
   if (sum.authMissing.length) console.log(`Not authenticated (hard fail — set up auth before dispatch): ${sum.authMissing.join(', ')}  (run \`--check ${sum.authMissing[0]}\` for the fix)`);

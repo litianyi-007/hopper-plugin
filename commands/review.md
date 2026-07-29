@@ -4,7 +4,7 @@ allowed-tools: Bash, Read
 argument-hint: <target> [--vendor <name>] [--adversarial]
 ---
 
-One-shot code review via hopper's **ad-hoc** dispatch (no `queue.md` row). The target is what to review — a path, a `git diff`/`git show` ref, a PR description, or pasted code. Read-only by design: the `code-review-*` task-type auto-applies a **read-only** sandbox, so the reviewer never edits the repo.
+One-shot code review via hopper's **ad-hoc** dispatch (no `queue.md` row). The target is what to review — a path, a `git diff`/`git show` ref, a PR description, or pasted code. Read-only **by intent**: the `code-review-*` task-type auto-requests a **read-only** sandbox, an instruction carried by the executor prompt frame the reviewer runs under — **not an OS-enforced boundary**. The default reviewers (**codex** for acceptance, **grok** for adversarial) always run full-access regardless of that request: codex via `--dangerously-bypass-approvals-and-sandbox` (a deliberate Windows-sandbox workaround, not a bug) and grok via `--permission-mode bypassPermissions`. For a genuinely locked-down review, use `--subject-root` (macOS, opt-in process guard — see its documented limits in `.hopper/DISPATCH.md`) or route to a vendor whose sandbox is truly argv-enforceable.
 
 ## What this does
 1. Build a review brief from `$ARGUMENTS`.
@@ -33,6 +33,6 @@ Surface verbatim.
 
 ## MUST NOT
 - Do NOT re-dispatch on failure (single-spawn invariant, spec §3 #4).
-- Do NOT edit the repo or `queue.md` (review is read-only by task-type default).
+- Do NOT edit the repo or `queue.md` yourself while orchestrating a review — the `code-review-*` task-type only *requests* read-only from the dispatched vendor (see the caveat above; it is not enforced for every vendor).
 - Do NOT splat unvalidated `$ARGUMENTS` — build the brief explicitly and quote it.
 - Do NOT poll faster than ~10s.

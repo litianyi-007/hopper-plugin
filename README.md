@@ -5,7 +5,7 @@
 > Vendor-neutral background dispatch for AI agents
 
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
-![Version](https://img.shields.io/badge/version-0.36.0-3DDC97)
+![Version](https://img.shields.io/badge/version-0.38.0-3DDC97)
 ![Tests](https://img.shields.io/badge/tests-1024%20total-3DDC97)
 ![Hosts](https://img.shields.io/badge/hosts-Claude%20Code%20%7C%20Codex%20CLI%20%7C%20OpenCode%20%7C%20Standalone-111827)
 
@@ -110,6 +110,12 @@ providers such as tokenbox/DeepSeek have no Hopper-verified variant contract.
 Dispatch permissions default to `danger-full-access` so implementation tasks can edit
 files. If a task brief/spec says `read-only` / `只读`, hopper auto-downgrades the vendor
 sandbox to `read-only`; override with `--sandbox <read-only|workspace-write|danger-full-access>`.
+That downgrade is a **request** carried by the executor prompt frame, not a uniformly
+enforced OS boundary: codex always runs full-access (`--dangerously-bypass-approvals-and-sandbox`,
+a deliberate Windows-sandbox workaround) and grok always runs with `bypassPermissions`,
+regardless of the requested mode. Check `hopper-dispatch --rules` (or `.hopper/DISPATCH.md`)
+for which vendors can actually enforce it, and `--subject-root` for a genuine opt-in
+per-process guard (macOS only, with its own documented limits).
 
 ### Scenario 2: Background dispatch + watch via dashboard
 
@@ -142,9 +148,9 @@ hopper-opencode T-PROG-REVIEW --background
 | Command | Purpose |
 |---|---|
 | `/hopper:dispatch` | Dispatch a task to its preferred vendor (`--vendor` overrides routing; `--result <id> --full` for long output). |
-| `/hopper:review` | One-shot read-only code review of a diff/path/PR (ad-hoc, no queue.md row). |
-| `/hopper:research` | One-shot web-search-backed product/feature research (ad-hoc, read-only). |
-| `/hopper:market` | One-shot web-search-backed market/competitor research (ad-hoc, read-only). |
+| `/hopper:review` | One-shot read-only\* code review of a diff/path/PR (ad-hoc, no queue.md row). |
+| `/hopper:research` | One-shot web-search-backed product/feature research (ad-hoc, read-only\*). |
+| `/hopper:market` | One-shot web-search-backed market/competitor research (ad-hoc, read-only\*). |
 | `/hopper:swarm` | Fan a qualitative task out to a panel of N vendors (confirm → parallel → synthesize). |
 | `/hopper:setup` | Vendor readiness: installed/auth/models/sandbox/web-search. |
 | `/hopper:status` | Show queue summary. |
@@ -154,6 +160,12 @@ hopper-opencode T-PROG-REVIEW --background
 | `/hopper:vendors` | List registered vendor adapters. |
 | `/hopper:smoke` | Run the installation smoke test. |
 | `hopper-watch-events` | Claude monitor that delivers terminal events. |
+
+\* "read-only" is the task-type's *requested* sandbox — an instruction carried by the
+executor prompt frame, not a uniformly enforced OS boundary. codex and grok (both common
+defaults/panelists for these commands) always run full-access regardless of the request;
+see the caveat under Scenario 1 above, `/hopper:review`, and `hopper-dispatch --rules`
+for which vendors can actually enforce it.
 
 ## Governance overlay (opt-in)
 

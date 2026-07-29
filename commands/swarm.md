@@ -6,10 +6,12 @@ argument-hint: <target-or-question> [--type review|research|market] [--vendors v
 
 Get N independent vendor perspectives on the SAME qualitative task (a review, research, or audit), in parallel, then synthesize a merged verdict. **Read-only/qualitative only** — never for implementation (N vendors editing the same files would conflict; `--swarm` refuses non-qualitative task-types).
 
+**Caveat on "read-only":** the task-type only *requests* a read-only sandbox — an instruction carried by the executor prompt frame, not a uniformly enforced OS boundary. **codex** always runs full-access (`--dangerously-bypass-approvals-and-sandbox`, a deliberate Windows-sandbox workaround) and **grok** always runs with `--permission-mode bypassPermissions`, regardless of the requested mode — both are common panelists below. For a genuinely locked-down panelist, use `--subject-root` (macOS, opt-in — see its documented limits in `.hopper/DISPATCH.md`) or pick a vendor whose sandbox is truly argv-enforceable.
+
 ## What this does
 1. Pick the task-type + propose a panel of vendors.
 2. **Confirmation gate**: present the proposed panel + per-vendor config and WAIT for the user to confirm or adjust.
-3. Fan out via `hopper-dispatch --swarm` (or N `--adhoc` for per-vendor config) — each panelist is its own read-only background dispatch.
+3. Fan out via `hopper-dispatch --swarm` (or N `--adhoc` for per-vendor config) — each panelist is its own background dispatch under a **requested** read-only sandbox (see the caveat above).
 4. Collect every panelist's FULL result and synthesize.
 
 ## Steps
@@ -19,8 +21,8 @@ Parse `$ARGUMENTS`: the leading text is the TARGET/QUESTION. `--type` selects th
 
 ### 2. CONFIRMATION GATE — required, do NOT skip
 First run `hopper-dispatch --setup` to see vendor readiness. Then propose a panel and surface it to the user, and STOP for confirmation:
-- **Vendors** (default 3, distinct model families): for a review, propose argv-sandbox vendors that can read code, e.g. `codex, grok, claude`. For research/market, propose only vendors with `--setup` WebSrch=yes, e.g. `codex, claude, grok`. Only propose vendors showing Installed=yes + Auth=ok (and WebSrch=yes for research/market).
-- **Per-vendor config**: note each panelist uses its account-default model and runs read-only; offer to set a model/reasoning per vendor.
+- **Vendors** (default 3, distinct model families): for a review, propose vendors that can read code and produce a verdict, e.g. `codex, grok, claude` (none of these three actually enforce read-only — see the caveat above). For research/market, propose only vendors with `--setup` WebSrch=yes, e.g. `codex, claude, grok`. Only propose vendors showing Installed=yes + Auth=ok (and WebSrch=yes for research/market).
+- **Per-vendor config**: note each panelist uses its account-default model and runs under a **requested** read-only sandbox (not enforced for every vendor — see the caveat above); offer to set a model/reasoning per vendor.
 Ask the user: "Run the panel with these N vendors + this config? (adjust vendors or per-vendor model/reasoning if you like)". Proceed only once they confirm.
 
 ### 3. Launch (after confirmation)
@@ -30,7 +32,7 @@ Resolve the binary as in `/hopper:dispatch`. Pick a short `--id-base`, e.g. `swa
 ```bash
 node "$HOPPER_BIN" --swarm --task-type <type> --brief "<composed brief>" --vendors codex,grok,claude --id-base "<base>"
 ```
-It prints `SWARM_IDS: <id1> <id2> <id3>`. (research/market: the task-type auto-enables web search + read-only.)
+It prints `SWARM_IDS: <id1> <id2> <id3>`. (research/market: the task-type auto-enables web search + *requests* read-only — see the caveat above.)
 
 - **Per-vendor config** (different model/reasoning per vendor) — run N background `--adhoc` calls instead, one per vendor with its own `--vendor`/`--model`/`--reasoning` and a distinct `--id` (use the Bash tool with `run_in_background: true` for each):
 ```bash

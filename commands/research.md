@@ -4,7 +4,7 @@ allowed-tools: Bash, Read
 argument-hint: <question> [--vendor <name>]
 ---
 
-One-shot product-requirement research via hopper's **ad-hoc** dispatch (no `queue.md` row). The `prd-research` task-type auto-enables **web search** and a **read-only** sandbox, and routes to **codex** (the only high-confidence headless web-search vendor) unless `--vendor` overrides.
+One-shot product-requirement research via hopper's **ad-hoc** dispatch (no `queue.md` row). The `prd-research` task-type auto-enables **web search** and *requests* a **read-only** sandbox, and routes to **codex** (the only high-confidence headless web-search vendor) unless `--vendor` overrides. That read-only request is an instruction carried by the executor prompt frame, **not an OS-enforced boundary** — codex (the default) always runs full-access via `--dangerously-bypass-approvals-and-sandbox` (a deliberate Windows-sandbox workaround), regardless of the requested mode.
 
 ## What this does
 1. Build a research brief from `$ARGUMENTS`.
@@ -36,5 +36,5 @@ Surface verbatim.
 
 ## MUST NOT
 - Do NOT re-dispatch on failure (single-spawn).
-- Do NOT edit the repo or `queue.md` (read-only by task-type default).
+- Do NOT edit the repo or `queue.md` yourself — this command only researches (the task-type *requests* read-only from the dispatched vendor; see the caveat above, it is not enforced for every vendor).
 - Do NOT splat unvalidated `$ARGUMENTS`; build + quote the brief.

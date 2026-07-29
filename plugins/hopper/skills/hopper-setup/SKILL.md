@@ -17,7 +17,7 @@ Report per-vendor readiness before dispatching: installed? · authenticated? · 
 3. Surface the table. Guidance for routing the next task:
    - Confirm Installed=yes + Auth=ok before routing to a vendor. For Grok, `auth_context` is deliberately `unverified` (`key-present-unverified`, `credential-artifact-present-unverified`, `not-detected`, or `unknown`): it is a zero-spawn local context signal for the Hopper Node parent, not remote-auth proof. Interactive/browser state in another session may not be inherited.
    - Research / PRD / market tasks that need the web → a vendor with WebSrch=yes.
-   - Review / read-only tasks → prefer Sandbox=argv (read-only is actually enforced via flags), not native.
+   - Review / read-only tasks → prefer Sandbox=argv (read-only is actually enforced via flags), not native or full. Sandbox=full means always full-access, not downgradable by any flag (codex: broken Windows `-s` sandbox always bypasses; grok: `--permission-mode` stays `bypassPermissions` regardless of the requested sandbox) — hopper's two built-in reviewer defaults (codex, grok) are both `full`, so for those, read-only is a prompt-frame *request*, not an OS-enforced boundary; `--subject-root` (macOS, opt-in) is the only genuine per-process guard.
    - Under `--deep`, a `DRIFT` model row is advisory (the live bundled list can differ from what an account can actually use); `driftExpected` names are suppressed so DRIFT only fires on a genuinely new model.
 
 ## Safety
