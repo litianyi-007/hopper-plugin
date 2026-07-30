@@ -48,3 +48,14 @@ test('0.38.0 release metadata and static command surfaces stay aligned', () => {
   assert.match(smoke, new RegExp(`hopper standalone \\(CLI v${version}\\)`));
   assert.match(vendors, new RegExp(`v${version}`));
 });
+
+test('kimi.plugin.json version stays aligned with package.json (release roll guard)', () => {
+  // 0.37.0/0.38.0 shipped with plugins/hopper/kimi.plugin.json still at 0.36.0 —
+  // the release-metadata test above hardcodes its version and never covered the
+  // Kimi manifest. Assert alignment with the ROOT package.json (not a literal)
+  // so a missed roll fails loudly here at release time.
+  const pkgVer = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).version;
+  const kimiVer = JSON.parse(readFileSync(join(REPO, 'plugins', 'hopper', 'kimi.plugin.json'), 'utf8')).version;
+  assert.equal(kimiVer, pkgVer,
+    `plugins/hopper/kimi.plugin.json version "${kimiVer}" drifted from package.json "${pkgVer}" — roll it in the release commit`);
+});
