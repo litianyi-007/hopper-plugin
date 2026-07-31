@@ -33,13 +33,24 @@ export function parseAgentsContent(content) {
   // (a row can have a policy cell filled in even while its vendor is still
   // `(bind per project)`) — additive, does not change `preferences` semantics.
   const policies = {};
+  // Batch 3 (2026-07-31, TH-approved-vendors): project-level vendor whitelist,
+  // independent of routing (agents/preferences above decide WHICH vendor a
+  // task-type prefers; this decides whether that vendor may be dispatched to
+  // AT ALL in this project). `present` tracks whether the "## Approved
+  // Vendors" header itself was seen — kept separate from `list` being empty
+  // so assertVendorApproved can distinguish "section missing" (fail-closed,
+  // distinct error) from "section present but this vendor has no row / is
+  // not yes" (also rejected, different error+message).
+  const approvedVendorsList = [];
+  let approvedVendorsSeen = false;
 
-  // Three sections of interest:
+  // Sections of interest:
   // 1. "Active Agent Instances" table — nickname → vendor binding
   // 2. "Task-type → vendor default preference" table — task-type → vendor
   //    (+ optional Effort policy / Model rule columns, batch 2)
+  // 3. "Approved Vendors" table — project vendor whitelist (batch 3)
 
-  let currentSection = null;     // 'agents' | 'preferences' | null
+  let currentSection = null;     // 'agents' | 'preferences' | 'approvedVendors' | null
   let inTable = false;
   let columnMap = null;
   let pastSeparator = false;
@@ -55,6 +66,10 @@ export function parseAgentsContent(content) {
       pastSeparator = false;
       if (/active agent instances/i.test(line)) currentSection = 'agents';
       else if (/task-type.*vendor.*preference|task-type.*preference|vendor default preference/i.test(line)) currentSection = 'preferences';
+      else if (/approved vendors/i.test(line)) {
+        currentSection = 'approvedVendors';
+        approvedVendorsSeen = true;
+      }
       continue;
     }
 
@@ -97,10 +112,18 @@ export function parseAgentsContent(content) {
         // picking a vendor, and the setup lint (batch 2) needs to see that.
         if (!policies[taskType]) policies[taskType] = { effortPolicy: effortPolicyRaw, modelRule: modelRuleRaw };
       }
+    } else if (currentSection === 'approvedVendors') {
+      const row = extractApprovedVendorRow(cells, columnMap);
+      if (row) approvedVendorsList.push(row);
     }
   }
 
-  return { agents, preferences, policies };
+  return {
+    agents,
+    preferences,
+    policies,
+    approvedVendors: { present: approvedVendorsSeen, list: approvedVendorsList },
+  };
 }
 
 function parseRowCells(line) {
@@ -130,6 +153,18 @@ function mapColumns(cells, section) {
       modelRuleIdx: indexOfAny(lower, ['model rule']),
     };
     if (map.taskTypeIdx == null || map.vendorIdx == null) return null;
+    return map;
+  }
+  if (section === 'approvedVendors') {
+    const map = {
+      vendorIdx: indexOfAny(lower, ['vendor']),
+      approvedIdx: indexOfAny(lower, ['approved']),
+      // Optional columns — a minimal 2-column table (Vendor | Approved) is legal.
+      approvedByIdx: indexOfAny(lower, ['approved by']),
+      dateIdx: indexOfAny(lower, ['date']),
+      notesIdx: indexOfAny(lower, ['scope / notes', 'scope/notes', 'notes', 'scope']),
+    };
+    if (map.vendorIdx == null || map.approvedIdx == null) return null;
     return map;
   }
   return null;
@@ -185,6 +220,108 @@ function extractPreferenceRow(cells, map) {
 function stripBackticks(s) {
   if (!s) return s;
   return s.replace(/^`/, '').replace(/`$/, '').trim();
+}
+
+function extractApprovedVendorRow(cells, map) {
+  const vendorCell = stripBackticks(cells[map.vendorIdx] || '');
+  const vendor = vendorCell.split(/\s+/)[0].toLowerCase();
+  if (!vendor) return null;
+  const approvedRaw = cells[map.approvedIdx] || '';
+  const approved = parseApprovedCell(approvedRaw);
+  const approvedBy = map.approvedByIdx != null ? stripBackticks(cells[map.approvedByIdx]) : '';
+  const date = map.dateIdx != null ? stripBackticks(cells[map.dateIdx]) : '';
+  const notes = map.notesIdx != null ? (cells[map.notesIdx] || '').trim() : '';
+  return { vendor, approved, approvedBy, date, notes };
+}
+
+/**
+ * Parse an "Approved" table cell to a boolean. Tolerates markdown emphasis
+ * (`**no**`, `*yes*`) and trailing prose in the same cell (e.g. a Chinese
+ * rationale after the yes/no token, as this project's own AGENTS.md does) —
+ * only the LEADING token after stripping `*`/backtick emphasis decides the
+ * verdict. Anything other than a leading "yes" (case-insensitive) is treated
+ * as not-approved; this includes blank cells, "no", "TBD", etc. — deliberately
+ * fail-closed (see assertVendorApproved's docstring for why).
+ */
+function parseApprovedCell(raw) {
+  const cleaned = String(raw || '').replace(/[*`]/g, '').trim();
+  const match = cleaned.match(/^[A-Za-z]+/);
+  return !!match && match[0].toLowerCase() === 'yes';
+}
+
+/** Copy-pasteable skeleton surfaced in the E_APPROVED_VENDORS_SECTION_MISSING error. */
+const APPROVED_VENDORS_SKELETON = [
+  '## Approved Vendors',
+  '',
+  '<!-- 本项目允许派发的 vendor。未列或 Approved=no 的一律拒绝，--vendor 覆盖也不例外。 -->',
+  '',
+  '| Vendor | Approved | Approved by | Date | Scope / Notes |',
+  '|---|---|---|---|---|',
+  '| `<vendor>` | yes | `<you>` | `YYYY-MM-DD` | |',
+].join('\n');
+
+/** Error code: `.hopper/AGENTS.md` has no "## Approved Vendors" section at all. */
+export const E_APPROVED_VENDORS_SECTION_MISSING = 'E_APPROVED_VENDORS_SECTION_MISSING';
+/** Error code: the section exists but this vendor has no row, or its row is not `yes`. */
+export const E_VENDOR_NOT_APPROVED = 'E_VENDOR_NOT_APPROVED';
+
+/**
+ * Enforce the project-level "Approved Vendors" whitelist parsed from
+ * `.hopper/AGENTS.md` (see `parseAgentsContent`'s `approvedVendors` field).
+ *
+ * This is a SEPARATE control from `resolveVendor`/routing above: routing
+ * decides WHICH vendor a task-type prefers; this decides whether that
+ * resolved vendor may be dispatched to AT ALL in this project. Callers must
+ * invoke this AFTER resolving the vendor (including after an explicit
+ * `--vendor` override) — see dispatch.js's two call sites — precisely so an
+ * override cannot bypass the whitelist. It is also independent of, and does
+ * NOT replace, the host!=vendor isomorphism guard
+ * (`validateHostVendorSeparation` in validation.js): a vendor can be approved
+ * here and still be rejected there (e.g. a Claude Code host dispatching to
+ * the `claude` vendor), and vice versa — the two gates never short-circuit
+ * each other.
+ *
+ * Polarity is deliberately FAIL-CLOSED: an AGENTS.md with no "## Approved
+ * Vendors" section rejects EVERY vendor, rather than defaulting to "allow
+ * everything until told otherwise." This project has direct empirical
+ * history with the opposite polarity turning "delete one line" into a silent
+ * global kill-switch (see CLAUDE.md's `.codex-plugin/plugin.json` /
+ * hopper-plugin manifest drift incidents) — an allow-by-default vendor gate
+ * would recreate exactly that failure shape, just one layer up (a missing
+ * section instead of a missing manifest entry). So: no section → refuse, not
+ * "no section → permit."
+ *
+ * @param {{ approvedVendors?: { present: boolean, list: Array<{vendor: string, approved: boolean}> } }} agentsData
+ * @param {string} vendor  resolved vendor name (already lowercase adapter id)
+ * @throws {Error} `.code === E_APPROVED_VENDORS_SECTION_MISSING` or `E_VENDOR_NOT_APPROVED`
+ */
+export function assertVendorApproved(agentsData, vendor) {
+  const approvedVendors = agentsData && agentsData.approvedVendors;
+  if (!approvedVendors || !approvedVendors.present) {
+    const err = new Error(
+      `${E_APPROVED_VENDORS_SECTION_MISSING}: dispatch refused — .hopper/AGENTS.md has no ` +
+      `"## Approved Vendors" section. Vendor dispatch is fail-closed: an absent section ` +
+      `approves NOTHING, including --vendor overrides. Add this section to AGENTS.md:\n\n` +
+      `${APPROVED_VENDORS_SKELETON}`
+    );
+    err.code = E_APPROVED_VENDORS_SECTION_MISSING;
+    throw err;
+  }
+  const normalized = String(vendor || '').toLowerCase();
+  const entry = approvedVendors.list.find((e) => e.vendor === normalized);
+  if (!entry || !entry.approved) {
+    const known = approvedVendors.list.length > 0
+      ? approvedVendors.list.map((e) => `${e.vendor}=${e.approved ? 'yes' : 'no'}`).join(', ')
+      : '(no rows in the Approved Vendors table)';
+    const err = new Error(
+      `${E_VENDOR_NOT_APPROVED}: dispatch refused — vendor '${vendor}' is not approved in ` +
+      `.hopper/AGENTS.md's "## Approved Vendors" table. Known entries: ${known}. Add a row for ` +
+      `'${vendor}' (or flip its Approved cell to "yes") to allow it — this applies to --vendor ` +
+      `overrides too.`
+    );
+    err.code = E_VENDOR_NOT_APPROVED;
+    throw err;
+  }
 }
 
 /**

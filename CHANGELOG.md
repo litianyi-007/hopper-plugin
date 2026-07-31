@@ -19,6 +19,53 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.40.0] - 2026-07-31
+
+### Added
+
+- **`.hopper/AGENTS.md` gains a "## Approved Vendors" whitelist section**,
+  upgrading AGENTS.md from a pure routing table into an actual per-project
+  vendor gate. Previously the `Notes` column's "入选/未入选" (approved/not
+  approved) annotations were prose only — nothing in the code read them, so
+  `--vendor <anything-registered>` dispatched regardless of what a project
+  had actually approved. Now `cli/src/agents.js`'s `parseAgentsContent`
+  parses a `| Vendor | Approved | Approved by | Date | Scope / Notes |`
+  table into a new `approvedVendors` field, and a new
+  `assertVendorApproved(agentsData, vendor)` enforces it at **both**
+  vendor-resolution call sites in `cli/src/dispatch.js` — `resolveDispatch`
+  (the queue.md path) and `resolveAdhocDispatch` (the ad-hoc
+  review/research/market/swarm path) — running immediately AFTER
+  `vendorOverride || resolveVendor(...)`, so an explicit `--vendor` override
+  is checked too, not just AGENTS.md-routed dispatches.
+- **Polarity is fail-closed by design**: an AGENTS.md with no "## Approved
+  Vendors" section refuses EVERY vendor (`E_APPROVED_VENDORS_SECTION_MISSING`),
+  and a section that exists but doesn't list a vendor as `yes` also refuses
+  it (`E_VENDOR_NOT_APPROVED`, listing the known entries). This project has
+  direct history with the opposite polarity ("missing = allow") turning one
+  deleted line into a silent global kill-switch (see the `.codex-plugin/
+  plugin.json` version-drift incidents in this same file); the new gate
+  deliberately does not repeat that shape one layer up.
+- This is a **separate, independent control from the existing host!=vendor
+  isomorphism guard** (`validateHostVendorSeparation`) — a vendor can be
+  Approved-Vendors-whitelisted and still rejected by host!=vendor (e.g. a
+  Claude Code host dispatching to the approved `claude` vendor), and neither
+  gate short-circuits the other. Covered by new tests in
+  `tests/unit/host-detect.test.js` (approving `claude` in the fixture's
+  Approved Vendors table, then confirming the CLI still rejects it via
+  host!=vendor) and new cases in `tests/unit/agents.test.js`.
+- The scaffold template (`cli/src/scaffold.js`, `hopper-dispatch
+  --init-tasks`) now generates the new section (present but empty) alongside
+  the existing "Active Agent Instances" table — unchanged/still generated —
+  with a note that every dispatch is refused until the project fills it in.
+- **Documentation-only vendor support-tier decision**: `commands/vendors.md`
+  and `README.md` now note that the actively product-supported vendor set is
+  `codex` / `grok` / `claude` / `kimi`; `agy` / `copilot` / `mimo` /
+  `opencode` are marked **not supported** (distinct from `agy`'s pre-existing
+  technical `dispatchDisabled` gate). No adapter files were removed and
+  nothing is hardcoded in code to enforce a 4-vendor limit — the Approved
+  Vendors table above is the single execution point, so this note and that
+  mechanism cannot drift apart the way a hardcoded list would.
+
 ## [0.39.0] - 2026-07-31
 
 ### Fixed

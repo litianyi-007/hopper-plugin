@@ -5,7 +5,7 @@
 > Vendor-neutral background dispatch for AI agents
 
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
-![Version](https://img.shields.io/badge/version-0.39.0-3DDC97)
+![Version](https://img.shields.io/badge/version-0.40.0-3DDC97)
 ![Tests](https://img.shields.io/badge/tests-1024%20total-3DDC97)
 ![Hosts](https://img.shields.io/badge/hosts-Claude%20Code%20%7C%20Codex%20CLI%20%7C%20OpenCode%20%7C%20Standalone-111827)
 
@@ -62,20 +62,30 @@ Not every CLI exposes both knobs. What each vendor honors:
 |---|---|---|---|
 | codex | `-m` | ✓ | **bare names only**: `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex-spark`. Provider-prefixed ids (`openai-codex/…`) are rejected on ChatGPT accounts. |
 | grok | `-m` | ✓ | enum low/med/high; `xhigh` clamps to `high`. |
-| mimo | `--model` | ✓ | `xhigh` → `--variant max`. |
-| copilot | `--model` | ✓ | enum low/med/high; `xhigh` clamps to `high`. Raw override: `HOPPER_COPILOT_EFFORT`. |
-| opencode | `--model <provider/model>` | explicit only | a caller-supplied `--reasoning high` becomes `--variant high`; Hopper omits policy/default `xhigh` for provider compatibility. `HOPPER_OPENCODE_VARIANT=<v>` overrides it verbatim. |
+| mimo | `--model` | ✓ | `xhigh` → `--variant max`. **Not supported** (product decision, 2026-07-31) — see below. |
+| copilot | `--model` | ✓ | enum low/med/high; `xhigh` clamps to `high`. Raw override: `HOPPER_COPILOT_EFFORT`. **Not supported** (product decision, 2026-07-31) — see below. |
+| opencode | `--model <provider/model>` | explicit only | a caller-supplied `--reasoning high` becomes `--variant high`; Hopper omits policy/default `xhigh` for provider compatibility. `HOPPER_OPENCODE_VARIANT=<v>` overrides it verbatim. **Not supported** (product decision, 2026-07-31) — see below. |
 | kimi | `-m` | — | `kimi -p` has no per-call effort flag. |
 | claude | `--model` | — | `claude -p` has no effort flag. |
-| agy | — | — | ⚠️ **DISABLED by default** — see below. |
+| agy | — | — | ⚠️ **DISABLED by default** (technical) AND **not supported** (product decision, 2026-07-31) — see below. |
 
-> **agy is temporarily unsupported (disabled by default, 2026-06-26).** agy 1.0.12 `--print` renders
+> **Product-supported vendor set (2026-07-31 decision): `codex` / `grok` / `claude` / `kimi`.**
+> `agy` / `copilot` / `mimo` / `opencode` are **not supported** — a product decision to narrow the
+> actively-supported set, not a code-level restriction. Their adapters are NOT deleted (that would
+> break existing tests and history); they remain registered, `--vendors` still lists all 8, and
+> nothing in the code hardcodes "only these 4" (that would duplicate, and could conflict with, the
+> actual enforcement point). The enforcement point for what a given **project** may dispatch to is
+> that project's `.hopper/AGENTS.md` **"Approved Vendors"** table — fail-closed: a missing section,
+> or a vendor absent/not-`yes` there, refuses dispatch, including an explicit `--vendor` override.
+>
+> **agy is additionally, separately, technically disabled (2026-06-26).** agy 1.0.12 `--print` renders
 > the model's answer only in its interactive TUI; under a non-TTY stdout (every hopper dispatch) it
 > emits nothing capturable, so a dispatch can never return an answer. hopper therefore **refuses to
-> dispatch to agy** with a clear error. A real fix needs a PTY, which is excluded for agy (it hangs
-> on an open stdin pipe). If you understand the limitation and still want to try, set
-> `HOPPER_ENABLE_AGY=1`. This note will be removed once an upstream fix or a sanctioned capture path
-> lands — see `docs/specs/vendor-io-protocol-current-vs-target.md`.
+> dispatch to agy** with a clear error regardless of any project's Approved Vendors table. A real fix
+> needs a PTY, which is excluded for agy (it hangs on an open stdin pipe). If you understand the
+> limitation and still want to try, set `HOPPER_ENABLE_AGY=1`. This note will be removed once an
+> upstream fix or a sanctioned capture path lands — see
+> `docs/specs/vendor-io-protocol-current-vs-target.md`.
 
 That table is a snapshot. The **authoritative, never-drifts** version is generated from
 the adapters themselves — use these to check the live truth for your machine/account:

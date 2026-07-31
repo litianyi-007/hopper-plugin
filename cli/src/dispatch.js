@@ -11,7 +11,7 @@
 
 import { parseQueue, findEligibleTask, summarizeQueue } from './queue.js';
 import { loadTaskFrame, composePrompt } from './tasks.js';
-import { parseAgentsFile, resolveVendor } from './agents.js';
+import { parseAgentsFile, resolveVendor, assertVendorApproved } from './agents.js';
 import { resolveGovernance } from './governance.js';
 import { getAdapter } from './vendors/index.js';
 import { normalizeModel } from './model-normalize.js';
@@ -69,6 +69,11 @@ export async function resolveDispatch({ hopperDir, taskId, vendorOverride = null
   // --vendor override wins over the AGENTS.md routing tables; host != vendor and
   // unknown-vendor checks still apply downstream (the dispatcher validates both).
   const vendor = vendorOverride || resolveVendor(task, agentsData);
+  // Project-level Approved Vendors whitelist (batch 3, TH-approved-vendors):
+  // enforced AFTER vendor resolution so a --vendor override is checked too,
+  // not just AGENTS.md-routed dispatches. Independent of, and does not
+  // short-circuit, the host!=vendor isomorphism guard applied downstream.
+  assertVendorApproved(agentsData, vendor);
 
   // 4. Read task spec (from leader-tasklist.md if present)
   const taskSpec = await loadTaskSpec(hopperDir, taskId);
@@ -117,6 +122,9 @@ export async function resolveAdhocDispatch({ hopperDir, taskType, brief, id, ven
   if (!vendor) {
     throw new Error(`No vendor resolved for ad-hoc task-type "${taskType}". Pass --vendor <name> (no AGENTS.md preference found).`);
   }
+  // Approved Vendors whitelist — same enforcement as resolveDispatch's queue path,
+  // covering the ad-hoc path (/hopper:review|research|market, swarm panelists).
+  assertVendorApproved(agentsData, vendor);
   const taskSpec = brief;
   const governance = await resolveGovernance({ hopperDir, vendor, task });
   const composedPrompt = composePrompt(frame, taskSpec, { governance });

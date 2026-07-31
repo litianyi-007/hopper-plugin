@@ -185,6 +185,10 @@ The plugin resolves a task's vendor from the **task-vendor-preference** table
 below (or a per-row \`Vendor\` column in queue.md). \`host != vendor\` is enforced:
 never route a task to the same CLI that is dispatching it.
 
+**You must also fill in the \`## Approved Vendors\` table below before any dispatch
+will succeed** — it starts empty, and an empty (or missing) Approved Vendors
+table refuses every vendor, including an explicit \`--vendor\` override.
+
 ---
 
 ## Active Agent Instances
@@ -197,6 +201,23 @@ never route a task to the same CLI that is dispatching it.
 | \`copilot\` | \`-\` | copilot | \`copilot -p "<input>"\` | GitHub-tied; premium quota meters per call |
 | \`agy\` | \`-\` | agy | \`agy -p "<input>"\` | Antigravity (Gemini); OAuth-only. ⚠️ **DISABLED by default** — agy 1.0.12 \`--print\` emits no capturable answer on a non-TTY stdout (TUI-only), so dispatch is blocked; override with \`HOPPER_ENABLE_AGY=1\`. |
 | \`grok\` | \`-\` | grok | \`grok -p "<input>" --permission-mode bypassPermissions --always-approve -m grok-4.5\` | xAI Grok Build (headless needs an explicit permission mode) |
+
+---
+
+## Approved Vendors
+
+<!-- 本项目允许派发的 vendor。未列或 Approved=no 的一律拒绝，--vendor 覆盖也不例外。 -->
+
+This table is a SEPARATE gate from the routing tables above (Active Agent
+Instances / Task-type preference decide *which* vendor a task-type prefers;
+this table decides whether that vendor may be dispatched to *at all* in this
+project). Enforcement is fail-closed: if this section is missing entirely,
+**every** dispatch is refused, including an explicit \`--vendor\` override —
+add a row and set \`Approved\` to \`yes\` for each vendor you actually want
+this project to use.
+
+| Vendor | Approved | Approved by | Date | Scope / Notes |
+|---|---|---|---|---|
 
 ---
 

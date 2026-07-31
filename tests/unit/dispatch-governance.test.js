@@ -4,12 +4,12 @@ import { resolveDispatch, resolveAdhocDispatch, planSwarm } from '../../cli/src/
 import { EXECUTION_MODE_GUARDRAIL } from '../../cli/src/tasks.js';
 import { renderOutputMarkdown, writeOutput } from '../../cli/src/output.js';
 import { validateHostVendorSeparation } from '../../cli/src/validation.js';
+import { E_APPROVED_VENDORS_SECTION_MISSING, E_VENDOR_NOT_APPROVED } from '../../cli/src/agents.js';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-function scaffoldMinimal(root) {
-  const hopperDir = join(root, '.hopper');
+function writeQueueAndFrame(hopperDir) {
   mkdirSync(join(hopperDir, 'tasks'), { recursive: true });
   mkdirSync(join(hopperDir, 'handoffs'), { recursive: true });
   writeFileSync(join(hopperDir, 'queue.md'), `## Tasks
@@ -18,14 +18,39 @@ function scaffoldMinimal(root) {
 |----|-----------|--------|-------|
 | T-1 | code-impl | pending | do it |
 `);
+  writeFileSync(join(hopperDir, 'tasks', 'code-impl.md'), '# Frame\nImplement.');
+  writeFileSync(join(hopperDir, 'handoffs', 'leader-tasklist.md'), '## T-1\nSpec body.');
+}
+
+function scaffoldMinimal(root) {
+  const hopperDir = join(root, '.hopper');
+  writeQueueAndFrame(hopperDir);
+  writeFileSync(join(hopperDir, 'AGENTS.md'), `## Approved Vendors
+
+| Vendor | Approved |
+|---|---|
+| codex | yes |
+| grok | yes |
+
+## Task-type → vendor default preference
+
+| Task-type | Default vendor | Why |
+|---|---|---|
+| code-impl | codex | x |
+`);
+  return hopperDir;
+}
+
+/** Same routing as scaffoldMinimal but with NO "## Approved Vendors" section at all. */
+function scaffoldNoApprovedSection(root) {
+  const hopperDir = join(root, '.hopper');
+  writeQueueAndFrame(hopperDir);
   writeFileSync(join(hopperDir, 'AGENTS.md'), `## Task-type → vendor default preference
 
 | Task-type | Default vendor | Why |
 |---|---|---|
 | code-impl | codex | x |
 `);
-  writeFileSync(join(hopperDir, 'tasks', 'code-impl.md'), '# Frame\nImplement.');
-  writeFileSync(join(hopperDir, 'handoffs', 'leader-tasklist.md'), '## T-1\nSpec body.');
   return hopperDir;
 }
 
@@ -94,6 +119,78 @@ test('host != vendor is still enforced for an OVERRIDDEN vendor (review coverage
     assert.equal(r.vendor, 'grok');
     assert.throws(() => validateHostVendorSeparation('grok', r.vendor), /cannot dispatch to the same vendor/i);
     assert.doesNotThrow(() => validateHostVendorSeparation('codex', r.vendor));
+  } finally { rmSync(tmp, { recursive: true, force: true }); }
+});
+
+// ─── Approved Vendors gate wiring (TH-approved-vendors, 2026-07-31) ───────
+// Both dispatch.js call sites — resolveDispatch (queue.md path, :71) and
+// resolveAdhocDispatch (ad-hoc path, :116) — must enforce the Approved
+// Vendors whitelist AFTER vendor resolution, so an explicit vendorOverride
+// (the CLI's --vendor) cannot bypass it either. Teeth #4 from the brief.
+
+test('resolveDispatch (queue path): throws E_APPROVED_VENDORS_SECTION_MISSING when AGENTS.md has no Approved Vendors section — teeth #3', async () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'hopper-disp-'));
+  try {
+    const hopperDir = scaffoldNoApprovedSection(tmp);
+    await assert.rejects(
+      () => resolveDispatch({ hopperDir, taskId: 'T-1' }),
+      (err) => {
+        assert.equal(err.code, E_APPROVED_VENDORS_SECTION_MISSING);
+        return true;
+      },
+    );
+  } finally { rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('resolveAdhocDispatch (ad-hoc path): throws E_APPROVED_VENDORS_SECTION_MISSING when AGENTS.md has no Approved Vendors section — teeth #3', async () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'hopper-disp-'));
+  try {
+    const hopperDir = scaffoldNoApprovedSection(tmp);
+    await assert.rejects(
+      () => resolveAdhocDispatch({ hopperDir, taskType: 'code-impl', brief: 'x', id: 'adhoc-noapproval' }),
+      (err) => {
+        assert.equal(err.code, E_APPROVED_VENDORS_SECTION_MISSING);
+        return true;
+      },
+    );
+  } finally { rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('resolveDispatch (queue path, :71): an unapproved --vendor override is rejected, NOT silently honored — teeth #4', async () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'hopper-disp-'));
+  try {
+    const hopperDir = scaffoldMinimal(tmp); // Approved Vendors = codex, grok only
+    // The default (unoverridden) route to `codex` is approved and still works.
+    await assert.doesNotReject(() => resolveDispatch({ hopperDir, taskId: 'T-1' }));
+    // `claude` is a real, registered adapter (would pass host!=vendor for a
+    // non-Claude-Code host) but is NOT in this project's Approved Vendors table —
+    // the override must still be refused.
+    await assert.rejects(
+      () => resolveDispatch({ hopperDir, taskId: 'T-1', vendorOverride: 'claude' }),
+      (err) => {
+        assert.equal(err.code, E_VENDOR_NOT_APPROVED);
+        assert.match(err.message, /'claude' is not approved/);
+        return true;
+      },
+    );
+  } finally { rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('resolveAdhocDispatch (ad-hoc path, :116): an unapproved --vendor override is rejected, NOT silently honored — teeth #4', async () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'hopper-disp-'));
+  try {
+    const hopperDir = scaffoldMinimal(tmp); // Approved Vendors = codex, grok only
+    await assert.doesNotReject(
+      () => resolveAdhocDispatch({ hopperDir, taskType: 'code-impl', brief: 'x', id: 'adhoc-ok' }),
+    );
+    await assert.rejects(
+      () => resolveAdhocDispatch({ hopperDir, taskType: 'code-impl', brief: 'x', id: 'adhoc-bad', vendorOverride: 'claude' }),
+      (err) => {
+        assert.equal(err.code, E_VENDOR_NOT_APPROVED);
+        assert.match(err.message, /'claude' is not approved/);
+        return true;
+      },
+    );
   } finally { rmSync(tmp, { recursive: true, force: true }); }
 });
 

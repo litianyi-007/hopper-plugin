@@ -47,7 +47,18 @@ function makeHopper({ vendorCell = '', preferenceVendor = 'codex' } = {}) {
     '',
   ].join('\n'));
   writeFileSync(join(hopperDir, 'tasks', 'code-impl.md'), '# code-impl\n\nDo the work described in the spec.\n');
+  // Approve whichever vendor actually resolves (the row-level Vendor column wins
+  // over the AGENTS.md preference when present — same precedence as resolveVendor)
+  // so these tests exercise the registered-adapter / model-cache diagnostics
+  // downstream, not the separate Approved Vendors gate.
+  const resolvedVendor = vendorCell || preferenceVendor;
   writeFileSync(join(hopperDir, 'AGENTS.md'), [
+    '## Approved Vendors',
+    '',
+    '| Vendor | Approved |',
+    '|---|---|',
+    `| \`${resolvedVendor}\` | yes |`,
+    '',
     '## Task-type → vendor default preference',
     '',
     '| Task-type | Default vendor |',

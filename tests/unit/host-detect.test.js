@@ -19,6 +19,7 @@ import { dirname, resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { detectHost, resolveHostIdentity, HOST_CLAUDE_CODE, HOST_UNKNOWN } from '../../cli/src/host-detect.js';
 import { validateHostVendorSeparation, VENDOR_FAMILY } from '../../cli/src/validation.js';
+import { resolveDispatch } from '../../cli/src/dispatch.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -129,6 +130,58 @@ test('hostVendor entirely absent (undefined) stays the pre-existing silent stand
   assert.deepEqual(validateHostVendorSeparation(undefined, 'kimi'), { enforced: false });
 });
 
+// ─── Composition with the Approved Vendors whitelist (TH-approved-vendors,
+// 2026-07-31) — teeth #5: the two gates are independent and neither
+// short-circuits the other. Approving `claude` in a project's AGENTS.md must
+// NOT exempt it from the host!=vendor isomorphism guard. In-process (not a
+// CLI subprocess spawn) so the composition is proven directly against
+// resolveDispatch + validateHostVendorSeparation.
+
+test('composition: claude approved in AGENTS.md STILL rejected by host!=vendor for a claude-code host — teeth #5', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'hopper-composition-'));
+  try {
+    const hopperDir = join(root, '.hopper');
+    mkdirSync(join(hopperDir, 'tasks'), { recursive: true });
+    mkdirSync(join(hopperDir, 'handoffs'), { recursive: true });
+    writeFileSync(join(hopperDir, 'queue.md'), [
+      '| ID | Task-type | Status | Depends | Brief |',
+      '|----|-----------|--------|---------|-------|',
+      '| T-SAME | code-impl | pending | | test |',
+      '',
+    ].join('\n'));
+    writeFileSync(join(hopperDir, 'tasks', 'code-impl.md'), '# code-impl\n');
+    writeFileSync(join(hopperDir, 'AGENTS.md'), [
+      '## Approved Vendors',
+      '',
+      '| Vendor | Approved |',
+      '|---|---|',
+      '| `claude` | yes |',   // approved at the project-whitelist layer
+      '',
+      '## Task-type → vendor default preference',
+      '',
+      '| Task-type | Default vendor |',
+      '|---|---|',
+      '| `code-impl` | claude |',
+      '',
+    ].join('\n'));
+
+    // Layer 1 (Approved Vendors) passes — resolveDispatch does not throw.
+    const resolved = await resolveDispatch({ hopperDir, taskId: 'T-SAME' });
+    assert.equal(resolved.vendor, 'claude');
+
+    // Layer 2 (host!=vendor isomorphism) is a SEPARATE gate, applied downstream
+    // by the caller (hopper-dispatch's runDispatch) using the same resolved
+    // vendor. It must still reject a claude-code host — approval at layer 1
+    // does not exempt it from layer 2.
+    assert.throws(
+      () => validateHostVendorSeparation(HOST_CLAUDE_CODE, resolved.vendor),
+      /cannot dispatch to the same vendor/i,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 // ─── CLI-level wiring proof (blocking cases only — these throw BEFORE any vendor
 // subprocess spawn, so they cannot accidentally invoke a real vendor CLI). ──────
 
@@ -167,6 +220,17 @@ function makeMinimalHopper(vendor) {
     '| Nickname | UUID | Vendor | Default invocation |',
     '|----------|------|--------|--------------------|',
     `| \`builder\` | \`1\` | ${vendor} | \`x\` |`,
+    '',
+    // Approve the vendor under test so these CLI tests exercise ONLY the
+    // host!=vendor isomorphism guard, not the separate Approved Vendors gate —
+    // this also doubles as the "two gates don't short-circuit each other"
+    // proof: `claude` is approved here yet still rejected below by
+    // validateHostVendorSeparation for a claude-code host.
+    '## Approved Vendors',
+    '',
+    '| Vendor | Approved |',
+    '|---|---|',
+    `| \`${vendor}\` | yes |`,
     '',
     '## Task-type → vendor default preference',
     '',
