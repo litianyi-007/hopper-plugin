@@ -100,11 +100,24 @@ test('buildNextSteps: surfaces install / probe / disabled / workspace actions', 
   assert.match(buildNextSteps([], summarizeReadiness([]), { hopperDir: null }).join('\n'), /--init-tasks/);
 });
 
-test('setup: sandboxControl is full for codex (always full-access), native for kimi (both not argv-downgradable)', () => {
-  // codex has no read-only scenario: its -s sandbox is broken on Windows so it always
-  // emits the bypass flag → 'full' (pins full-access). kimi carries no sandbox flag → 'native'.
-  assert.equal(sandboxControl(getAdapter('codex')), 'full');
+test('setup: sandboxControl(codex) is platform-split (2026-07-31) — full on Windows, argv on macOS/Linux; kimi stays native', () => {
+  // codex: its -s sandbox is broken on Windows so it always emits the bypass flag there →
+  // 'full' (pins full-access, not downgradable). On macOS/Linux codex's own -s <mode>
+  // sandbox is verified working, so its read-only argv genuinely differs and carries no
+  // unconditional-access flag → 'argv' (hopper can force a real downgrade). `platform` is
+  // a test-only override forwarded into adapter.args(); production callers never set it.
+  assert.equal(sandboxControl(getAdapter('codex'), { platform: 'win32' }), 'full');
+  assert.equal(sandboxControl(getAdapter('codex'), { platform: 'darwin' }), 'argv');
+  assert.equal(sandboxControl(getAdapter('codex'), { platform: 'linux' }), 'argv');
+  // kimi carries no sandbox flag at all → 'native', regardless of platform.
   assert.equal(sandboxControl(getAdapter('kimi')), 'native');
+});
+
+test('setup: sandboxControl(codex) with no platform override reflects the REAL host platform', { skip: process.platform === 'win32' ? 'this host IS Windows — the win32 branch above already covers it live' : false }, () => {
+  // No injection — proves the production call path (buildVendorReadiness never
+  // passes `platform`) resolves correctly via adapter.args()'s own
+  // `opts.platform ?? process.platform` default on THIS actual host.
+  assert.equal(sandboxControl(getAdapter('codex')), 'argv');
 });
 
 test('setup: web-search readiness reflects per-adapter capability (T3)', () => {

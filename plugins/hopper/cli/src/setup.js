@@ -64,17 +64,31 @@ function argvPinsUnconditionalAccess(argv) {
  * argvPinsUnconditionalAccess above).
  * 'argv' = differs by mode AND the read-only argv carries no unconditional-access
  * flag (downgradable); 'full' = pins full-access always — either identical argv
- * across modes (codex, whose -s sandbox is broken on Windows) or argv that differs
- * on paper but whose read-only form still grants unconditional access (grok's
- * bypassPermissions); not downgradable either way. 'native' = no sandbox flag at
- * all (vendor honors its own policy, e.g. kimi; not downgradable).
+ * across modes or argv that differs on paper but whose read-only form still
+ * grants unconditional access (grok's bypassPermissions); not downgradable
+ * either way. 'native' = no sandbox flag at all (vendor honors its own policy,
+ * e.g. kimi; not downgradable).
+ *
+ * codex (2026-07-31 platform split — see codexSandboxBypassActive() in
+ * vendors/codex.js): its `-s` sandbox is broken on Windows (bypasses always →
+ * 'full' there), but VERIFIED WORKING on macOS/Linux, where its read-only argv
+ * genuinely differs and carries no unconditional-access flag → 'argv' there.
+ * This function reads the adapter's REAL argv (via adapter.args(), which
+ * defaults to the host's actual process.platform), so it reflects whichever
+ * platform is actually running — no extra plumbing needed for that to "just
+ * work". `platform` below is a test-only override for exercising a specific
+ * branch deterministically regardless of the host actually running the tests.
+ * @param {object} adapter
+ * @param {object} [o]
+ * @param {NodeJS.Platform} [o.platform] test-only override forwarded to
+ *   adapter.args({ platform }); omitted in production (real host platform).
  * @returns {'argv'|'full'|'native'|'?'}
  */
-export function sandboxControl(adapter) {
+export function sandboxControl(adapter, { platform } = {}) {
   try {
     const SEP = String.fromCharCode(1);
-    const fullArgv = adapter.args("x", { sandbox: "danger-full-access" });
-    const roArgv = adapter.args("x", { sandbox: "read-only" });
+    const fullArgv = adapter.args("x", { sandbox: "danger-full-access", platform });
+    const roArgv = adapter.args("x", { sandbox: "read-only", platform });
     const full = fullArgv.join(SEP);
     const ro = roArgv.join(SEP);
     const roPinsUnconditionalAccess = argvPinsUnconditionalAccess(roArgv);

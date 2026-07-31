@@ -7,7 +7,7 @@ import { strict as assert } from 'node:assert';
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { codexAdapter, codexIsolationConfig, resolveIsolatedCodexHome, stripCodexSkillsConfig, codexOrchestrationDisableFlags } from '../../cli/src/vendors/codex.js';
+import { codexAdapter, codexIsolationConfig, resolveIsolatedCodexHome, stripCodexSkillsConfig, codexOrchestrationDisableFlags, codexSandboxBypassActive } from '../../cli/src/vendors/codex.js';
 import { resolveAdapterOptsForTask } from '../../cli/src/dispatch.js';
 
 function withEnv(key, value, fn) {
@@ -206,32 +206,78 @@ test('callchain: HOPPER_CODEX_KEEP_ORCHESTRATION=1 keeps codex orchestration', (
   });
 });
 
-test('callchain: danger-full-access bypasses sandbox; HOPPER_CODEX_SANDBOX_BYPASS=0 reverts to -s', () => {
-  const argv = codexAdapter.args('hi', { sandbox: 'danger-full-access' });
-  assert.ok(argv.includes('--dangerously-bypass-approvals-and-sandbox'));
-  assert.ok(!argv.includes('-s'));
-  withEnv('HOPPER_CODEX_SANDBOX_BYPASS', '0', () => {
-    const argv2 = codexAdapter.args('hi', { sandbox: 'danger-full-access' });
-    assert.ok(!argv2.includes('--dangerously-bypass-approvals-and-sandbox'));
-    assert.equal(argv2[argv2.indexOf('-s') + 1], 'danger-full-access');
+// ── 2026-07-31: platform split (reverses the 2026-06-25 "codex has NO
+// read-only scenario" decision) ────────────────────────────────────────────
+// Windows: codex's `-s` sandbox harness cannot spawn ANY child process
+// (CreateProcessWithLogonW 1326 — ISSUE-codex-callchain-windows), so bypass
+// stays the default there; HOPPER_CODEX_SANDBOX_BYPASS=0 is the escape hatch
+// that turns bypass OFF (falls through to the broken `-s` harness).
+// macOS/Linux: codex's own `-s <mode>` sandbox is VERIFIED WORKING (manually
+// verified 2026-07-31: `-s read-only` denies a write with `operation not
+// permitted`, file never created; `--dangerously-bypass...` with the same
+// command creates it) — honoring it is now the default; HOPPER_CODEX_SANDBOX_
+// BYPASS=1 is the escape hatch that turns bypass ON (opts IN to full-access).
+// `platform` is injected via opts for Windows (cannot be exercised for real
+// on this test host) and exercised for real via the host's actual
+// process.platform on macOS/Linux (see the "real host" tests further down).
+
+test('platform split: Windows ALWAYS bypasses regardless of requested mode; =0 reverts to -s (injected — cannot run real Windows here)', () => {
+  for (const mode of ['read-only', 'workspace-write', 'danger-full-access']) {
+    const argv = codexAdapter.args('hi', { sandbox: mode, platform: 'win32' });
+    assert.ok(argv.includes('--dangerously-bypass-approvals-and-sandbox'), `${mode} must bypass on win32`);
+    assert.ok(!argv.includes('-s'), `${mode} must not emit -s on win32`);
+  }
+  withEnvs({ HOPPER_CODEX_SANDBOX_BYPASS: '0' }, () => {
+    const argv = codexAdapter.args('hi', { sandbox: 'read-only', platform: 'win32' });
+    assert.equal(argv[argv.indexOf('-s') + 1], 'read-only', 'win32 + BYPASS=0 falls through to the real (broken) -s harness');
+    assert.ok(!argv.includes('--dangerously-bypass-approvals-and-sandbox'));
   });
 });
 
-test('callchain: codex has NO read-only scenario — read-only/workspace-write also bypass (Windows -s is broken)', () => {
-  // 2026-06 decision: every `-s` mode runs codex's sandbox harness, broken on Windows
-  // (CreateProcessWithLogonW 1326), so codex ALWAYS runs full-access via the bypass flag —
-  // read-only intent for review/research rides in the prompt frame, not the OS sandbox.
-  for (const mode of ['read-only', 'workspace-write']) {
-    const argv = codexAdapter.args('hi', { sandbox: mode });
-    assert.ok(argv.includes('--dangerously-bypass-approvals-and-sandbox'), `${mode} must bypass`);
-    assert.ok(!argv.includes('-s'), `${mode} must not emit -s`);
+test('platform split: macOS/Linux honor the REQUESTED `-s <mode>` by default; =1 forces bypass (injected, both platforms share one branch)', () => {
+  for (const platform of ['darwin', 'linux']) {
+    for (const mode of ['read-only', 'workspace-write', 'danger-full-access']) {
+      const argv = codexAdapter.args('hi', { sandbox: mode, platform });
+      assert.ok(!argv.includes('--dangerously-bypass-approvals-and-sandbox'), `${mode} must NOT bypass on ${platform} by default`);
+      assert.equal(argv[argv.indexOf('-s') + 1], mode, `${platform} must honor the requested -s ${mode}`);
+    }
+    withEnvs({ HOPPER_CODEX_SANDBOX_BYPASS: '1' }, () => {
+      const argv = codexAdapter.args('hi', { sandbox: 'read-only', platform });
+      assert.ok(argv.includes('--dangerously-bypass-approvals-and-sandbox'), `${platform} + BYPASS=1 opts in to full-access bypass`);
+      assert.ok(!argv.includes('-s'));
+    });
+    // Explicit =0 on POSIX is a redundant no-op (default is already non-bypass) — pin that too.
+    withEnvs({ HOPPER_CODEX_SANDBOX_BYPASS: '0' }, () => {
+      const argv = codexAdapter.args('hi', { sandbox: 'read-only', platform });
+      assert.ok(!argv.includes('--dangerously-bypass-approvals-and-sandbox'), `${platform} + BYPASS=0 is a no-op (already non-bypass)`);
+    });
   }
-  // Escape hatch (POSIX, where the sandbox spawns children fine): honor the requested -s mode.
-  withEnv('HOPPER_CODEX_SANDBOX_BYPASS', '0', () => {
-    const argv = codexAdapter.args('hi', { sandbox: 'read-only' });
-    assert.equal(argv[argv.indexOf('-s') + 1], 'read-only');
-    assert.ok(!argv.includes('--dangerously-bypass-approvals-and-sandbox'));
-  });
+});
+
+test('platform split: real host platform (this test machine) matches the darwin/linux branch when non-Windows', { skip: process.platform === 'win32' ? 'this host is Windows; the win32 branch above already covers it' : false }, () => {
+  // No `platform` override — exercises process.platform for REAL, proving the
+  // production code path (not just the injected-platform tests above) takes
+  // the honor-the-request branch on this actual host.
+  const argv = codexAdapter.args('hi', { sandbox: 'read-only' });
+  assert.ok(!argv.includes('--dangerously-bypass-approvals-and-sandbox'), 'real host must not bypass by default');
+  assert.equal(argv[argv.indexOf('-s') + 1], 'read-only', 'real host must honor -s read-only by default');
+});
+
+test('destructive counter-proof: removing the platform branch (always bypass) must flip the darwin fixture red', () => {
+  // Mirrors the always-bypass formula that shipped 2026-06-25 through
+  // 2026-07-31 (`process.env.HOPPER_CODEX_SANDBOX_BYPASS !== '0'`, no platform
+  // check at all). If a future edit collapses codexSandboxBypassActive() back
+  // to this, this assertion catches it: the darwin branch would wrongly bypass.
+  const alwaysBypassFormula = () => process.env.HOPPER_CODEX_SANDBOX_BYPASS !== '0';
+  assert.ok(alwaysBypassFormula(), 'sanity: the OLD formula defaults to bypass=true with no env set');
+  // The CURRENT (fixed) function must disagree with that old formula on darwin —
+  // proving the platform branch is load-bearing, not a no-op that happens to agree.
+  assert.notEqual(codexSandboxBypassActive('darwin'), alwaysBypassFormula(),
+    'codexSandboxBypassActive(darwin) must differ from the old always-bypass formula, ' +
+    'or the platform split has been silently removed');
+  assert.equal(codexSandboxBypassActive('darwin'), false);
+  assert.equal(codexSandboxBypassActive('linux'), false);
+  assert.equal(codexSandboxBypassActive('win32'), true, 'win32 keeps the OLD always-bypass default');
 });
 
 // ── ISSUE-codex-bypass-flag-missing-from-argv ──────────────────────────────
@@ -244,8 +290,11 @@ test('callchain: codex has NO read-only scenario — read-only/workspace-write a
 
 test('ISSUE-bypass-argv: prompt positional is LAST so flags survive Windows cmd.exe truncation', () => {
   const prompt = 'COMPOSED PROMPT BODY (normally several KB)';
+  // Windows-specific truncation scenario — inject platform: 'win32' so the
+  // bypass flag actually appears (real Windows codex always bypasses; see the
+  // platform-split tests above). F:/x-agents is itself a Windows-style path.
   const argv = codexAdapter.args(prompt, {
-    sandbox: 'danger-full-access', model: 'gpt-5.5', reasoning: 'xhigh', cwd: 'F:/x-agents',
+    sandbox: 'danger-full-access', model: 'gpt-5.5', reasoning: 'xhigh', cwd: 'F:/x-agents', platform: 'win32',
   });
   assert.equal(argv[argv.length - 1], prompt, 'prompt must be the LAST argv element');
   const bypassIdx = argv.indexOf('--dangerously-bypass-approvals-and-sandbox');
@@ -258,35 +307,65 @@ test('ISSUE-bypass-argv: prompt positional is LAST so flags survive Windows cmd.
   }
 });
 
-test('ISSUE-bypass-argv: background-runner code path emits the sandbox bypass flag', () => {
+test('ISSUE-bypass-argv: prompt positional is LAST on macOS/Linux too (the real `-s` sandbox path, not just bypass)', () => {
+  const prompt = 'COMPOSED PROMPT BODY (normally several KB)';
+  for (const platform of ['darwin', 'linux']) {
+    const argv = codexAdapter.args(prompt, {
+      sandbox: 'read-only', model: 'gpt-5.5', reasoning: 'xhigh', cwd: '/tmp/x-agents', platform,
+    });
+    assert.equal(argv[argv.length - 1], prompt, `${platform}: prompt must be the LAST argv element`);
+    const sIdx = argv.indexOf('-s');
+    assert.ok(sIdx !== -1 && sIdx < argv.length - 1, `${platform}: -s must precede the prompt positional`);
+    for (const flag of ['-m', '--cd', '-c', '--disable']) {
+      const i = argv.indexOf(flag);
+      if (i !== -1) assert.ok(i < argv.length - 1, `${platform}: ${flag} must precede the prompt positional`);
+    }
+  }
+});
+
+test('ISSUE-bypass-argv: background-runner code path emits the sandbox bypass flag on Windows', () => {
   // Mirror runBackgroundDispatch EXACTLY: resolveAdapterOptsForTask → effectiveOpts
   // → adapter.args (the same chain the background runner uses). Asserts the flag
   // the live codex argv was missing actually appears, ahead of the prompt.
+  // platform: 'win32' drives BOTH resolveAdapterOptsForTask's internal codex-
+  // always-full-access check and (via the out/effOpts spread) codexAdapter.args().
   const resolved = { task: { brief: 'implement the fix', taskType: 'code-impl' }, taskSpec: '' };
   const effOpts = resolveAdapterOptsForTask(resolved, {
-    sandbox: 'danger-full-access', model: 'gpt-5.5', reasoning: 'xhigh',
+    sandbox: 'danger-full-access', model: 'gpt-5.5', reasoning: 'xhigh', platform: 'win32',
   });
   const effectiveOpts = { ...effOpts, background: true, logFile: '/tmp/x.log', taskType: 'code-impl', cwd: 'F:/x-agents' };
   const argv = codexAdapter.args('COMPOSED PROMPT', effectiveOpts);
   assert.ok(argv.includes('--dangerously-bypass-approvals-and-sandbox'),
-    'the background-runner code path must emit --dangerously-bypass-approvals-and-sandbox');
+    'the background-runner code path must emit --dangerously-bypass-approvals-and-sandbox on win32');
   assert.equal(argv[argv.length - 1], 'COMPOSED PROMPT', 'prompt stays last (truncation safety)');
 });
 
-test('ISSUE-bypass-argv: full-access bypass adds --skip-git-repo-check (non-git CWD footgun)', () => {
-  const argv = codexAdapter.args('hi', { sandbox: 'danger-full-access' });
+test('ISSUE-bypass-argv: full-access bypass adds --skip-git-repo-check on Windows (non-git CWD footgun)', () => {
+  const argv = codexAdapter.args('hi', { sandbox: 'danger-full-access', platform: 'win32' });
   assert.ok(argv.includes('--skip-git-repo-check'),
     'full-access bypass should skip codex git-repo trust gate (HOPPER_VENDOR_CWD widening)');
   // Escape hatch reverts it.
   withEnv('HOPPER_CODEX_SKIP_GIT_CHECK', '0', () => {
-    assert.ok(!codexAdapter.args('hi', { sandbox: 'danger-full-access' }).includes('--skip-git-repo-check'));
+    assert.ok(!codexAdapter.args('hi', { sandbox: 'danger-full-access', platform: 'win32' }).includes('--skip-git-repo-check'));
   });
-  // codex now bypasses for ALL modes, so --skip-git-repo-check rides along for read-only/
-  // workspace-write too (they take the bypass path). Only the HOPPER_CODEX_SANDBOX_BYPASS=0
-  // escape hatch (a real -s sandbox) keeps codex's git trust gate.
-  assert.ok(codexAdapter.args('hi', { sandbox: 'read-only' }).includes('--skip-git-repo-check'));
-  withEnv('HOPPER_CODEX_SANDBOX_BYPASS', '0', () => {
-    assert.ok(!codexAdapter.args('hi', { sandbox: 'read-only' }).includes('--skip-git-repo-check'));
+});
+
+test('ISSUE-bypass-argv (2026-07-31): --skip-git-repo-check now rides EVERY mode/platform, not just bypass', () => {
+  // Manually verified 2026-07-31: `codex exec -s read-only` in a non-git dir hits the
+  // SAME "Not inside a trusted directory" trust gate as the bypass path — it is not
+  // specific to bypass mode. So the flag no longer depends on bypassSandbox at all.
+  for (const platform of ['win32', 'darwin', 'linux']) {
+    for (const sandbox of ['read-only', 'workspace-write', 'danger-full-access']) {
+      assert.ok(codexAdapter.args('hi', { sandbox, platform }).includes('--skip-git-repo-check'),
+        `${platform}/${sandbox}: --skip-git-repo-check must be present by default`);
+    }
+  }
+  // Escape hatch disables it universally, regardless of platform/mode.
+  withEnv('HOPPER_CODEX_SKIP_GIT_CHECK', '0', () => {
+    for (const platform of ['win32', 'darwin', 'linux']) {
+      assert.ok(!codexAdapter.args('hi', { sandbox: 'read-only', platform }).includes('--skip-git-repo-check'),
+        `${platform}: HOPPER_CODEX_SKIP_GIT_CHECK=0 must disable the flag`);
+    }
   });
 });
 

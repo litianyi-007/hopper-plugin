@@ -226,31 +226,54 @@ test('resolveAdapterOptsForTask defaults to danger-full-access unless task text 
   assert.equal(resolveAdapterOptsForTask(readOnly, { sandbox: 'workspace-write' }).sandbox, 'workspace-write');
 });
 
-test('resolveAdapterOptsForTask: codex always full-access (overrides read-only text AND explicit -s)', () => {
+test('resolveAdapterOptsForTask: codex always full-access on Windows (overrides read-only text AND explicit -s); =0 escape hatch restores normal resolution', () => {
+  // 2026-07-31 platform split: Windows keeps the OLD always-full-access default
+  // (codex's -s sandbox harness cannot spawn children there — 1326). `platform`
+  // is a test-only override (adapterOpts.platform); real dispatch never sets it.
   const readOnlyCodex = {
     vendor: 'codex',
     task: { brief: 'read-only task: audit current state', taskType: 'spec-blindspot-hunt' },
     taskSpec: '',
   };
-  // bypass active (default): codex forced to full-access even with read-only text / explicit -s.
-  assert.equal(resolveAdapterOptsForTask(readOnlyCodex, {}).sandbox, 'danger-full-access');
-  assert.equal(resolveAdapterOptsForTask(readOnlyCodex, { sandbox: 'read-only' }).sandbox, 'danger-full-access');
-});
+  assert.equal(resolveAdapterOptsForTask(readOnlyCodex, { platform: 'win32' }).sandbox, 'danger-full-access');
+  assert.equal(resolveAdapterOptsForTask(readOnlyCodex, { sandbox: 'read-only', platform: 'win32' }).sandbox, 'danger-full-access');
 
-test('resolveAdapterOptsForTask: HOPPER_CODEX_SANDBOX_BYPASS=0 restores normal read-only resolution for codex (POSIX escape hatch)', () => {
-  const readOnlyCodex = {
-    vendor: 'codex',
-    task: { brief: 'read-only task: audit current state', taskType: 'spec-blindspot-hunt' },
-    taskSpec: '',
-  };
   const prev = process.env.HOPPER_CODEX_SANDBOX_BYPASS;
   process.env.HOPPER_CODEX_SANDBOX_BYPASS = '0';
   try {
-    // Escape hatch: codex falls through to the normal precedence → read-only text wins.
-    assert.equal(resolveAdapterOptsForTask(readOnlyCodex, {}).sandbox, 'read-only');
+    // Escape hatch on Windows: codex falls through to the normal precedence → read-only text wins.
+    assert.equal(resolveAdapterOptsForTask(readOnlyCodex, { platform: 'win32' }).sandbox, 'read-only');
   } finally {
     if (prev === undefined) delete process.env.HOPPER_CODEX_SANDBOX_BYPASS;
     else process.env.HOPPER_CODEX_SANDBOX_BYPASS = prev;
+  }
+});
+
+test('resolveAdapterOptsForTask: codex on macOS/Linux honors normal read-only resolution by default; =1 escape hatch forces full-access', () => {
+  // 2026-07-31: the OTHER half of the platform split — codex's own `-s <mode>`
+  // sandbox is verified working on macOS/Linux, so bypass is OFF by default there
+  // and codex now resolves through the SAME precedence chain as any other vendor.
+  const readOnlyCodex = {
+    vendor: 'codex',
+    task: { brief: 'read-only task: audit current state', taskType: 'spec-blindspot-hunt' },
+    taskSpec: '',
+  };
+  for (const platform of ['darwin', 'linux']) {
+    assert.equal(resolveAdapterOptsForTask(readOnlyCodex, { platform }).sandbox, 'read-only',
+      `${platform}: read-only task text must resolve normally (no codex override)`);
+    assert.equal(resolveAdapterOptsForTask(readOnlyCodex, { sandbox: 'workspace-write', platform }).sandbox, 'workspace-write',
+      `${platform}: an explicit --sandbox must be honored, not overridden`);
+
+    const prev = process.env.HOPPER_CODEX_SANDBOX_BYPASS;
+    process.env.HOPPER_CODEX_SANDBOX_BYPASS = '1';
+    try {
+      // Escape hatch on POSIX: opts IN to the old always-full-access behavior.
+      assert.equal(resolveAdapterOptsForTask(readOnlyCodex, { platform }).sandbox, 'danger-full-access',
+        `${platform} + BYPASS=1: codex must be forced back to full-access`);
+    } finally {
+      if (prev === undefined) delete process.env.HOPPER_CODEX_SANDBOX_BYPASS;
+      else process.env.HOPPER_CODEX_SANDBOX_BYPASS = prev;
+    }
   }
 });
 
@@ -398,14 +421,24 @@ test('CLI auto-downgrades sandbox to read-only when task text explicitly says re
   }
 });
 
-test('CLI does NOT downgrade codex to read-only (codex has no read-only scenario; always full-access)', () => {
-  // codex's -s sandbox is broken on Windows (1326), so codex always runs full-access; the
-  // read-only intent rides in the prompt frame. Even read-only task text keeps full-access.
+// NOTE on platform coverage: these CLI tests spawn the REAL hopper-dispatch
+// binary as a subprocess, so they always run under the REAL host's
+// process.platform — there is no --platform CLI flag (deliberately not added;
+// it would be test-only surface on a production binary) and no real Windows
+// host available here. The Windows branch (codex ALWAYS full-access, 1326
+// workaround) is instead covered at the unit level via adapterOpts.platform
+// injection in the resolveAdapterOptsForTask tests above and in
+// tests/unit/codex-isolation.test.js — this comment exists so that gap is
+// documented rather than silently assumed away.
+test('CLI auto-downgrades codex to read-only on this (non-Windows) host too — 2026-07-31 platform split', { skip: process.platform === 'win32' ? 'this host IS Windows: codex always full-access here, covered by the OTHER assertion path (see unit tests)' : false }, () => {
+  // codex's own `-s <mode>` sandbox is verified working on macOS/Linux (manually
+  // verified 2026-07-31), so codex now resolves through the SAME auto-downgrade
+  // precedence as any other vendor — no more special-cased override.
   const { root, hopperDir } = makeMinimalHopper('codex', { brief: 'read-only task: inspect only' });
   try {
     const r = runCli(['T-SAME'], { hopperDir, env: { HOPPER_HOST_VENDOR: 'codex' } });
-    assert.equal(r.exitCode, 1);
-    assert.match(r.stderr, /permission: sandbox=danger-full-access \(auto\)/);
+    assert.equal(r.exitCode, 1); // host==vendor gate still rejects AFTER printing the permission line
+    assert.match(r.stderr, /permission: sandbox=read-only \(auto\)/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -423,17 +456,16 @@ test('CLI explicit --sandbox overrides task-text default', () => {
   }
 });
 
-test('CLI codex ignores even an explicit --sandbox read-only (always full-access; display matches run)', () => {
-  // codex cannot honor -s read-only on Windows; the resolved/displayed sandbox is forced to
-  // full-access so the operator is not told read-only while codex actually runs full-access.
+test('CLI codex now honors an explicit --sandbox read-only on this (non-Windows) host — 2026-07-31 platform split', { skip: process.platform === 'win32' ? 'this host IS Windows: codex still overrides to full-access here (see the unit-level -s-unsupported assertion instead)' : false }, () => {
+  // On macOS/Linux codex's own `-s read-only` sandbox is real, so an explicit
+  // --sandbox read-only is now honored exactly like any other vendor (source
+  // reports "explicit", not an override) instead of being silently pinned to
+  // full-access.
   const { root, hopperDir } = makeMinimalHopper('codex', { brief: 'audit the routing' });
   try {
     const r = runCli(['T-SAME', '--sandbox', 'read-only'], { hopperDir, env: { HOPPER_HOST_VENDOR: 'codex' } });
-    assert.equal(r.exitCode, 1);
-    // The authoritative resolved value (permission line) must be full-access, and must say WHY
-    // (not mislabel it "explicit"). The raw flag echo may still show the user's literal input.
-    assert.match(r.stderr, /permission: sandbox=danger-full-access \(codex: -s read-only unsupported here/);
-    assert.doesNotMatch(r.stderr, /permission: sandbox=read-only/);
+    assert.equal(r.exitCode, 1); // host==vendor gate still rejects AFTER printing the permission line
+    assert.match(r.stderr, /permission: sandbox=read-only \(explicit\)/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

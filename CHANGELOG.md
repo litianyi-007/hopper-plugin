@@ -19,6 +19,120 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.41.0] - 2026-07-31
+
+### Changed — BEHAVIOR CHANGE (codex read-only dispatch on macOS/Linux)
+
+- **codex's sandbox-bypass default is now platform-split, reversing part of
+  the 0.34.0-era "codex has NO read-only scenario" decision.** That decision
+  applied the Windows-only rationale (`-s <mode>` sandbox harness cannot spawn
+  ANY child process there — `CreateProcessWithLogonW` 1326,
+  ISSUE-codex-callchain-windows) to **every** platform, so codex always ran
+  full-access via `--dangerously-bypass-approvals-and-sandbox` regardless of
+  platform or requested sandbox. Manually verified 2026-07-31 on macOS that
+  this was unnecessarily broad: `codex exec -s read-only` genuinely denies a
+  write (`operation not permitted`, file never created) while
+  `--dangerously-bypass-approvals-and-sandbox` with the identical command
+  creates it — codex's own sandbox works fine on macOS/Linux; only Windows is
+  broken.
+
+  `codexSandboxBypassActive(platform)` (new, exported from
+  `cli/src/vendors/codex.js`) now branches on `process.platform`:
+
+  ```js
+  export function codexSandboxBypassActive(platform = process.platform) {
+    return platform === 'win32'
+      ? process.env.HOPPER_CODEX_SANDBOX_BYPASS !== '0'
+      : process.env.HOPPER_CODEX_SANDBOX_BYPASS === '1';
+  }
+  ```
+
+  - **Windows: unchanged.** Bypass stays the default; `HOPPER_CODEX_SANDBOX_
+    BYPASS=0` still reverts to the (broken) real `-s` sandbox.
+  - **macOS/Linux: reversed.** Bypass is now OFF by default — codex honors the
+    *requested* `-s <mode>` for real, including `read-only`.
+    `HOPPER_CODEX_SANDBOX_BYPASS=1` opts back into the old always-full-access
+    behavior.
+  - **The escape hatch's default polarity is intentionally OPPOSITE per
+    platform** — same env var, `=0` disables bypass on Windows but `=1`
+    enables it on macOS/Linux. This is documented in the function's own JSDoc,
+    in `cli/src/rules.js`'s generated `--sandbox` note, and in every affected
+    user-facing doc (see below) specifically so a reader does not assume "=0
+    always means off."
+
+  `cli/src/dispatch.js`'s `resolveAdapterOptsForTask` (the `codexAlwaysFullAccess`
+  check that used to force codex to `danger-full-access` unconditionally) and
+  `cli/src/setup.js`'s `sandboxControl()` (the `--setup`/`doctor` classifier)
+  both now re-derive from the same `codexSandboxBypassActive()` helper instead
+  of duplicating the old unconditional formula — `sandboxControl(codex)` is
+  therefore `'full'` on Windows and `'argv'` on macOS/Linux (previously
+  unconditionally `'full'`); `sandboxControl()` gained an optional `{ platform
+  }` test-only override to make both branches assertable without a real
+  Windows host.
+
+  `--skip-git-repo-check` now rides along on **every** sandbox mode and
+  platform (previously bypass-path only). Manually verified: `codex exec -s
+  read-only` in a non-git directory hits the exact same "Not inside a trusted
+  directory" trust-gate error that the bypass path hit before
+  `--skip-git-repo-check` was added for it — the gate is not specific to
+  bypass mode, so a `HOPPER_VENDOR_CWD` pointed at a non-git root would have
+  silently broken every macOS/Linux read-only codex dispatch under this
+  release without this change. `HOPPER_CODEX_SKIP_GIT_CHECK=0` still restores
+  codex's default trust-gate behavior on every mode/platform.
+
+  **`--subject-root`'s reachable surface widens as a side effect.** It requires
+  the *effective* sandbox to be `read-only`; before this change codex's
+  effective sandbox was always forced to `danger-full-access`, so
+  `--subject-root` + codex was dead-on-arrival on every platform (the
+  precondition could never hold). On macOS it can now hold for real, and
+  `--subject-root`'s outer `sandbox-exec` guard composes cleanly with codex's
+  own inner `-s read-only` — manually verified: nesting them denies the write
+  with no hang, crash, or conflict (Seatbelt sandboxes nest fine; both layers
+  only ever narrow permissions).
+
+  **Who is affected / how to roll back:** any *existing* dispatch on macOS or
+  Linux that relies on a `read-only`-defaulting task-type (`code-review-
+  adversarial`, `code-review-acceptance`, `spec-blindspot-hunt`, `prd-research`,
+  `market-research` — see `validation.js`'s `READ_ONLY_DEFAULT_TASK_TYPES`) or
+  an explicit `--sandbox read-only`/`workspace-write` routed to **codex**, and
+  which was until now silently getting full write access, will start actually
+  being denied writes. Audited: the five read-only-default task-types are
+  documented review/research work that should not write
+  (`code-review-adversarial`/`-acceptance` are explicitly annotated "read-only
+  sandbox REQUIRED" in `cli/src/scaffold.js`'s task-frame template) — none of
+  them are expected to need write access. `code-impl` and other genuinely
+  writable task-types are unaffected (they default to `danger-full-access`,
+  which still gets full access on every platform, just via `-s
+  danger-full-access` instead of the bypass flag on macOS/Linux — verified
+  functionally equivalent). If a project-specific brief was quietly relying on
+  a "read-only" codex dispatch actually having write access on macOS/Linux, set
+  `HOPPER_CODEX_SANDBOX_BYPASS=1` (globally) to restore the pre-0.41.0
+  always-full-access behavior on those platforms, or pass an explicit
+  `--sandbox danger-full-access`/`workspace-write` for that dispatch. Windows
+  dispatches are completely unaffected either way.
+
+  Docs updated in the same change: `README.md` (both the Scenario-1 permission
+  paragraph and the Core Skills footnote), `commands/dispatch.md`,
+  `review.md`, `research.md`, `market.md`, `swarm.md`, `setup.md`,
+  `skills/hopper-setup/SKILL.md`, `cli/src/rules.js`'s generated `--sandbox`
+  note (plus `HOPPER_CODEX_SANDBOX_BYPASS`/`HOPPER_CODEX_SKIP_GIT_CHECK` added
+  to `rules.js`'s env-neutralization list so the generated matrix doesn't pick
+  up a generating shell's env), and a new dated row in
+  `docs/specs/vendor-io-protocol-current-vs-target.md` (the 2026-06-25 row
+  this partially reverses is left as historical record, per this file's
+  append-only convention).
+
+  Tests: `tests/unit/codex-isolation.test.js`, `dispatch-flags.test.js`,
+  `prompt-delivery.test.js`, `setup.test.js`, `vendor-security-claims.test.js`,
+  and `vendors-contract.test.js` all gained platform-injected fixtures
+  (`win32`/`darwin`/`linux` via a test-only `opts.platform` /
+  `adapterOpts.platform` override — real dispatch never sets it) plus a
+  destructive counter-proof that pins the platform branch as load-bearing (a
+  return to the old unconditional-bypass formula flips the darwin/linux
+  fixtures red). Windows fixtures are necessarily injected, not run for real
+  (no Windows host available); this is called out explicitly in the test
+  comments rather than silently assumed.
+
 ## [0.40.0] - 2026-07-31
 
 ### Added

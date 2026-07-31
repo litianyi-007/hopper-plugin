@@ -4,7 +4,7 @@ allowed-tools: Bash, Read
 argument-hint: <question> [--vendor <name>]
 ---
 
-One-shot product-requirement research via hopper's **ad-hoc** dispatch (no `queue.md` row). The `prd-research` task-type auto-enables **web search** and *requests* a **read-only** sandbox, and routes to **codex** (the only high-confidence headless web-search vendor) unless `--vendor` overrides. That read-only request is an instruction carried by the executor prompt frame, **not an OS-enforced boundary** — codex (the default) always runs full-access via `--dangerously-bypass-approvals-and-sandbox` (a deliberate Windows-sandbox workaround), regardless of the requested mode.
+One-shot product-requirement research via hopper's **ad-hoc** dispatch (no `queue.md` row). The `prd-research` task-type auto-enables **web search** and *requests* a **read-only** sandbox, and routes to **codex** (the only high-confidence headless web-search vendor) unless `--vendor` overrides. That read-only request is an instruction carried by the executor prompt frame — **not unconditionally an OS-enforced boundary**: on macOS/Linux codex (the default) now honors it via its own `-s read-only` sandbox (verified: a write attempt fails with `operation not permitted`); on **Windows** codex's `-s` sandbox cannot spawn child processes at all, so it always runs full-access there via `--dangerously-bypass-approvals-and-sandbox` (a deliberate workaround), regardless of the requested mode.
 
 ## What this does
 1. Build a research brief from `$ARGUMENTS`.

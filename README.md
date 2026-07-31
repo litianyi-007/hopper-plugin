@@ -5,7 +5,7 @@
 > Vendor-neutral background dispatch for AI agents
 
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
-![Version](https://img.shields.io/badge/version-0.40.0-3DDC97)
+![Version](https://img.shields.io/badge/version-0.41.0-3DDC97)
 ![Tests](https://img.shields.io/badge/tests-1024%20total-3DDC97)
 ![Hosts](https://img.shields.io/badge/hosts-Claude%20Code%20%7C%20Codex%20CLI%20%7C%20OpenCode%20%7C%20Standalone-111827)
 
@@ -120,12 +120,20 @@ providers such as tokenbox/DeepSeek have no Hopper-verified variant contract.
 Dispatch permissions default to `danger-full-access` so implementation tasks can edit
 files. If a task brief/spec says `read-only` / `只读`, hopper auto-downgrades the vendor
 sandbox to `read-only`; override with `--sandbox <read-only|workspace-write|danger-full-access>`.
-That downgrade is a **request** carried by the executor prompt frame, not a uniformly
-enforced OS boundary: codex always runs full-access (`--dangerously-bypass-approvals-and-sandbox`,
-a deliberate Windows-sandbox workaround) and grok always runs with `bypassPermissions`,
-regardless of the requested mode. Check `hopper-dispatch --rules` (or `.hopper/DISPATCH.md`)
-for which vendors can actually enforce it, and `--subject-root` for a genuine opt-in
-per-process guard (macOS only, with its own documented limits).
+That downgrade is a **request** carried by the executor prompt frame; whether it becomes a
+real OS boundary is vendor- and platform-dependent. **grok** always runs with
+`bypassPermissions` regardless of platform or requested mode. **codex is platform-split
+(2026-07-31):** on macOS/Linux it honors its own `-s <mode>` sandbox — a read-only request
+is genuinely enforced (verified: a write attempt fails with `operation not permitted`); on
+**Windows** codex's `-s` sandbox cannot spawn child processes at all, so it always runs
+full-access there via `--dangerously-bypass-approvals-and-sandbox` (a deliberate workaround),
+regardless of the requested mode. `HOPPER_CODEX_SANDBOX_BYPASS` overrides the default, with
+**opposite polarity per platform** (`=0` disables bypass on Windows; `=1` enables it on
+macOS/Linux — see `.hopper/DISPATCH.md`). Check `hopper-dispatch --rules` (or
+`.hopper/DISPATCH.md`) for which vendors can actually enforce it on your platform, and
+`--subject-root` for a genuine opt-in per-process guard (macOS only, with its own documented
+limits — it now composes with codex's own read-only sandbox there rather than being the only
+guard).
 
 ### Scenario 2: Background dispatch + watch via dashboard
 
@@ -172,10 +180,11 @@ hopper-opencode T-PROG-REVIEW --background
 | `hopper-watch-events` | Claude monitor that delivers terminal events. |
 
 \* "read-only" is the task-type's *requested* sandbox — an instruction carried by the
-executor prompt frame, not a uniformly enforced OS boundary. codex and grok (both common
-defaults/panelists for these commands) always run full-access regardless of the request;
-see the caveat under Scenario 1 above, `/hopper:review`, and `hopper-dispatch --rules`
-for which vendors can actually enforce it.
+executor prompt frame; whether it is enforced depends on the vendor and (for codex) the
+platform. **grok** always runs full-access regardless of the request; **codex** does too
+on Windows, but honors a real read-only sandbox on macOS/Linux (see the caveat under
+Scenario 1 above). Check `/hopper:review` and `hopper-dispatch --rules` for which vendors
+can actually enforce it on your platform.
 
 ## Governance overlay (opt-in)
 

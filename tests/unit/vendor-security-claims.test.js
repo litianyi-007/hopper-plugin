@@ -5,32 +5,41 @@
 // README.md asserted or implied that a codex/grok dispatch is read-only
 // ENFORCED — e.g. "so the reviewer never edits the repo", the README Core
 // Skills table's bare "(ad-hoc, read-only)", swarm.md's "each panelist ...
-// runs read-only". That was false: codex ALWAYS runs full-access
-// (cli/src/vendors/codex.js:292 — `HOPPER_CODEX_SANDBOX_BYPASS !== '0'`
-// defaults true, so `--dangerously-bypass-approvals-and-sandbox` is emitted
-// unconditionally; a deliberate Windows-sandbox workaround, not a bug) and
-// grok ALWAYS runs `--permission-mode bypassPermissions`
-// (cli/src/vendors/grok.js — the mode never varies with `sandbox`; only
-// `--always-approve` is dropped for a read-only REQUEST, which does not
-// restrict anything since bypassPermissions already skips all approval). The
-// engine's own generated docs already say this honestly
-// (cli/src/rules.js:153, ".hopper/DISPATCH.md"); the plugin's commands/*.md
-// and README.md did not, until this audit's fix.
+// runs read-only". That was false AT THE TIME: codex ALWAYS ran full-access
+// (a deliberate Windows-sandbox workaround, not a bug) and grok ALWAYS runs
+// `--permission-mode bypassPermissions` (cli/src/vendors/grok.js — the mode
+// never varies with `sandbox`; only `--always-approve` is dropped for a
+// read-only REQUEST, which does not restrict anything since bypassPermissions
+// already skips all approval — grok is UNCHANGED by the update below).
+//
+// UPDATE (2026-07-31, user-approved platform split): codex's "ALWAYS
+// full-access" default was reversed for macOS/Linux — see
+// codexSandboxBypassActive() in cli/src/vendors/codex.js. codex's own `-s
+// <mode>` sandbox is verified working there (manually verified: `-s read-only`
+// denies a write with `operation not permitted`, file never created), so a
+// read-only REQUEST is now genuinely enforced on macOS/Linux. **Windows is
+// UNCHANGED** — codex's `-s` harness still cannot spawn children there (1326),
+// so it still ALWAYS runs full-access on Windows regardless of the request.
+// This is exactly the scenario the (a)/(a2) guards below were built to catch:
+// "the moment either vendor is genuinely fixed to honor read-only, one of
+// these assertions goes RED — forcing whoever makes that fix to update the
+// doc set in the SAME change." Codex's assertions below were updated
+// (platform-split, not simply flipped) in the SAME change as commands/*.md +
+// README.md (see git history for this file's diff alongside those docs').
 //
 // This file carries three independent guards:
 //
 //   (a) PINS the real argv codex/grok produce for a `sandbox: 'read-only'`
-//       REQUEST, so the moment either vendor is genuinely fixed to honor
-//       read-only, one of these assertions goes RED here — forcing whoever
-//       makes that fix to update the doc set above in the SAME change,
-//       instead of the docs quietly going stale again. If this test ever
-//       goes red, that means real vendor behavior changed; do not "fix" the
-//       test in isolation without also revisiting the docs.
+//       REQUEST — for codex, now split by platform (win32 vs darwin/linux);
+//       for grok, unconditionally (grok is untouched by the 2026-07-31 fix).
+//       If either assertion ever goes red, that means real vendor behavior
+//       changed again; do not "fix" the test in isolation without also
+//       revisiting the docs.
 //
 //   (a2) PINS that cli/src/setup.js's sandboxControl() classifier reports the
-//       above truthfully (T-a/T-b/T-c) — added in a same-day follow-up after
-//       this audit found the classifier itself called grok 'argv' (implying
-//       downgradable) despite (a) proving it never restricts writes.
+//       above truthfully (T-a/T-b/T-c) — codex's T-b pin is now platform-split
+//       too (full on win32, argv on darwin/linux), added in the SAME 2026-07-31
+//       change as the (a) pin above.
 //
 //   (b) SCANS commands/*.md (except setup.md — see SCAN note below) and
 //       README.md for a DENYLIST of the exact phrasings this audit found and
@@ -39,7 +48,10 @@
 //       variants matched by the same regex). A differently-worded false
 //       claim ("guaranteed sandboxed", "cannot write outside X", etc.) will
 //       NOT be caught by this test. A green run here means "no known-bad
-//       phrase came back" — never "the docs are honest."
+//       phrase came back" — never "the docs are honest." The 2026-07-31 doc
+//       rewrites describe codex's behavior as platform-split (not an
+//       unconditional claim in either direction), so they do not trip this
+//       denylist; re-verify by hand if a future edit tightens the wording.
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
@@ -53,20 +65,35 @@ const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // ── (a) pin the real (non-)enforcement behavior ──────────────────────────
 
-test('doc-truth pin: codex read-only REQUEST carries no real write restriction', () => {
+test('doc-truth pin: codex read-only REQUEST carries no real write restriction on WINDOWS', () => {
   const a = getAdapter('codex');
-  const ro = a.args('test', { sandbox: 'read-only' });
+  const ro = a.args('test', { sandbox: 'read-only', platform: 'win32' });
   // codex's -s sandbox harness is broken on Windows (CreateProcessWithLogonW
   // 1326 on every child — ISSUE-codex-callchain-windows), so the adapter
-  // ALWAYS bypasses it, even when the caller requests read-only.
+  // ALWAYS bypasses it there, even when the caller requests read-only.
   assert.ok(ro.includes('--dangerously-bypass-approvals-and-sandbox'),
-    'codex must always emit the full-access bypass flag, even for a read-only REQUEST. ' +
-    'If this ever fails, codex has gained genuine read-only enforcement — update ' +
-    'commands/review.md, research.md, market.md, swarm.md, and README.md (the ' +
-    '"requested, not OS-enforced" caveat) in the SAME change as whatever fixed this.');
+    'codex must always emit the full-access bypass flag on Windows, even for a read-only ' +
+    'REQUEST. If this ever fails, codex has gained genuine read-only enforcement on Windows ' +
+    'too — update commands/review.md, research.md, market.md, swarm.md, and README.md ' +
+    '(the Windows caveat) in the SAME change as whatever fixed this.');
   assert.ok(!ro.includes('-s'),
     'no real `-s <mode>` sandbox flag should reach argv while the bypass is active — ' +
-    'a read-only REQUEST must not produce a real `-s read-only`.');
+    'a read-only REQUEST must not produce a real `-s read-only` on Windows.');
+});
+
+test('doc-truth pin (2026-07-31): codex read-only REQUEST IS genuinely enforced on macOS/Linux', () => {
+  // The other half of the platform split: verified 2026-07-31 that codex's own
+  // `-s read-only` denies a write (`operation not permitted`, file never
+  // created) on a real macOS host. If this ever fails (argv reverts to the
+  // bypass flag on darwin/linux), codex has LOST enforcement there — update
+  // commands/review.md, research.md, market.md, swarm.md, README.md, and
+  // cli/src/rules.js's --sandbox note in the SAME change as whatever broke this.
+  for (const platform of ['darwin', 'linux']) {
+    const ro = getAdapter('codex').args('test', { sandbox: 'read-only', platform });
+    assert.ok(!ro.includes('--dangerously-bypass-approvals-and-sandbox'),
+      `${platform}: codex must NOT bypass its sandbox for a read-only REQUEST by default`);
+    assert.equal(ro[ro.indexOf('-s') + 1], 'read-only', `${platform}: codex must emit a real -s read-only`);
+  }
 });
 
 test('doc-truth pin: grok read-only REQUEST carries no real write restriction', () => {
@@ -115,8 +142,10 @@ test('T-a: sandboxControl(grok) must NOT be argv (grok never actually restricts 
     'differs by mode on paper (--always-approve toggles) but the read-only form never restricts anything.');
 });
 
-test('T-b: sandboxControl(codex) is still full (fix does not regress the already-correct classification)', () => {
-  assert.equal(sandboxControl(getAdapter('codex')), 'full');
+test('T-b: sandboxControl(codex) is platform-split (2026-07-31) — full on Windows, argv on macOS/Linux', () => {
+  assert.equal(sandboxControl(getAdapter('codex'), { platform: 'win32' }), 'full');
+  assert.equal(sandboxControl(getAdapter('codex'), { platform: 'darwin' }), 'argv');
+  assert.equal(sandboxControl(getAdapter('codex'), { platform: 'linux' }), 'argv');
 });
 
 test('T-c: sandboxControl reports argv for an adapter that genuinely downgrades (positive control)', () => {

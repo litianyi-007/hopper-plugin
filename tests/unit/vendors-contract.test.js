@@ -123,24 +123,50 @@ for (const name of VENDORS) {
   });
 }
 
-test('codex adapter args() builds expected invocation', () => {
+test('codex adapter args() builds expected invocation (Windows: bypasses the sandbox)', () => {
   const a = getAdapter('codex');
-  const argv = a.args('test prompt', { reasoning: 'high' });
+  // 2026-07-31 platform split: injected win32 preserves this test's original intent
+  // (codex's -s sandbox harness cannot spawn children on Windows — 1326 — so bypass
+  // stays the default there). See vendors-contract's companion darwin/linux test below
+  // for the OTHER half of the split.
+  const argv = a.args('test prompt', { reasoning: 'high', platform: 'win32' });
   assert.ok(argv.includes('exec'));
-  // danger-full-access default bypasses the sandbox (Windows 1326 fix) instead of
-  // `-s danger-full-access`, and disables codex's global orchestration.
-  assert.ok(argv.includes('--dangerously-bypass-approvals-and-sandbox'), 'danger-full-access bypasses the sandbox');
+  assert.ok(argv.includes('--dangerously-bypass-approvals-and-sandbox'), 'danger-full-access bypasses the sandbox on win32');
   assert.ok(!argv.includes('-s'), 'no -s when the sandbox is bypassed');
   assert.ok(argv.includes('--disable') && argv.includes('multi_agent'), 'disables multi-agent sub-spawns');
   assert.ok(argv.includes('-c'));
   assert.ok(argv.some((x) => x.includes('model_reasoning_effort="high"')));
   assert.ok(argv.includes('test prompt'));
 
-  // codex has no read-only scenario: its -s sandbox is broken on Windows (1326), so read-only
-  // also bypasses (full-access). The read-only INTENT rides in the prompt frame, not the OS sandbox.
-  const ro = a.args('test prompt', { sandbox: 'read-only' });
-  assert.ok(!ro.includes('-s'), 'codex emits no -s (always bypasses)');
-  assert.ok(ro.includes('--dangerously-bypass-approvals-and-sandbox'), 'codex read-only also bypasses');
+  // On Windows codex still has no read-only scenario: its -s sandbox is broken there
+  // (1326), so read-only also bypasses (full-access). The read-only INTENT rides in
+  // the prompt frame, not the OS sandbox — Windows only.
+  const ro = a.args('test prompt', { sandbox: 'read-only', platform: 'win32' });
+  assert.ok(!ro.includes('-s'), 'codex emits no -s on win32 (always bypasses there)');
+  assert.ok(ro.includes('--dangerously-bypass-approvals-and-sandbox'), 'codex read-only also bypasses on win32');
+});
+
+test('codex adapter args() builds expected invocation (macOS/Linux: honors the real `-s <mode>` sandbox — 2026-07-31)', () => {
+  const a = getAdapter('codex');
+  for (const platform of ['darwin', 'linux']) {
+    const argv = a.args('test prompt', { reasoning: 'high', platform });
+    assert.ok(argv.includes('exec'));
+    // No bypass flag by default on macOS/Linux — codex's own -s <mode> sandbox is
+    // verified working (manually verified 2026-07-31: -s read-only really denies a
+    // write). danger-full-access still gets full access, just via -s, not the
+    // bypass flag.
+    assert.ok(!argv.includes('--dangerously-bypass-approvals-and-sandbox'), `${platform}: must not bypass by default`);
+    assert.equal(argv[argv.indexOf('-s') + 1], 'danger-full-access', `${platform}: must honor -s danger-full-access`);
+    assert.ok(argv.includes('--disable') && argv.includes('multi_agent'), 'disables multi-agent sub-spawns');
+    assert.ok(argv.some((x) => x.includes('model_reasoning_effort="high"')));
+    assert.ok(argv.includes('test prompt'));
+
+    // The whole point of the fix: a read-only REQUEST now produces a REAL -s
+    // read-only, not a bypass.
+    const ro = a.args('test prompt', { sandbox: 'read-only', platform });
+    assert.ok(!ro.includes('--dangerously-bypass-approvals-and-sandbox'), `${platform}: read-only must not bypass`);
+    assert.equal(ro[ro.indexOf('-s') + 1], 'read-only', `${platform}: read-only must emit real -s read-only`);
+  }
 });
 
 test('kimi adapter args() uses Kimi Code 0.x headless form (no removed legacy flags)', () => {

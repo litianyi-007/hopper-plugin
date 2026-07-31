@@ -208,6 +208,41 @@ function writeSanitizedCodexConfig(src, dest) {
   } catch (_) { /* best-effort; leave whatever exists */ }
 }
 
+/**
+ * Whether codex should bypass its own sandbox harness
+ * (`--dangerously-bypass-approvals-and-sandbox`) instead of honoring the
+ * requested `-s <mode>` argv. Platform-split (2026-07-31 reversal of the
+ * 2026-06-25 "codex has NO read-only scenario" decision):
+ *
+ *   - **Windows**: codex's `-s` sandbox harness cannot spawn ANY child process
+ *     (`CreateProcessWithLogonW` fails with 1326 — ISSUE-codex-callchain-windows
+ *     / ISSUE-codex-windows-sandbox-1326), so bypass stays the DEFAULT there.
+ *     `HOPPER_CODEX_SANDBOX_BYPASS=0` is the escape hatch that turns bypass OFF
+ *     (falls through to a real, broken `-s` sandbox — for testing only).
+ *   - **macOS / Linux**: codex's own `-s <mode>` sandbox is VERIFIED WORKING —
+ *     manually verified 2026-07-31: `codex exec -s read-only ... "echo x >
+ *     f"` denies the write (`operation not permitted`, file never created),
+ *     while `--dangerously-bypass-approvals-and-sandbox` with the same command
+ *     creates the file. Honoring `-s <mode>` is now the DEFAULT there.
+ *     `HOPPER_CODEX_SANDBOX_BYPASS=1` is the escape hatch that turns bypass ON
+ *     (opts IN to the old always-full-access-no-OS-sandbox behavior).
+ *
+ * THE ESCAPE HATCH'S DEFAULT MEANING IS REVERSED BETWEEN THE TWO BRANCHES —
+ * same env var, opposite polarity. On Windows, `=0` DISABLES bypass (dangerous:
+ * re-enables the sandbox harness that cannot spawn children). On macOS/Linux,
+ * `=1` ENABLES bypass (drops back to no-OS-sandbox-at-all). Do not assume "=0
+ * always means off"; the meaning depends on which platform is running.
+ *
+ * @param {NodeJS.Platform} [platform] injectable for tests (defaults to the
+ *   real host platform; production callers never override this)
+ * @returns {boolean}
+ */
+export function codexSandboxBypassActive(platform = process.platform) {
+  return platform === 'win32'
+    ? process.env.HOPPER_CODEX_SANDBOX_BYPASS !== '0'
+    : process.env.HOPPER_CODEX_SANDBOX_BYPASS === '1';
+}
+
 /** @type {import('../types.js').VendorAdapter} */
 export const codexAdapter = {
   name: 'codex',
@@ -279,29 +314,28 @@ export const codexAdapter = {
 
   args(input, opts) {
     const sandbox = opts.sandbox ?? 'danger-full-access';
-    // codex has NO read-only scenario (2026-06 decision). Every `-s <mode>` (read-only /
-    // workspace-write / danger-full-access) runs codex's sandbox harness, whose
-    // CreateProcessWithLogonW fails (1326) on EVERY child process on Windows, so codex can
-    // run nothing (ISSUE-codex-callchain-windows / ISSUE-codex-windows-sandbox-1326). codex
-    // therefore ALWAYS runs full-access via --dangerously-bypass-approvals-and-sandbox (no
-    // OS sandbox at all — verified working); the read-only INTENT of a review/research
-    // dispatch is carried by the executor prompt frame, not the OS sandbox. The dispatch
-    // layer no longer auto-downgrades codex to read-only (see resolveAdapterOptsForTask).
-    // Escape hatch (POSIX, where the sandbox spawns children fine): HOPPER_CODEX_SANDBOX_BYPASS=0
-    // honors the requested `-s <mode>`.
-    const bypassSandbox = process.env.HOPPER_CODEX_SANDBOX_BYPASS !== '0';
+    // 2026-07-31 platform split (reverses the 2026-06-25 "codex has NO read-only
+    // scenario" decision) — see codexSandboxBypassActive() jsdoc for the full
+    // rationale + verified evidence. `opts.platform` is a test-only override
+    // (real dispatch always uses the host's actual process.platform).
+    const platform = opts.platform ?? process.platform;
+    const bypassSandbox = codexSandboxBypassActive(platform);
     const sandboxArgs = bypassSandbox
       ? ['--dangerously-bypass-approvals-and-sandbox']
       : ['-s', sandbox];
     // ISSUE-codex-bypass-flag-missing-from-argv (run #1 footgun): when the vendor
     // CWD is widened to a non-git root (HOPPER_VENDOR_CWD), `codex exec` aborts
     // early with "Not inside a trusted directory and --skip-git-repo-check was not
-    // specified" — codex never runs. In full-access bypass mode we are already
-    // running codex with no sandbox BY INTENT, so skip the git-repo trust gate
-    // too (`--skip-git-repo-check` is a documented `codex exec` flag). Kept on the
-    // bypass path only, so read-only / workspace-write dispatches still honor the
-    // trust gate. Escape hatch: HOPPER_CODEX_SKIP_GIT_CHECK=0 keeps codex default.
-    const skipGitArgs = bypassSandbox && process.env.HOPPER_CODEX_SKIP_GIT_CHECK !== '0'
+    // specified" — codex never runs. Manually verified 2026-07-31: this trust gate
+    // fires for a REAL `-s read-only` sandbox exactly the same way it fires for the
+    // full-access bypass path (same error, same non-git-dir trigger) — it is not
+    // specific to bypass mode. So `--skip-git-repo-check` now rides along on EVERY
+    // mode, not just the bypass path (`--skip-git-repo-check` is a documented
+    // `codex exec` flag; it only affects the trust gate, not sandbox enforcement —
+    // a real `-s read-only` invocation still denies writes with the flag present,
+    // verified in the same test). Escape hatch: HOPPER_CODEX_SKIP_GIT_CHECK=0 keeps
+    // codex's default trust-gate behavior on every mode.
+    const skipGitArgs = process.env.HOPPER_CODEX_SKIP_GIT_CHECK !== '0'
       ? ['--skip-git-repo-check']
       : [];
     return [

@@ -269,7 +269,12 @@ test('REAL codex adapter: cmd-shim routes the FULL prompt to STDIN (off argv, `-
   try {
     const multiline = 'line one of the brief\nline two — the real task\nline three';
     const res = resolvePromptDelivery({
-      adapter: codexAdapter, composedPrompt: multiline, opts: { sandbox: 'danger-full-access', cwd: 'F:/x' },
+      // platform: 'win32' — this scenario simulates the Windows cmd.exe shim
+      // (isWindows: true below); since 2026-07-31's platform split, codex only
+      // bypasses its sandbox by default on win32 (see codexSandboxBypassActive
+      // in cli/src/vendors/codex.js) — inject it so the bypass flag this test
+      // asserts on actually appears, matching the real Windows behavior.
+      adapter: codexAdapter, composedPrompt: multiline, opts: { sandbox: 'danger-full-access', cwd: 'F:/x', platform: 'win32' },
       resolvedCmd: 'cmd.exe', prependArgs: ['/c', 'codex.cmd'],
       handoffsDir: dir, taskId: 'T-CDX-STDIN', isWindows: true, env: {},
     });
@@ -289,7 +294,10 @@ test('REAL codex adapter: HOPPER_CODEX_STDIN=0 forces argv — small inline (pro
   const off = { HOPPER_CODEX_STDIN: '0' };
   try {
     const small = resolvePromptDelivery({
-      adapter: codexAdapter, composedPrompt: 'small task', opts: { sandbox: 'danger-full-access', cwd: root },
+      // platform: 'win32' — see the comment on the previous test: this is a
+      // simulated Windows cmd.exe scenario, and codex's sandbox-bypass default
+      // is platform-split since 2026-07-31.
+      adapter: codexAdapter, composedPrompt: 'small task', opts: { sandbox: 'danger-full-access', cwd: root, platform: 'win32' },
       resolvedCmd: 'cmd.exe', prependArgs: ['/c', 'codex.cmd'], handoffsDir, taskId: 'T-CDX-SM', isWindows: true, env: off,
     });
     assert.equal(small.inlined, true);
@@ -299,7 +307,7 @@ test('REAL codex adapter: HOPPER_CODEX_STDIN=0 forces argv — small inline (pro
 
     const huge = 'PROMPT '.repeat(2000); // ~14000 bytes >> cmd-shim budget
     const big = resolvePromptDelivery({
-      adapter: codexAdapter, composedPrompt: huge, opts: { sandbox: 'danger-full-access', cwd: root },
+      adapter: codexAdapter, composedPrompt: huge, opts: { sandbox: 'danger-full-access', cwd: root, platform: 'win32' },
       resolvedCmd: 'cmd.exe', prependArgs: ['/c', 'codex.cmd'], handoffsDir, taskId: 'T-CDX-BIG', isWindows: true, env: off,
     });
     assert.equal(big.inlined, false);

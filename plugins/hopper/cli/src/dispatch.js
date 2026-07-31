@@ -14,6 +14,7 @@ import { loadTaskFrame, composePrompt } from './tasks.js';
 import { parseAgentsFile, resolveVendor, assertVendorApproved } from './agents.js';
 import { resolveGovernance } from './governance.js';
 import { getAdapter } from './vendors/index.js';
+import { codexSandboxBypassActive } from './vendors/codex.js';
 import { normalizeModel } from './model-normalize.js';
 import { parseEffortPolicyCell, parseModelRuleCell, resolveVerifiedLatest, computeEffortClamp, MODEL_SENTINELS } from './policy.js';
 import { resolveCommandWithKnownPaths } from './path-resolve.js';
@@ -311,17 +312,19 @@ export function resolveAdapterOptsForTask(resolved, adapterOpts = {}) {
   //   2. read-only task TEXT (brief/spec says read-only / 只读)
   //   3. read-only-by-default TASK-TYPE (review / research — must not edit the repo)
   //   4. global HOPPER_DEFAULT_SANDBOX, else the product default (danger-full-access)
-  // codex has NO read-only scenario when its sandbox bypass is active (the default): the
-  // `-s` harness is broken on Windows (CreateProcessWithLogonW 1326 kills every child — see
-  // codex.js), so codex ALWAYS runs full-access and the read-only INTENT of review/research
-  // rides in the executor prompt frame, not the OS sandbox. Force the resolved sandbox to
-  // full-access so the displayed value matches what the adapter actually runs — this overrides
-  // even an explicit --sandbox, which codex cannot honor here (showing read-only while running
-  // full-access would be a lie). The HOPPER_CODEX_SANDBOX_BYPASS=0 escape hatch (POSIX, where
-  // -s spawns children fine) falls through to the normal precedence below, so an escape-hatch
-  // user still gets a working read-only downgrade for review/research.
+  // codex's sandbox-BYPASS is platform-split (2026-07-31; see codexSandboxBypassActive()
+  // in vendors/codex.js): on Windows the `-s` harness cannot spawn ANY child (1326), so
+  // bypass stays the default there and codex ALWAYS runs full-access regardless of the
+  // requested sandbox — force the resolved sandbox to full-access so the displayed value
+  // matches what the adapter actually runs (this overrides even an explicit --sandbox;
+  // showing read-only while actually running full-access would be a lie). On macOS/Linux
+  // codex's own `-s <mode>` sandbox is verified working, so bypass is OFF by default there
+  // and the normal precedence below applies (a read-only-default task-type genuinely gets
+  // `-s read-only`). `adapterOpts.platform` is a test-only override (real dispatch always
+  // reads the host's actual process.platform); production callers never set it.
+  const platformForCodex = adapterOpts.platform ?? process.platform;
   const codexAlwaysFullAccess = resolved?.vendor === 'codex'
-    && process.env.HOPPER_CODEX_SANDBOX_BYPASS !== '0';
+    && codexSandboxBypassActive(platformForCodex);
   if (codexAlwaysFullAccess) {
     out.sandbox = 'danger-full-access';
   } else if (!out.sandbox) {
