@@ -19,6 +19,59 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.39.0] - 2026-07-31
+
+### Fixed
+
+- **The host!=vendor isomorphism guard (`validateHostVendorSeparation`) was a
+  no-op for the Claude Code host, and even a fixed version of the same guard
+  would have stayed a no-op under pure string equality.** Two independent
+  defects, both real, both confirmed empirically:
+  1. `hostVendor` came ONLY from `process.env.HOPPER_HOST_VENDOR`, which is
+     set exclusively by the 5 Tier-C bash wrappers (`hosts/{codex-cli,
+     copilot-cli,grok-cli,cursor-cli,opencode}/bin/hopper-*`). `hosts/
+     claude-code/bin` does not exist — Claude Code's slash commands invoke
+     `hopper-dispatch` directly (see `commands/dispatch.md`) — so the env var
+     was NEVER set under Claude Code, and `validateHostVendorSeparation`'s own
+     `if (!hostVendor) return;` guard silently skipped the check for every
+     real dispatch from inside a Claude Code session.
+  2. The comparison itself was `hostVendor === resolvedVendor` — even had a
+     host identity been supplied for Claude Code, the natural value ('claude-
+     code') would never equal the vendor name ('claude'), so string equality
+     could not have caught the one case the guard exists for (a Claude Code
+     host dispatching back to the `claude` vendor, i.e. `claude -p` calling
+     itself through a different entry point).
+
+  Fixed with two additions: `cli/src/host-detect.js` self-detects the Claude
+  Code host from markers Claude Code itself sets (`CLAUDECODE`,
+  `CLAUDE_CODE_ENTRYPOINT`, `CLAUDE_CODE_SESSION_ID`) whenever
+  `HOPPER_HOST_VENDOR` is unset — deliberately NOT branching on any other
+  vendor's env vars, because a Codex Claude-Code-plugin was observed setting
+  `CODEX_COMPANION_SESSION_ID`/`CODEX_COMPANION_TRANSCRIPT_PATH` INSIDE a real
+  Claude Code session; a naive "sees a `CODEX_*` var → host is codex" rule
+  would have misidentified that session as the Codex CLI host. And
+  `cli/src/validation.js` now exports a `VENDOR_FAMILY` map (`claude`/
+  `claude-code` → `anthropic`, `codex` → `openai`, `grok` → `xai`, `kimi` →
+  `moonshot`) so `validateHostVendorSeparation` compares FAMILY, not raw
+  strings — bridging the `claude-code`/`claude` naming mismatch while still
+  allowing `claude` as a legal vendor for every OTHER host (a Codex/Grok/etc.
+  host dispatching to the `claude` vendor remains a legitimate heterogeneous
+  dispatch and is unaffected). `copilot`/`opencode`/`mimo`/`agy` are
+  deliberately left OUT of the family map — each is documented in its own
+  adapter file as multi-backend (spanning multiple model companies depending
+  on subscription/config), so guessing a single family for them would be
+  fabricated, not derived; see the map's own comment in `validation.js` for
+  the per-vendor citation trail. When a host identity has no family mapping
+  (including a host that self-detection could not confidently identify), the
+  guard no longer silently no-ops: it returns a `notice` that the isomorphism
+  check did not run, and `hopper-dispatch` prints it (never a silent skip).
+
+  `commands/dispatch.md` and `hosts/claude-code/README.md` previously claimed
+  "host≠vendor still enforced" / the guard "blocks... a Claude Code host
+  dispatching back to the claude vendor" — both now describe the actual
+  (fixed) behavior, including the family-based comparison and the
+  host-unrecognized upper bound. No vendor adapter argv changed.
+
 ## [0.38.0] - 2026-07-29
 
 ### Fixed

@@ -29,6 +29,7 @@ import {
   ALLOWED_DISPATCH_FLAGS,
   ALLOWED_DISPATCH_VALUE_FLAGS,
 } from '../src/validation.js';
+import { resolveHostIdentity } from '../src/host-detect.js';
 import {
   spawnDetached,
   listInProgressJobs,
@@ -57,7 +58,7 @@ import { resolve, join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
-const VERSION = '0.38.0';
+const VERSION = '0.39.0';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -143,7 +144,9 @@ function printUsage() {
   console.log('     HOPPER_VENDOR_CWD overrides the vendor working dir (default: repo root that owns .hopper/);');
   console.log('       widen to a monorepo/common-ancestor root so the vendor can reach external paths it must read');
   console.log('     HOPPER_DEBUG=1 prints composed prompt + raw subprocess result');
-  console.log('     HOPPER_HOST_VENDOR set by Tier B/C hosts; host and vendor must differ');
+  console.log('     HOPPER_HOST_VENDOR set by Tier C wrapper hosts (Tier B/Claude Code is self-detected instead);');
+  console.log('       host and vendor FAMILY must differ (see cli/src/validation.js VENDOR_FAMILY) — an');
+  console.log('       unrecognized host prints a "notice:" line and does not block (never silently skipped)');
 }
 
 function printSmoke() {
@@ -854,8 +857,13 @@ async function runDispatch(hopperDir, taskId, { write = false, force = false, ad
       console.error(`  notice: ${notice}`);
     }
 
-    const hostVendor = process.env.HOPPER_HOST_VENDOR;
-    validateHostVendorSeparation(hostVendor, resolved.vendor);
+    // hostVendor: an explicit HOPPER_HOST_VENDOR (set by every Tier-C wrapper) always
+    // wins; when unset, resolveHostIdentity() self-detects Claude Code (Tier B has no
+    // wrapper) via cli/src/host-detect.js. The comparison itself is family-based, not
+    // string equality — see VENDOR_FAMILY in validation.js for why.
+    const { id: hostVendor } = resolveHostIdentity();
+    const hostCheck = validateHostVendorSeparation(hostVendor, resolved.vendor);
+    if (hostCheck.notice) console.error(`  notice: ${hostCheck.notice}`);
     // Dispatch gate for a capability-disabled vendor (agy headless-output) is enforced at the
     // shared spawn chokepoint executeWithAdapter() below; nothing extra needed on the sync path.
 
@@ -1029,10 +1037,12 @@ async function runBackgroundDispatch(hopperDir, taskId, { adapterOpts = {}, vend
     try { warnIfModelUnknown(resolved.vendor, effectiveAdapterOpts.model); } catch (_) { /* never block */ }
   }
 
-  // Enforce host != vendor across all host adapters.
-  const hostVendor = process.env.HOPPER_HOST_VENDOR;
+  // Enforce host != vendor (family-based; explicit HOPPER_HOST_VENDOR > self-detection
+  // for Tier B/Claude Code — see cli/src/host-detect.js + VENDOR_FAMILY in validation.js).
+  const { id: hostVendor } = resolveHostIdentity();
   try {
-    validateHostVendorSeparation(hostVendor, resolved.vendor);
+    const hostCheck = validateHostVendorSeparation(hostVendor, resolved.vendor);
+    if (hostCheck.notice) console.error(`  notice: ${hostCheck.notice}`);
   } catch (err) {
     bail(`Error: ${err.message}`, 1);
   }

@@ -9,8 +9,12 @@
 // HOST != VENDOR. This VENDOR exists so a hopper running under a DIFFERENT host
 // (codex / opencode / grok / Cursor / standalone CLI) can dispatch a task TO
 // `claude -p`. The host!=vendor guard (validation.validateHostVendorSeparation)
-// already blocks the one nonsensical case: a Claude-Code host dispatching back
-// to a claude vendor (self-dispatch).
+// blocks the one nonsensical case: a Claude-Code host dispatching back to the
+// claude vendor (self-dispatch). NOTE (2026-07-31 fix): until this fix, that
+// guard was pure string equality AND Claude Code (Tier B) has no wrapper to set
+// HOPPER_HOST_VENDOR, so it silently never ran here — see cli/src/host-detect.js
+// (self-detects the Claude Code host) and VENDOR_FAMILY in cli/src/validation.js
+// (family-based comparison, since host id 'claude-code' != vendor name 'claude').
 //
 // BILLING NOTE (volatile — do NOT trust this comment as current). How `claude -p`
 // / Agent SDK usage bills against a Claude Pro/Max subscription churned through

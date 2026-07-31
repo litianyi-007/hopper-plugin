@@ -257,23 +257,105 @@ export function validateSandbox(sandbox) {
 }
 
 /**
+ * Vendor/host FAMILY map for the host!=vendor isomorphism guard. Two identities
+ * in the SAME family are the same underlying product/company self-dispatching
+ * through a different invocation surface — e.g. a Claude Code session (host
+ * identity 'claude-code', see cli/src/host-detect.js) calling out to the
+ * `claude` vendor adapter (`claude -p`) is literally Anthropic's own Claude
+ * Code CLI talking to itself, just via a different entry point.
+ *
+ * Comparison is by family, NOT raw string equality, because the host identity
+ * and the vendor name are not always the same string (host 'claude-code' vs
+ * vendor 'claude' — there is no Tier-C wrapper that could ever set
+ * HOPPER_HOST_VENDOR=claude-code, so a plain `===` check would never catch
+ * this pair). For the 5 existing Tier-C wrappers, HOPPER_HOST_VENDOR already
+ * equals the vendor's own name (codex, grok, copilot, opencode, cursor), so
+ * this map's entries double as both the "host" and "vendor" side lookup key
+ * for those.
+ *
+ * Basis for each mapped entry (checked against cli/src/vendors/*.js headers +
+ * behavior 2026-07-31, not guessed):
+ * - claude / claude-code -> anthropic: cli/src/vendors/claude.js — "Anthropic's
+ *   first-party agentic coding CLI 'Claude Code'". 'claude-code' is the host
+ *   identity produced by host-detect.js's self-detection (no wrapper sets it).
+ * - codex -> openai: cli/src/vendors/codex.js — wraps `codex exec`, OpenAI's
+ *   own Codex CLI; hosts/codex-cli's wrapper dispatches through the SAME CLI.
+ * - grok -> xai: cli/src/vendors/grok.js header — "xAI's official first-party
+ *   agentic coding CLI 'Grok Build'".
+ * - kimi -> moonshot: cli/src/vendors/kimi.js header (Kimi Code CLI, Moonshot
+ *   AI's own product); hosts/claude-code's auth table lists MOONSHOT_API_KEY.
+ *
+ * Deliberately NOT mapped (do not guess a family for these — checked and found
+ * genuinely multi-backend, per 2026-07-31 audit):
+ * - copilot: cli/src/vendors/copilot.js capabilities.modelArg.knownGood spans
+ *   claude-family, gpt-family, AND gemini-family model names depending on the
+ *   user's GitHub Copilot subscription tier — Copilot is a multi-backend
+ *   router, not one model company. An unmapped name never matches any family,
+ *   so copilot-cli host +
+ *   copilot vendor (the one case that IS the same product self-dispatching)
+ *   is NOT currently blocked by this guard — a known gap, out of scope here
+ *   (only `claude` was in scope for this pass).
+ * - opencode / mimo: both adapters document themselves as provider-agnostic
+ *   routers — opencode.js: "actual catalog depends on the user's opencode auth
+ *   configuration... NOT on this adapter"; mimo.js: "MiMoCode fork" accepting
+ *   arbitrary `--model <provider/model>` pairs. No single family applies.
+ * - agy: cli/src/vendors/agy.js capabilities.modelArg.knownGood is all
+ *   Gemini-labeled (suggesting Google), but the same comment notes Claude/
+ *   GPT-OSS labels also appear in the picker (plan-gated) — i.e. agy is ALSO
+ *   multi-backend, just Gemini-default. Left unmapped rather than guessed.
+ * - cursor: hosts/cursor-cli sets HOPPER_HOST_VENDOR=cursor, but there is no
+ *   registered `cursor` vendor adapter at all (cli/src/vendors/index.js) —
+ *   nothing to map on the vendor side, so this host can never self-match.
+ */
+export const VENDOR_FAMILY = Object.freeze({
+  claude: 'anthropic',
+  'claude-code': 'anthropic',
+  codex: 'openai',
+  grok: 'xai',
+  kimi: 'moonshot',
+});
+
+/**
  * Enforce the product rule that a host must not dispatch back into the same
- * vendor identity. Hosts are allowed to omit hostVendor (standalone path).
+ * vendor identity/family.
+ *
+ * hostVendor may be omitted entirely (`undefined`/empty) by a caller that has
+ * no signal at all — that legacy standalone path stays fully silent (returns
+ * `{ enforced: false }`) for backward compatibility. But once a caller HAS a
+ * hostVendor value (whether from the explicit HOPPER_HOST_VENDOR env, set by
+ * every Tier-C wrapper, or from host-detect.js's self-detection, which always
+ * returns a concrete string — see HOST_UNKNOWN there), this function never
+ * silently no-ops again: if that value's family cannot be resolved (including
+ * the literal 'unknown' self-detection sentinel, or any future/unrecognized
+ * host string), it returns `{ enforced: false, notice }` where `notice`
+ * explicitly says the isomorphism check did not run — callers MUST surface
+ * this, not swallow it (this project treats silent skips as a defect class).
  *
  * @param {string | undefined} hostVendor
  * @param {string} resolvedVendor
+ * @returns {{ enforced: boolean, notice?: string }}
  */
 export function validateHostVendorSeparation(hostVendor, resolvedVendor) {
-  if (!hostVendor) return;
+  if (!hostVendor) return { enforced: false };
   if (typeof resolvedVendor !== 'string' || resolvedVendor.length === 0) {
     throw new Error(`resolved vendor must be non-empty string, got ${typeof resolvedVendor}`);
   }
-  if (hostVendor === resolvedVendor) {
+  const hostFamily = VENDOR_FAMILY[hostVendor];
+  if (!hostFamily) {
+    return {
+      enforced: false,
+      notice: `host '${hostVendor}' not recognized (no known vendor-family mapping) — ` +
+        `host != vendor isomorphism check NOT run for this dispatch.`,
+    };
+  }
+  const vendorFamily = VENDOR_FAMILY[resolvedVendor];
+  if (vendorFamily && hostFamily === vendorFamily) {
     throw new Error(
-      `Host '${hostVendor}' cannot dispatch to the same vendor '${resolvedVendor}'. ` +
+      `Host '${hostVendor}' cannot dispatch to the same vendor '${resolvedVendor}' (both are ${hostFamily}: host != vendor). ` +
       `hopper-plugin requires host != vendor. Choose a different vendor in .hopper/AGENTS.md or invoke from a different host.`
     );
   }
+  return { enforced: true };
 }
 
 /**
