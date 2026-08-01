@@ -1,13 +1,13 @@
 {
   "name": "hopper",
-  "version": "0.41.0",
+  "version": "0.41.1",
   "description": "Vendor-neutral background dispatch for AI agent tasks using the llm-hopper file protocol.",
   "author": {
-    "name": "surebeli (litianyi)",
-    "url": "https://github.com/surebeli"
+    "name": "litianyi-007 (litianyi)",
+    "url": "https://github.com/litianyi-007"
   },
-  "homepage": "https://github.com/surebeli/hopper-plugin",
-  "repository": "https://github.com/surebeli/hopper-plugin",
+  "homepage": "https://github.com/litianyi-007/hopper-plugin",
+  "repository": "https://github.com/litianyi-007/hopper-plugin",
   "license": "Apache-2.0",
   "keywords": [
     "llm",
@@ -24,14 +24,14 @@
     "displayName": "Hopper",
     "shortDescription": "Dispatch llm-hopper tasks from Codex and other AI CLI hosts.",
     "longDescription": "Hopper is a thin plugin layer over the file-based llm-hopper protocol. It keeps state in .hopper markdown and JSONL files, dispatches task-typed work to Codex, Kimi, OpenCode, Copilot, Agy, Grok, MiMo, and Claude vendor CLIs, and reports background progress through terminal events without adding a harness reaction core.",
-    "developerName": "surebeli (litianyi)",
+    "developerName": "litianyi-007 (litianyi)",
     "category": "Coding",
     "capabilities": [
       "Interactive",
       "Read",
       "Write"
     ],
-    "websiteURL": "https://github.com/surebeli/hopper-plugin",
+    "websiteURL": "https://github.com/litianyi-007/hopper-plugin",
     "privacyPolicyURL": "https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement",
     "termsOfServiceURL": "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service",
     "defaultPrompt": [

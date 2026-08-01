@@ -19,6 +19,30 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.41.1] - 2026-08-02
+
+### Changed — non-functional (GitHub username rename)
+
+- **GitHub owner handle renamed `surebeli` → `litianyi-007`** (account rename;
+  the old handle still redirects, so this is a text-only follow-up, not an
+  urgent fix). Updated every currently-effective reference to the new handle:
+  `package.json` (`author`, `homepage`, `repository.url`), `.claude-plugin/plugin.json`
+  (`description`, `author`), `.codex-plugin/plugin.json` (`author`, `homepage`,
+  `repository`, `interface.developerName`, `interface.websiteURL` — synced to
+  `plugins/hopper/.codex-plugin/plugin.json` via `npm run sync:plugin`),
+  `.claude-plugin/marketplace.json` (top-level `homepage`/`repository`/`owner.name`
+  and the `plugins[0]` entry's `author.name`/`homepage`/`repository` — `owner.email`
+  deliberately left untouched, it is not a GitHub-identity field), `plugins/hopper/kimi.plugin.json`
+  (`author`, `homepage`, `interface.developerName`, `interface.websiteURL`),
+  `LICENSE`, `README.md` badge, and the three host-adapter READMEs
+  (`hosts/{claude-code,codex-cli,opencode}/README.md`).
+- Historical references to the old handle inside already-published CHANGELOG
+  entries above and inside `docs/spikes/T-PLUGIN-00b-vendors.md` (a literal
+  email address in a completed spike log, not a GitHub handle) are left as-is
+  — they record what was true at the time.
+- Patch-only per this file's own versioning convention ("Versioning" above):
+  non-functional tweak, no user-observable behavior change.
+
 ## [0.41.0] - 2026-07-31
 
 ### Changed — BEHAVIOR CHANGE (codex read-only dispatch on macOS/Linux)

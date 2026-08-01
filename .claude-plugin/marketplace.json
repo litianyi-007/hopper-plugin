@@ -1,7 +1,7 @@
 {
   "name": "agent-hopper",
   "displayName": "Hopper",
-  "version": "0.41.0",
+  "version": "0.41.1",
   "description": "Vendor-neutral background dispatch for AI agent tasks using the llm-hopper file protocol.",
   "category": "Coding",
   "tags": [
@@ -18,8 +18,8 @@
     "vendor-neutral",
     "background-dispatch"
   ],
-  "homepage": "https://github.com/surebeli/hopper-plugin",
-  "repository": "https://github.com/surebeli/hopper-plugin",
+  "homepage": "https://github.com/litianyi-007/hopper-plugin",
+  "repository": "https://github.com/litianyi-007/hopper-plugin",
   "license": "Apache-2.0",
   "screenshots": [
     {
@@ -36,7 +36,7 @@
     }
   ],
   "owner": {
-    "name": "surebeli (litianyi)",
+    "name": "litianyi-007 (litianyi)",
     "email": "surebeli@gmail.com"
   },
   "plugins": [
@@ -45,7 +45,7 @@
       "displayName": "Hopper",
       "source": "./",
       "description": "Thin plugin layer over the llm-hopper file protocol. Dispatches task-typed work to vendor CLIs and reports progress through file-backed terminal events.",
-      "version": "0.41.0",
+      "version": "0.41.1",
       "category": "Coding",
       "tags": [
         "multi-vendor",
@@ -54,10 +54,10 @@
         "file-protocol"
       ],
       "author": {
-        "name": "surebeli (litianyi)"
+        "name": "litianyi-007 (litianyi)"
       },
-      "homepage": "https://github.com/surebeli/hopper-plugin",
-      "repository": "https://github.com/surebeli/hopper-plugin",
+      "homepage": "https://github.com/litianyi-007/hopper-plugin",
+      "repository": "https://github.com/litianyi-007/hopper-plugin",
       "license": "Apache-2.0",
       "keywords": [
         "llm",

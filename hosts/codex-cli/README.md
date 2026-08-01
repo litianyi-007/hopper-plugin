@@ -6,7 +6,7 @@ Anchor: `hosts/codex-cli/README.md::root`
 
 ## What this is
 
-The Codex CLI host adapter for [hopper-plugin](https://github.com/surebeli/hopper-plugin). Unlike Claude Code, Codex CLI does not have a slash-command plugin system — its integration with hopper-plugin is a **prompt wrapper** that uses codex's built-in shell tool to invoke `hopper-dispatch`.
+The Codex CLI host adapter for [hopper-plugin](https://github.com/litianyi-007/hopper-plugin). Unlike Claude Code, Codex CLI does not have a slash-command plugin system — its integration with hopper-plugin is a **prompt wrapper** that uses codex's built-in shell tool to invoke `hopper-dispatch`.
 
 This is **Tier C #1** of the cross-host architecture (Tier C #2 is `hosts/opencode/`).
 

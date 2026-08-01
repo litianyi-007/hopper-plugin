@@ -6,7 +6,7 @@ Anchor: `hosts/claude-code/README.md::root`
 
 ## What this is
 
-The Claude Code host adapter for [hopper-plugin](https://github.com/surebeli/hopper-plugin). Registers slash commands inside a Claude Code session that shell out to the host-agnostic `cli/bin/hopper-dispatch`.
+The Claude Code host adapter for [hopper-plugin](https://github.com/litianyi-007/hopper-plugin). Registers slash commands inside a Claude Code session that shell out to the host-agnostic `cli/bin/hopper-dispatch`.
 
 This is **Tier B** of the cross-host architecture:
 
@@ -76,7 +76,7 @@ After symlinking, **restart Claude Code** for the plugin to register.
 ### Option B — marketplace install
 
 ```
-/plugin marketplace add surebeli/hopper-plugin
+/plugin marketplace add litianyi-007/hopper-plugin
 /plugin install hopper@agent-hopper
 ```
 

@@ -6,7 +6,7 @@ Anchor: `hosts/opencode/README.md::root`
 
 ## What this is
 
-The OpenCode host adapter for [hopper-plugin](https://github.com/surebeli/hopper-plugin). OpenCode does not (as of v1.15.x) have a slash-command plugin system equivalent to Claude Code. Like the Codex CLI adapter, this is a **prompt wrapper** that uses OpenCode's `run` subcommand + built-in shell tool to invoke `hopper-dispatch`.
+The OpenCode host adapter for [hopper-plugin](https://github.com/litianyi-007/hopper-plugin). OpenCode does not (as of v1.15.x) have a slash-command plugin system equivalent to Claude Code. Like the Codex CLI adapter, this is a **prompt wrapper** that uses OpenCode's `run` subcommand + built-in shell tool to invoke `hopper-dispatch`.
 
 This is **Tier C #2** of the cross-host architecture (Tier C #1 is `hosts/codex-cli/`).
 

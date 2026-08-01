@@ -1,12 +1,12 @@
 {
   "name": "hopper",
-  "version": "0.41.0",
-  "description": "Thin plugin layer over the llm-hopper file-based protocol. Dispatches task-typed work to vendor CLI subprocesses (codex, kimi, opencode, copilot, agy, grok, mimo, claude). No harness reaction core; vendor CLIs bring their own runtime. State lives in plain markdown under .hopper/. See https://github.com/surebeli/hopper-plugin.",
+  "version": "0.41.1",
+  "description": "Thin plugin layer over the llm-hopper file-based protocol. Dispatches task-typed work to vendor CLI subprocesses (codex, kimi, opencode, copilot, agy, grok, mimo, claude). No harness reaction core; vendor CLIs bring their own runtime. State lives in plain markdown under .hopper/. See https://github.com/litianyi-007/hopper-plugin.",
   "author": {
-    "name": "surebeli (litianyi)",
-    "url": "https://github.com/surebeli"
+    "name": "litianyi-007 (litianyi)",
+    "url": "https://github.com/litianyi-007"
   },
-  "homepage": "https://github.com/surebeli/hopper-plugin",
+  "homepage": "https://github.com/litianyi-007/hopper-plugin",
   "license": "Apache-2.0",
   "keywords": ["llm", "multi-llm", "hopper", "protocol", "vendor-neutral"]
 }
