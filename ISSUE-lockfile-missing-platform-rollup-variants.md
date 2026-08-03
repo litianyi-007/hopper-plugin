@@ -1,6 +1,6 @@
 # ISSUE: `npm ci` is broken on every non-Windows machine (lockfile carries only win32 rollup binaries)
 
-- **Status**: open (worked around in CI, not fixed)
+- **Status**: RESOLVED 2026-08-03 — lockfile regenerated, `npm ci` restored in CI
 - **Found**: 2026-08-03, by the first CI run this repo has ever had (v0.43.0)
 - **Severity**: anyone cloning this repo and running `npm ci` on linux or macOS
   gets a broken install. Not CI-specific.
@@ -56,18 +56,38 @@ Confirmed on macOS with npm 10.9.8 / node 22.22.3.
 still records only the same two win32 entries; it does not add the host
 platform's variant, let alone all 26.
 
-## Current workaround
+## Workaround that did NOT work
 
-`.github/workflows/validate.yml` uses `npm install` instead of `npm ci`.
-This re-resolves optional deps per platform and works on all three runners.
-**Cost: CI is no longer strictly lockfile-pinned** — a transitive dependency can
-float within its semver range between runs.
+Switching CI to `npm install` was tried first and **failed**: ubuntu (both Node
+versions) and macOS/Node 22 still died with the same missing-module error. Only
+macOS/Node 24 passed, presumably because of the newer bundled npm. Recorded here
+because "npm install instead of npm ci" is the answer most search results give
+for npm/cli#4828, and for this repo it was not sufficient.
 
-## Fix directions (none chosen)
+## Resolution
 
-1. Regenerate `package-lock.json` such that all 26 optional variants are
-   recorded, and restore `npm ci`. Needs a reliable way to make npm record
-   non-host optional deps — the obvious `--package-lock-only` does not.
+Direction 1. `package-lock.json` was regenerated **with no `node_modules`
+present** — that detail is the whole fix. Regenerating while `node_modules`
+exists makes npm reproduce the installed tree, which on this macOS machine
+yielded **1** variant (worse than the 2 it started with). From a bare
+`package.json` it records **25**, including `rollup-linux-x64-gnu` and
+`rollup-darwin-arm64`.
+
+Verified locally: `npm ci` now installs `@rollup/rollup-darwin-arm64` where it
+previously installed nothing; unit 1132/1130 pass and integration 53/52 pass on
+the new tree. CI restored to `npm ci`.
+
+**Side effect, stated plainly:** regenerating from bare resolved 85 transitive
+packages to newer versions (mostly `@babel/*` patch bumps) and added 48 packages
+/ removed 1. Every one is inside a semver range `package.json` already declares,
+but this was a dependency refresh as well as a lockfile repair, not a pure
+metadata fix.
+
+## Fix directions considered (for the record)
+
+1. **(chosen)** Regenerate `package-lock.json` so all optional variants are
+   recorded, and restore `npm ci`. `--package-lock-only` works — but only from a
+   bare `package.json`, with `node_modules` absent.
 2. Declare the platform variants actually needed as explicit
    `optionalDependencies` in `package.json`. Keeps `npm ci`, but hardcodes a
    platform list that will rot — the failure mode this repo has been repeatedly
@@ -79,5 +99,7 @@ float within its semver range between runs.
 
 ## Not claimed
 
-This issue does not claim any of the three directions is correct, and the
-workaround is not a fix — `npm ci` remains broken on a fresh non-Windows clone.
+Verification was on macOS only at the time of writing; that `npm ci` now works on
+linux and windows follows from the lockfile carrying their variants, but the
+proof is the CI run, not this file. If a future lockfile regeneration is done
+with `node_modules` present, this defect returns silently — nothing guards it.

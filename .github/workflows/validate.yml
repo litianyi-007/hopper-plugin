@@ -26,21 +26,17 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      # `npm install`, NOT `npm ci` — deliberate, and a workaround for a real
-      # repo defect rather than a preference. package-lock.json was generated on
-      # a Windows machine, so of rollup 4.60.4's 26 optional platform binaries it
-      # records exactly two (`@rollup/rollup-win32-x64-{gnu,msvc}`). `npm ci`
-      # installs strictly from the lockfile, so on linux and macOS the required
-      # native binary is simply absent and anything loading vite/rollup dies with
-      # "Cannot find module @rollup/rollup-<platform>" (npm/cli#4828). That is not
-      # a CI artifact: `npm ci` is broken for anyone cloning this repo on a
-      # non-Windows machine, and the first CI run is what surfaced it.
-      # `npm install` re-resolves optional deps for the running platform.
-      # Cost: CI is no longer strictly lockfile-pinned. Tracked in
-      # ISSUE-lockfile-missing-platform-rollup-variants.md — restore `npm ci`
-      # once the lockfile carries every platform variant.
+      # `npm ci` is deliberate: it is the only install mode that actually proves
+      # the checked-in lockfile works. The first CI run this repo ever had failed
+      # here on every platform — the lockfile carried 2 of rollup's 26 optional
+      # platform binaries, both win32, so on linux/macOS the native binary was
+      # simply absent (npm/cli#4828). `npm install` was tried as a workaround and
+      # did NOT fix it; the lockfile was regenerated instead (25 variants) and
+      # `npm ci` restored. Do not downgrade this step to `npm install` to make a
+      # red run go green — that would hide exactly the class of defect this step
+      # exists to catch. See ISSUE-lockfile-missing-platform-rollup-variants.md.
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       # `npm test` runs `node --test tests/unit/*.test.js` (unquoted, defined
       # in package.json — out of scope to change here). Two reasons this
