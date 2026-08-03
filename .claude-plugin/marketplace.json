@@ -1,7 +1,7 @@
 {
   "name": "agent-hopper",
   "displayName": "Hopper",
-  "version": "0.45.2",
+  "version": "0.46.0",
   "description": "Vendor-neutral background dispatch for AI agent tasks using the llm-hopper file protocol.",
   "category": "Coding",
   "tags": [
@@ -20,7 +20,7 @@
   ],
   "homepage": "https://github.com/litianyi-007/hopper-plugin",
   "repository": "https://github.com/litianyi-007/hopper-plugin",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "screenshots": [
     {
       "path": "docs/assets/banner.png",
@@ -45,7 +45,7 @@
       "displayName": "Hopper",
       "source": "./",
       "description": "Thin plugin layer over the llm-hopper file protocol. Dispatches task-typed work to vendor CLIs and reports progress through file-backed terminal events.",
-      "version": "0.45.2",
+      "version": "0.46.0",
       "category": "Coding",
       "tags": [
         "multi-vendor",
@@ -58,7 +58,7 @@
       },
       "homepage": "https://github.com/litianyi-007/hopper-plugin",
       "repository": "https://github.com/litianyi-007/hopper-plugin",
-      "license": "Apache-2.0",
+      "license": "MIT",
       "keywords": [
         "llm",
         "multi-llm",

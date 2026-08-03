@@ -1,6 +1,6 @@
 {
   "name": "hopper-plugin",
-  "version": "0.45.2",
+  "version": "0.46.0",
   "description": "Reference implementation of llm-hopper protocol as a thin plugin layer. No harness reaction core; vendor CLIs bring their own runtime.",
   "type": "module",
   "bin": {
@@ -57,7 +57,7 @@
     "node": ">=22.18.0"
   },
   "author": "litianyi-007 (litianyi)",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "homepage": "https://github.com/litianyi-007/hopper-plugin",
   "repository": {
     "type": "git",

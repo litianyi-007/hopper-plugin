@@ -58,7 +58,7 @@ import { resolve, join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
-const VERSION = '0.45.2';
+const VERSION = '0.46.0';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

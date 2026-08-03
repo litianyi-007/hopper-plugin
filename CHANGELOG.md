@@ -19,6 +19,54 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.46.0] - 2026-08-03
+
+### Changed — license is now MIT, and the LICENSE file finally contains a license
+
+All three sibling plugins (harnessloop, hopper, kata) were unified on MIT. MIT
+asks the least of downstream: keep the notice, and that is all. Apache-2.0 also
+requires shipping a LICENSE copy, preserving NOTICE, and **stating your changes**
+— the last of which is the obligation people most often violate without noticing.
+
+**Stated plainly, because it is a real trade-off:** MIT carries no express patent
+grant and no patent-retaliation clause. For enterprise adopters Apache-2.0's
+patent grant is arguably the friendlier half. That protection was given up
+deliberately, not overlooked.
+
+**The change applies from this release onward. v0.45.2 and earlier remain under
+Apache-2.0 — that cannot be undone; do not read the whole history as MIT.**
+
+### Fixed — the LICENSE file was a stub, and had been since the beginning
+
+`LICENSE` was **19 lines**: the Apache *file-header* boilerplate (the block meant
+to go at the top of a source file) plus a "Full license text: <url>" line. The
+entire TERMS AND CONDITIONS body — sections 1 through 9 — was absent. Meanwhile
+`package.json`, five other manifests and three README badges all declared
+`Apache-2.0`. `gh repo view --json licenseInfo` returned **`Other`**: GitHub could
+not identify it. Anyone relying on this repo's license was reading a claim with
+no terms behind it.
+
+Nothing caught it because everything that existed — `version consistency`,
+`release metadata` — guards *declared fields*. Not one check ever opened the
+LICENSE file. **The declaration was verified; the fact was not.**
+
+### Added
+
+- `tests/unit/license-integrity.test.js`. Asserts `LICENSE` carries the
+  substantive MIT text (grant sentence, `without restriction`, the AS-IS
+  disclaimer) — existence and a title line both pass for a stub, which is exactly
+  how the stub survived. Then it walks every `*.json` in the repo, collecting
+  every `license` value at any nesting depth, and requires them all to equal
+  `package.json`'s — discovery-based, so a new manifest is covered without
+  touching a list. `package-lock.json` is deliberately narrowed to its own root
+  entry: dependencies' licenses are third-party facts, and six of them are still
+  Apache-2.0. Rewriting those would be fabricating provenance, not relicensing.
+
+  Destructive proof: restoring the old 19-line stub → red on both tests; flipping
+  one manifest to `Apache-2.0` → red, naming the file and path.
+
+npm test 1140 / 1138 pass / 0 fail / 2 skipped; integration 53 / 52 pass / 0 fail.
+
 ## [0.45.2] - 2026-08-03
 
 ### Fixed

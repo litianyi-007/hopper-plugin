@@ -4,8 +4,8 @@
 
 > Vendor-neutral background dispatch for AI agents
 
-![License](https://img.shields.io/badge/license-Apache--2.0-blue)
-![Version](https://img.shields.io/badge/version-0.45.2-3DDC97)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Version](https://img.shields.io/badge/version-0.46.0-3DDC97)
 ![Tests](https://img.shields.io/badge/tests-passing-3DDC97)
 ![Hosts](https://img.shields.io/badge/hosts-7-111827)
 
@@ -364,4 +364,4 @@ probe、清理陈旧任务,以及多 vendor 评审这些场景的完整用法。
 - v1.1(dashboard 集成 + 系统 toast + 文档):GA
 - v1.2(pipe+tee + stream-parser + 更多 provider):规划中
 
-许可:Apache-2.0。见 [LICENSE](LICENSE)。
+许可:MIT。见 [LICENSE](LICENSE)。
