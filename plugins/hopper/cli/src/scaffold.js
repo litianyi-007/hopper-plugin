@@ -16,7 +16,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { renderRulesMarkdown } from './rules.js';
-import { listAdapters } from './vendors/index.js';
+import { listAdapters, PRODUCT_SUPPORTED_VENDORS } from './vendors/index.js';
 
 /** Task-type frames the scaffold ships (one .hopper/tasks/<type>.md each). */
 export const SCAFFOLD_TASK_TYPES = Object.freeze([
@@ -149,6 +149,84 @@ export function scaffoldGovernance(hopperDir, { from = null, force = false } = {
   return { written };
 }
 
+// ─── Active Agent Instances table (derived from vendors/index.js) ─────────
+//
+// Row content (nickname/invocation/notes) is still hand-authored per vendor —
+// only the "not supported" annotation and table membership are DERIVED, from
+// PRODUCT_SUPPORTED_VENDORS and listAdapters() (single sources of truth in
+// cli/src/vendors/index.js). This is the fix for the 2026-07-31 bug where the
+// table was hand-maintained and silently omitted `claude` and `mimo`:
+// listAdapters() drives which rows exist (a newly-registered adapter can
+// never be silently missing again), and PRODUCT_SUPPORTED_VENDORS drives the
+// annotation (a product decision to add/drop a vendor re-labels this table
+// automatically instead of requiring a second hand-edit that can drift).
+// See tests/unit/scaffold-vendor-coverage.test.js for the discovery-based
+// guard that would catch a regression of either kind.
+const VENDOR_ROW_META = {
+  codex: {
+    invocation: '`codex exec`',
+    note: 'High-reasoning; spec + acceptance review',
+  },
+  kimi: {
+    invocation: '`kimi -p "<input>"`',
+    note: 'Cost-optimized bulk implementation',
+  },
+  opencode: {
+    invocation: '`opencode run "<input>" --model <provider/model>`',
+    note: 'Multi-provider.',
+  },
+  copilot: {
+    invocation: '`copilot -p "<input>"`',
+    note: 'GitHub-tied; premium quota meters per call.',
+  },
+  agy: {
+    invocation: '`agy -p "<input>"`',
+    note: 'Antigravity (Gemini); OAuth-only. ⚠️ **DISABLED by default** — agy 1.0.12 `--print` emits no capturable answer on a non-TTY stdout (TUI-only), so dispatch is blocked; override with `HOPPER_ENABLE_AGY=1`.',
+    // agy already carries a DISABLED-by-default note, so its not-supported
+    // clause reads "Also not supported" — preserve that exact wording.
+    notSupportedPhrase: 'Also not supported',
+  },
+  grok: {
+    invocation: '`grok -p "<input>" --permission-mode bypassPermissions --always-approve -m grok-4.5`',
+    note: 'xAI Grok Build (headless needs an explicit permission mode)',
+  },
+  mimo: {
+    invocation: '`mimo run "<input>"`',
+    note: 'Xiaomi MiMo.',
+  },
+  claude: {
+    invocation: '`claude -p "<input>"`',
+    note: 'Anthropic Claude Code headless. The `host != vendor` guard blocks a Claude Code host from dispatching back to itself — note it compares **vendor family**, not literal names (`claude-code` and `claude` are both `anthropic`), so this pair IS caught. Dispatch it FROM another host (codex / grok / etc.).',
+  },
+};
+
+/** Build one `## Active Agent Instances` table row for a registered adapter. */
+function buildAgentInstanceRow(name) {
+  const meta = VENDOR_ROW_META[name];
+  if (!meta) {
+    throw new Error(
+      `scaffold.js: adapter '${name}' is registered in vendors/index.js but has no ` +
+      'VENDOR_ROW_META entry in cli/src/scaffold.js — add one so it gets an AGENTS.md row.'
+    );
+  }
+  const supported = PRODUCT_SUPPORTED_VENDORS.includes(name);
+  const note = supported
+    ? meta.note
+    : `${meta.note} **${meta.notSupportedPhrase || 'Not supported'} (2026-07-31 product decision)** — ` +
+      'see `## Approved Vendors` below for the actual execution gate.';
+  return `| \`${name}\` | \`-\` | ${name} | ${meta.invocation} | ${note} |`;
+}
+
+/** Render the full `## Active Agent Instances` table body — one row per registered adapter, in listAdapters() order. */
+function buildAgentInstancesTable() {
+  return listAdapters().map(buildAgentInstanceRow).join('\n');
+}
+
+/** e.g. `` `codex` / `grok` / `claude` / `kimi` `` — for the table's lead-in paragraph. */
+function renderProductSupportedList() {
+  return PRODUCT_SUPPORTED_VENDORS.map((v) => `\`${v}\``).join(' / ');
+}
+
 // ─── Templates ────────────────────────────────────────────────────────────
 
 const QUEUE_MD = `# Hopper Queue
@@ -193,14 +271,18 @@ table refuses every vendor, including an explicit \`--vendor\` override.
 
 ## Active Agent Instances
 
+This table only inventories which vendor CLIs the plugin knows how to invoke — it
+is NOT the approval gate. A row appearing here (even without a "not supported"
+note) does **not** authorize dispatch to it; only the \`## Approved Vendors\` table
+below decides what THIS project may actually dispatch to, fail-closed. Rows
+annotated **not supported (2026-07-31 product decision)** name vendors the hopper
+product line no longer actively supports going forward (docs/positioning only —
+their adapters are not removed, nothing here or in code blocks dispatching to
+them); the current product-supported set is ${renderProductSupportedList()}.
+
 | Nickname | UUID | Vendor | Default invocation | Notes |
 |----------|------|--------|--------------------|-------|
-| \`codex\` | \`-\` | codex | \`codex exec\` | High-reasoning; spec + acceptance review |
-| \`kimi\` | \`-\` | kimi | \`kimi -p "<input>"\` | Cost-optimized bulk implementation |
-| \`opencode\` | \`-\` | opencode | \`opencode run "<input>" --model <provider/model>\` | Multi-provider |
-| \`copilot\` | \`-\` | copilot | \`copilot -p "<input>"\` | GitHub-tied; premium quota meters per call |
-| \`agy\` | \`-\` | agy | \`agy -p "<input>"\` | Antigravity (Gemini); OAuth-only. ⚠️ **DISABLED by default** — agy 1.0.12 \`--print\` emits no capturable answer on a non-TTY stdout (TUI-only), so dispatch is blocked; override with \`HOPPER_ENABLE_AGY=1\`. |
-| \`grok\` | \`-\` | grok | \`grok -p "<input>" --permission-mode bypassPermissions --always-approve -m grok-4.5\` | xAI Grok Build (headless needs an explicit permission mode) |
+${buildAgentInstancesTable()}
 
 ---
 

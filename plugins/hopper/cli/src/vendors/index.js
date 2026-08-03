@@ -58,6 +58,25 @@ export function listAdapters() {
 }
 
 /**
+ * Product-supported vendor set (2026-07-31 product decision). This is a
+ * SUBSET of REGISTRY — every registered adapter above still ships, is still
+ * dispatchable in code, and still appears in `--vendors` / scaffolded docs;
+ * this constant only says which ones the hopper product line actively
+ * supports going forward for docs/positioning purposes (e.g. which rows
+ * scaffold.js's generated `.hopper/AGENTS.md` "Active Agent Instances" table
+ * annotates "not supported"). It is NOT the dispatch-time enforcement gate —
+ * that is still each project's own `.hopper/AGENTS.md` "## Approved Vendors"
+ * table (fail-closed: unlisted or Approved=no is refused regardless of this
+ * constant). This is the single source of truth other modules must read
+ * instead of hand-copying the vendor list — a hand-copied list is exactly
+ * what let `claude` and `mimo` silently fall off the scaffolded table before
+ * this constant existed.
+ *
+ * @type {readonly string[]}
+ */
+export const PRODUCT_SUPPORTED_VENDORS = Object.freeze(['codex', 'grok', 'claude', 'kimi']);
+
+/**
  * Phase 6a: install-check helper. Runs in-process binary + auth checks
  * for one adapter. NO subprocess spawn (no vendor introspection).
  *

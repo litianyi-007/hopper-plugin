@@ -193,7 +193,26 @@ function scanTargets() {
   const commandFiles = readdirSync(commandsDir)
     .filter((f) => f.endsWith('.md') && !SETUP_DOC_EXCLUSIONS.has(f))
     .map((f) => join('commands', f));
-  return [...commandFiles, 'README.md'];
+  // DISCOVERY, not a hand-enumerated 'README.md': glob every README*.md at the
+  // repo root so a newly-added translation (README.en.md, README.ja.md, a future
+  // README.ko.md, ...) is automatically brought into scan range without a second
+  // hand-edit here landing this file back in the exact "checklist rots, guard
+  // doesn't" trap this project keeps re-discovering (sister project harnessloop
+  // made the identical doc_paths -> glob fix for the same reason). Sorted for a
+  // deterministic scan order.
+  //
+  // HONEST LIMITATION (do not upgrade this comment to "all READMEs are covered"):
+  // the DENYLIST below is a set of ENGLISH regexes. Globbing README*.md in gives
+  // README.en.md genuine coverage (English prose, patterns can actually match),
+  // but README.ja.md is effectively NOT covered by this guard — a Japanese-worded
+  // restatement of the same false claim will NOT match an English regex; only
+  // incidentally-English fragments (code blocks, flag names) inside it could ever
+  // trip a pattern. A green run here for README.ja.md means "no English denylist
+  // phrase happens to appear", not "the Japanese prose was checked for honesty."
+  const readmeFiles = readdirSync(REPO)
+    .filter((f) => /^README.*\.md$/.test(f))
+    .sort();
+  return [...commandFiles, ...readmeFiles];
 }
 
 const DENYLIST = [
@@ -215,7 +234,7 @@ const DENYLIST = [
   },
 ];
 
-test('commands/*.md (excl. setup.md) + README.md: no known-bad unconditional read-only-enforcement phrasing', () => {
+test('commands/*.md (excl. setup.md) + README*.md: no known-bad unconditional read-only-enforcement phrasing', () => {
   for (const relPath of scanTargets()) {
     const text = readFileSync(join(REPO, relPath), 'utf-8');
     for (const { pattern, why } of DENYLIST) {

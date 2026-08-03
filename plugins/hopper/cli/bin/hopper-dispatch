@@ -58,7 +58,7 @@ import { resolve, join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
-const VERSION = '0.41.1';
+const VERSION = '0.42.0';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -113,6 +113,7 @@ function printUsage() {
   console.log('  hopper-dispatch --adhoc --task-type <t> --brief "<text>" [--vendor <v>] [--id <id>] [--background]   One-off dispatch (no queue.md row); brief IS the spec');
   console.log('  hopper-dispatch --swarm --task-type <t> --brief "<text>" --vendors <v1,v2,v3>   Fan a qualitative (read-only) task out to N vendors (panel)');
   console.log('  hopper-dispatch --init-tasks [--force]          Scaffold a .hopper/ workspace in the current directory');
+  console.log('                                                   (dispatch then also requires .hopper/AGENTS.md\'s "## Approved Vendors" table — upgrading an older project? see MIGRATION.md)');
   console.log('  hopper-dispatch --init-governance [--from <core>] [--force]  Seed .hopper/GOVERNANCE.md (opt-in prompt overlay)');
   console.log('  hopper-dispatch --status                        Show queue summary');
   console.log('  hopper-dispatch --smoke                         Standalone CLI smoke test');
@@ -138,7 +139,9 @@ function printUsage() {
   console.log('                       Default: danger-full-access; auto read-only for review/research task-types or read-only task text; global override HOPPER_DEFAULT_SANDBOX');
   console.log('  --subject-root <path> On macOS, deny vendor process file writes to this existing absolute project tree. Requires the effective sandbox to be read-only; reads, network/IPC, and writes outside the tree remain possible.');
   console.log('  --web-search         Enable vendor web search (codex: --search live). Auto-on for prd-research / market-research task-types.');
-  console.log('  --vendor <name>      Override the routed vendor (must be a registered adapter; host != vendor still enforced)');
+  console.log('  --vendor <name>      Override the routed vendor (must be a registered adapter; host/vendor VENDOR_FAMILY separation still enforced).');
+  console.log('                       Applies to a real dispatch (sync/--background/--adhoc/--swarm) — NOT to --resolve, which always shows AGENTS.md/queue.md routing');
+  console.log('                       (see ISSUE-resolve-ignores-vendor-override.md).');
   console.log('');
   console.log('Env: HOPPER_DIR overrides .hopper/ location');
   console.log('     HOPPER_VENDOR_CWD overrides the vendor working dir (default: repo root that owns .hopper/);');

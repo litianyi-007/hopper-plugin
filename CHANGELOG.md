@@ -19,6 +19,118 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.42.0] - 2026-08-03
+
+### Added
+
+- **`MIGRATION.md`** (new, repo root) — a version-ordered (newest-first) guide for
+  projects that already have a `.hopper/` workspace: what changed / whether an
+  existing project breaks / what to do, covering v0.38.0 through v0.41.1. Written
+  because v0.40.0's Approved Vendors gate had already silently broken this very
+  repo's own dogfood `.hopper/AGENTS.md` — for three days, and only that short
+  because an audit happened to look; nothing surfaces the breakage on its own —
+  see that entry for the full account. Explicitly does not restate v0.38.0's
+  documentation fix as a capability change (that file's own prior mistake pattern).
+- **`ISSUE-resolve-ignores-vendor-override.md`** (new) — records a confirmed code
+  defect found while writing this batch: `--resolve <task-id> --vendor <v>` never
+  reads `--vendor` (the branch at `cli/bin/hopper-dispatch`'s `--resolve` handler
+  calls `runResolve(hopperDir, taskId)` with no vendor param, unlike `--adhoc`/sync
+  dispatch/`--background`, which all thread `--vendor` through as `vendorOverride`).
+  `--resolve` always prints the unmodified AGENTS.md/queue.md routing result, with
+  no notice that the override was ignored. Deliberately NOT fixed in this release
+  (this batch already changes generated-artifact + skill behavior; scope is capped
+  here) — `--help` and `skills/hopper-dispatch/SKILL.md` now say so honestly instead.
+
+### Changed — BEHAVIOR CHANGE (scaffold + first-run/upgrade guidance)
+
+- **`hopper-dispatch --init-tasks`'s generated `.hopper/AGENTS.md`** — the
+  `## Active Agent Instances` table (`cli/src/scaffold.js`) now includes `claude`
+  and `mimo` rows (both are registered adapters that were simply missing from the
+  table before) and annotates `opencode` / `copilot` / `agy` / `mimo` as
+  **not supported (2026-07-31 product decision)** — the current product-supported
+  set is `codex` / `grok` / `claude` / `kimi`. No adapter files removed, nothing
+  hardcoded to block dispatch to the unsupported four (that stays purely a docs/
+  positioning note) — a new paragraph above the table says explicitly that this
+  table only inventories known CLIs, and that `## Approved Vendors` (below it) is
+  the sole real execution gate. `agy`'s pre-existing technical
+  `HOPPER_ENABLE_AGY=1` disablement note is preserved verbatim, unchanged.
+- **`skills/hopper/SKILL.md`** (catch-all skill) gains a new `## First Run And
+  After An Upgrade` section, read before `## Locate The Target`: (1) no `.hopper/`
+  found → run `hopper-dispatch --init-tasks` first, not "ask the user for a path"
+  (that's now the fallback for a project living somewhere `--init-tasks` shouldn't
+  run from cwd); (2) `.hopper/` exists but `AGENTS.md` has no `## Approved Vendors`
+  section → this is a pre-v0.40.0 project, dispatch is fail-closed-refused, point
+  at `MIGRATION.md`, and — since Safety Rules already forbids editing AGENTS.md
+  without the user asking — explicitly tell the agent to ask the user which
+  vendors to approve rather than getting stuck on that constraint; (3) clarify
+  `--setup`/`--doctor` (what's installed/authed on this machine) vs. `##
+  Approved Vendors` (what this project allows) are two separate gates that both
+  must pass.
+- **`cli/bin/hopper-dispatch --help`** — the `--init-tasks` line now notes that
+  dispatch also requires `.hopper/AGENTS.md`'s `## Approved Vendors` table, with
+  a pointer to `MIGRATION.md` for upgraded projects. The `--vendor` line's
+  outdated `host != vendor still enforced` wording (a literal reading implies
+  string equality, which v0.39.0 replaced with `VENDOR_FAMILY`-based comparison)
+  is corrected, and now states plainly that the override does not apply to
+  `--resolve` (see the new issue file above).
+
+### Fixed — documentation accuracy (`skills/hopper-dispatch/SKILL.md`)
+
+- **`--check <task-id>` was documented as an alternative dry-routing-check to
+  `--resolve <task-id>`; it is not.** `--check [<vendor>]` shows a vendor CLI's
+  install/auth status (all vendors if omitted) — it has nothing to do with task
+  routing, and passing a task-id to it fails with `unknown vendor '<task-id>'`.
+  The flag-whitelist list and the "dry routing check" step now describe `--check`
+  correctly and reserve the dry-run framing for `--resolve <task-id>` alone.
+
+### Fixed
+
+- `tests/unit/vendored-plugin-sync.test.js`'s hardcoded release-metadata version
+  literal rolled from `0.41.1` to `0.42.0` alongside this release (per this
+  file's own convention: the test hardcodes the CURRENT release and must roll
+  every time, not just when its own assertions change).
+
+### Added — teeth (so this batch's fixes cannot silently drift back)
+
+- **`PRODUCT_SUPPORTED_VENDORS`** (`cli/src/vendors/index.js`) — the 2026-07-31
+  product-supported set (`codex` / `grok` / `claude` / `kimi`) previously lived
+  ONLY in prose. `cli/src/scaffold.js` now derives both the row set (from
+  `listAdapters()`) and the "not supported" annotations from it, instead of
+  hand-listing them. Generated `AGENTS.md` output is byte-identical to the
+  hand-fixed version; only the source of truth moved.
+- **`tests/unit/scaffold-vendor-coverage.test.js`** (new, 4 assertions, all
+  discovery-driven — no hardcoded vendor names): every registered adapter has a
+  row; every non-supported adapter is annotated; no supported adapter is
+  mislabeled; every name in the constant is a real adapter id. The first
+  assertion is the one that would have caught this release's original bug
+  (`claude` and `mimo` missing from the table entirely).
+  **Known limit:** these prove *scaffold output matches the constant*, not that
+  the constant matches the product decision. Editing the constant to a different
+  but valid set keeps everything green.
+- **`tests/unit/vendor-security-claims.test.js`** — `scanTargets()` no longer
+  hardcodes `'README.md'`; it globs `README*.md` at the repo root, so new language
+  versions are in scan range automatically. **Known limit:** the DENYLIST entries
+  are English regexes, so `README.en.md` gets real coverage while `README.ja.md`
+  effectively does not — a Japanese-worded restatement of the same false claim
+  would not be caught.
+
+### Added — documentation
+
+- **`README.en.md`** / **`README.ja.md`** (new); `README.md` is now Chinese and is
+  the authoritative version, restructured product-first: the supported-vendor set
+  and the two-layer vendor control (machine scan vs. project `Approved Vendors`,
+  fail-closed) are stated up front instead of 58 lines in, a first-run walkthrough
+  (`--setup` → `--init-tasks` → fill Approved Vendors → dispatch) replaces the gap
+  where `--init-tasks` was never mentioned at all, and a "what it cannot do"
+  section states the sandbox reality (read-only is a request; grok is always
+  `bypassPermissions`; codex is platform-split) rather than leaving it implied.
+  Corrected two badges that had gone stale unnoticed across multiple releases:
+  hosts 4 → 7 (unchanged since the repo was created, while three host dirs were
+  added) and the test count.
+  The architecture description's `host != vendor` phrasing is now stated as
+  family comparison — read literally it implies the guard is a no-op for exactly
+  the pair it exists to catch.
+
 ## [0.41.1] - 2026-08-02
 
 ### Changed — non-functional (GitHub username rename)

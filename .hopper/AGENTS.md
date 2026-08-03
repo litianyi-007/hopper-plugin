@@ -6,6 +6,26 @@ Direction: dev (TypeScript/Node CLI + Claude Code plugin + 5 vendor adapters)
 
 ---
 
+## Approved Vendors
+
+<!-- 本项目允许派发的 vendor。未列或 Approved=no 的一律拒绝，--vendor 覆盖也不例外。 -->
+
+| Vendor | Approved | Approved by | Date | Scope / Notes |
+|---|---|---|---|---|
+| `codex` | yes | user | 2026-08-03 | 对抗/验收评审。与 test-harnessloop 的 vendor 角色一致。 |
+| `grok` | yes | user | 2026-08-03 | 对抗/验收评审 + 研究。同上。 |
+
+**为什么这一节在 2026-08-03 才补上。** v0.40.0（2026-07-31）把 `.hopper/AGENTS.md`
+从路由表升级为 **fail-closed 白名单**：缺这一节 ⇒ 拒绝一切 dispatch，`--vendor` 覆盖也拒。
+本文件生成于 2026-05-20，**早于该变更**，于是 hopper 自己的 dogfood 项目从 v0.40.0 起
+一直派不出任何任务（`E_APPROVED_VENDORS_SECTION_MISSING`），直到本次审计实跑才发现。
+这正是 `MIGRATION.md` 要覆盖的场景——**每一个 v0.40.0 之前建的项目都有同样的问题**。
+
+下面 `## Active Agent Instances` 里仍登记着 `kimi` / `opencode` / `copilot` / `agy`，
+是历史记录，**不代表批准**——本表才是执行点，那几家现在会被拒。
+
+---
+
 ## Schema change (v2.0, 2026-05-20)
 
 Previous schema bound `nickname → role → model`. v2.0 binds **`nickname → vendor` + optional `task-vendor-preference`**. The role layer is removed because v2.0 spec §3 #5 makes dispatch task-type-driven instead of role-driven. See `llm-hopper/.hopper/USAGE-GUIDE.md` §3.4 for the principle.
