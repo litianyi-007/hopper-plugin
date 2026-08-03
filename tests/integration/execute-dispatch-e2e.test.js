@@ -82,6 +82,18 @@ function makeKimiPublicFixture() {
     '|---|---|',
     '| `code-impl` | builder |',
     '',
+    // v0.40.0 made this section a fail-closed gate: without it, EVERY dispatch is
+    // refused with E_APPROVED_VENDORS_SECTION_MISSING. This fixture predates that
+    // release and was not migrated with it, so these tests sat red from 2026-07-31
+    // until 2026-08-03 — unnoticed because `npm test` only globs tests/unit/, so
+    // nothing ever ran them. (The same release broke this repo's own dogfood
+    // .hopper/AGENTS.md for the same reason: nothing exercised it either.)
+    '## Approved Vendors',
+    '',
+    '| Vendor | Approved | Approved by | Date | Scope / Notes |',
+    '|---|---|---|---|---|',
+    '| `kimi` | yes | fixture | 2026-08-03 | the only vendor this fixture dispatches to |',
+    '',
   ].join('\n'));
   writeFileSync(fakeScript, [
     "const fs = require('node:fs');",

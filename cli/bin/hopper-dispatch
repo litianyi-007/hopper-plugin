@@ -58,7 +58,7 @@ import { resolve, join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
-const VERSION = '0.42.0';
+const VERSION = '0.43.0';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -109,7 +109,8 @@ function printUsage() {
   console.log('                                                  Never touches pending/in-progress or live-runner tasks. --result falls');
   console.log('                                                  back to the archive. --dry-run previews. Recommended: --older-than 7.');
   console.log('  hopper-dispatch --stop <task-id>                Stop a running background job (kill tree; status=cancelled)');
-  console.log('  hopper-dispatch --resolve <id>                  Resolve dispatch without spawning');
+  console.log('  hopper-dispatch --resolve <id> [--vendor <v>]   Resolve dispatch without spawning; --vendor previews an override (applies the same');
+  console.log('                                                  Approved Vendors + host/vendor-family checks a real dispatch would)');
   console.log('  hopper-dispatch --adhoc --task-type <t> --brief "<text>" [--vendor <v>] [--id <id>] [--background]   One-off dispatch (no queue.md row); brief IS the spec');
   console.log('  hopper-dispatch --swarm --task-type <t> --brief "<text>" --vendors <v1,v2,v3>   Fan a qualitative (read-only) task out to N vendors (panel)');
   console.log('  hopper-dispatch --init-tasks [--force]          Scaffold a .hopper/ workspace in the current directory');
@@ -139,9 +140,8 @@ function printUsage() {
   console.log('                       Default: danger-full-access; auto read-only for review/research task-types or read-only task text; global override HOPPER_DEFAULT_SANDBOX');
   console.log('  --subject-root <path> On macOS, deny vendor process file writes to this existing absolute project tree. Requires the effective sandbox to be read-only; reads, network/IPC, and writes outside the tree remain possible.');
   console.log('  --web-search         Enable vendor web search (codex: --search live). Auto-on for prd-research / market-research task-types.');
-  console.log('  --vendor <name>      Override the routed vendor (must be a registered adapter; host/vendor VENDOR_FAMILY separation still enforced).');
-  console.log('                       Applies to a real dispatch (sync/--background/--adhoc/--swarm) — NOT to --resolve, which always shows AGENTS.md/queue.md routing');
-  console.log('                       (see ISSUE-resolve-ignores-vendor-override.md).');
+  console.log('  --vendor <name>      Override the routed vendor (must be a registered adapter; Approved Vendors + host/vendor VENDOR_FAMILY separation still enforced).');
+  console.log('                       Applies to a real dispatch (sync/--background/--adhoc/--swarm) AND to --resolve, which previews the override under the same checks.');
   console.log('');
   console.log('Env: HOPPER_DIR overrides .hopper/ location');
   console.log('     HOPPER_VENDOR_CWD overrides the vendor working dir (default: repo root that owns .hopper/);');
@@ -578,7 +578,31 @@ async function main() {
       console.error('Error: --resolve requires a task-id argument.');
       process.exit(1);
     }
-    await runResolve(hopperDir, taskId);
+    // ISSUE-resolve-ignores-vendor-override.md fix: --vendor may appear before or
+    // after --resolve <id> (both orders were reported broken) — scan the whole
+    // argv for it, same as --adhoc's valueAfter helper above.
+    const resolveVendorFlagIdx = args.indexOf('--vendor');
+    const vendorOverride = resolveVendorFlagIdx !== -1 && args[resolveVendorFlagIdx + 1] !== undefined && !args[resolveVendorFlagIdx + 1].startsWith('-')
+      ? args[resolveVendorFlagIdx + 1]
+      : null;
+    if (vendorOverride !== null) {
+      // Same two checks the real dispatch path applies at the CLI entry BEFORE
+      // resolveDispatch/assertVendorApproved ever run (format pattern, then
+      // registered-adapter membership) — see the `valueFlags.vendor` handling
+      // below (~line 611/620). --resolve must reject an unregistered override
+      // identically instead of silently discarding it.
+      try {
+        validateVendor(vendorOverride);
+      } catch (err) {
+        console.error(`Error: ${err.message}`);
+        process.exit(2);
+      }
+      if (!listAdapters().includes(vendorOverride)) {
+        console.error(`Error: unknown vendor '${vendorOverride}'. Registered: ${listAdapters().join(', ')}`);
+        process.exit(2);
+      }
+    }
+    await runResolve(hopperDir, taskId, vendorOverride);
     return;
   }
 
@@ -697,12 +721,32 @@ function parseDispatchArgs(args) {
   return { taskId, bareFlags, valueFlags };
 }
 
-async function runResolve(hopperDir, taskId) {
+async function runResolve(hopperDir, taskId, vendorOverride = null) {
   try {
-    const result = await resolveDispatch({ hopperDir, taskId });
+    // ISSUE-resolve-ignores-vendor-override.md fix: thread vendorOverride straight
+    // into resolveDispatch — the SAME `vendorOverride || resolveVendor(...)`
+    // formula and the SAME assertVendorApproved(agentsData, vendor) gate
+    // (cli/src/dispatch.js:72,77) that a real dispatch applies, not a
+    // reimplementation. An override is therefore checked against
+    // .hopper/AGENTS.md's Approved Vendors table here exactly as it would be at
+    // real dispatch time (E_APPROVED_VENDORS_SECTION_MISSING / E_VENDOR_NOT_APPROVED
+    // surface via the catch below, same as runDispatch/runBackgroundDispatch).
+    const result = await resolveDispatch({ hopperDir, taskId, vendorOverride });
+
+    // Host != vendor family isomorphism guard — runDispatch/runBackgroundDispatch
+    // apply this immediately after resolveDispatch, before any adapter/spawn work.
+    // It is pure (env lookup + a static family table; no subprocess), so a dry
+    // run can and must apply it too — otherwise --resolve could report a Vendor:
+    // line a real dispatch would actually refuse. A same-family collision throws
+    // (caught below, same as a real dispatch would abort); an unrecognized host
+    // is non-blocking and surfaces as a notice line, matching runDispatch.
+    const { id: hostVendor } = resolveHostIdentity();
+    const hostCheck = validateHostVendorSeparation(hostVendor, result.vendor);
+
     console.log(`hopper-dispatch v${VERSION} — resolved dispatch for ${taskId}`);
     console.log(`  Task-type: ${result.task.taskType}`);
-    console.log(`  Vendor:    ${result.vendor}`);
+    console.log(`  Vendor:    ${result.vendor}${vendorOverride ? ' (--vendor override)' : ''}`);
+    if (hostCheck.notice) console.log(`  notice:    ${hostCheck.notice}`);
     console.log(`  Brief:     ${result.task.brief}`);
     console.log(`  Composed prompt length: ${result.composedPrompt.length} chars`);
     if (process.env.HOPPER_DEBUG) {
@@ -729,6 +773,20 @@ async function runResolve(hopperDir, taskId) {
     process.exit(1);
   }
 }
+// runResolve's dry run deliberately does NOT apply two other vendor-adjacent
+// gates a real dispatch enforces, and this is not an oversight:
+//   - assertVendorDispatchable() (adapter.dispatchDisabled, e.g. agy's headless-
+//     output gate): its own doc comment (dispatch.js) is explicit that
+//     "Non-dispatch surfaces (doctor / --vendors / --resolve) do NOT call this,
+//     so a disabled vendor is still listed + introspectable" — applying it here
+//     would make --resolve unable to preview a disabled vendor at all, which is
+//     the opposite of what a dry-run preview is for.
+//   - assertAdapterSandboxEnforceable() / the sandbox default chain generally
+//     (resolveAdapterOptsForTask): these need adapterOpts (--sandbox/--model/
+//     --reasoning/etc), and --resolve's CLI surface never parsed those flags
+//     (only --vendor, now). Threading full adapterOpts support through
+//     --resolve is a separate, larger change than this vendor-override fix —
+//     out of scope here, not silently dropped.
 
 /**
  * HOPPER-1: emit a targeted diagnostic when a resolved vendor is not a

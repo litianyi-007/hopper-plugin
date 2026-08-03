@@ -1,0 +1,85 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        # Node floor is NOT engines.node's ">=18" — empirically, this repo's
+        # own unit suite only goes fully green from 22.18.0 onward (see the
+        # two reasons below), so the matrix tests the real floor plus the
+        # current active LTS rather than the (currently inaccurate) engines
+        # field. 22 alone would miss regressions that only show up on newer
+        # Node; 24 alone would miss the floor.
+        node-version: ["22", "24"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `npm test` runs `node --test tests/unit/*.test.js` (unquoted, defined
+      # in package.json — out of scope to change here). Two reasons this
+      # still works unmodified across the OS matrix, verified locally:
+      #
+      # 1. Glob expansion: on POSIX (ubuntu/macos) the shell expands the glob
+      #    before node ever sees it, same as every "tested on macOS" run so
+      #    far. On Windows, npm spawns package.json scripts via cmd.exe
+      #    (confirmed: `npm config get script-shell` -> null, i.e. OS
+      #    default), and cmd.exe does NOT expand wildcards for arbitrary
+      #    commands — so node receives the literal `tests/unit/*.test.js`
+      #    string. That only resolves correctly if node's own `--test` CLI
+      #    has built-in glob matching, which landed in the Node 22 line
+      #    (confirmed locally: v20.20.0 fails with "Could not find
+      #    .../tests/unit/*.test.js" even when the pattern reaches node
+      #    unexpanded; v22.14.0+ and v24.x resolve it correctly). Hence the
+      #    node-version floor below is 22, not 18/20.
+      # 2. tests/unit/dashboard-log.test.js imports a raw .ts file
+      #    (dashboard/client/src/lib/ansi.ts) with no transpile step. That
+      #    only works once Node's TypeScript type-stripping is on by default
+      #    (backported to the 22.x line in 22.18.0). Below that (confirmed
+      #    locally on v22.14.0/v22.16.0) it throws ERR_UNKNOWN_FILE_EXTENSION
+      #    for ".ts" and the whole file fails to load.
+      #
+      # Net effect: this step needs Node >=22.18.0, which "22" (floating to
+      # latest 22.x via setup-node) already satisfies.
+      - name: Run unit tests
+        run: npm test
+
+      - name: Check vendored plugin copy is in sync
+        run: node scripts/sync-vendored-plugin.mjs --check
+
+      # Static banner only (see cli/bin/hopper-dispatch printSmoke()) — no
+      # vendor CLI, network, or .hopper/ directory is touched. Verified
+      # locally with PATH stripped of every vendor CLI dir: still exits 0.
+      - name: Smoke test (standalone CLI, no vendor CLI required)
+        run: npm run smoke
+
+      # tests/integration/ is NOT covered by `npm test` (that script globs
+      # tests/unit/ only), so until 2026-08-03 nothing ever ran these — which
+      # is exactly why v0.40.0's fail-closed Approved Vendors gate could break
+      # execute-dispatch-e2e.test.js's fixture and sit red for three days
+      # unnoticed. (The same release broke this repo's own dogfood
+      # .hopper/AGENTS.md, undetected for the same reason.) The fixture is
+      # fixed; running them here is what keeps that class of miss visible.
+      #
+      # The glob is QUOTED so no shell expands it on any platform — node's own
+      # --test resolves it, which is uniform across ubuntu/macos/windows given
+      # the Node >=22 floor established above.
+      - name: Run integration tests
+        run: node --test "tests/integration/*.test.js"
+
+# Merge gating: enable branch protection (or a ruleset) on `main` requiring
+# the `test` checks to pass. This is a repository setting and cannot be
+# expressed in this file.

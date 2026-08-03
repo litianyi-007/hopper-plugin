@@ -11,6 +11,25 @@ It is the only BREAKING entry in this file.
 
 ---
 
+## v0.43.0 (2026-08-03) — no action for existing projects
+
+**What changed.** `--resolve <task-id> --vendor <v>` now actually applies the
+override (it was silently ignored), and reports a refusal when that vendor is not
+approved — so a dry run stops disagreeing with what a real dispatch would do.
+Repo-internal work otherwise: CI added (there was none), a stale integration-test
+fixture migrated to v0.40.0's Approved Vendors gate, and `engines.node` corrected
+from `>=18` to `>=22.18.0` (a claim correction — Node 18 never actually worked).
+
+**Will your project break?** No. Nothing in an existing `.hopper/` is read
+differently. One behavior you may notice: a `--resolve` that used to print a
+vendor now prints an error if you passed `--vendor` with a vendor your project
+has not approved. That output was wrong before, not permissive.
+
+**What to do.** Nothing — unless you run hopper on Node < 22.18.0, in which case
+its test suite never worked and `engines.node` now says so.
+
+---
+
 ## v0.42.0 (2026-08-03) — no action for existing projects
 
 **What changed.** Onboarding and documentation only. `--init-tasks`'s

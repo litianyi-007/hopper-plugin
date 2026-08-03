@@ -19,6 +19,56 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.43.0] - 2026-08-03
+
+### Fixed
+
+- **`--resolve` now applies `--vendor`** (`cli/bin/hopper-dispatch`). The branch
+  called `runResolve(hopperDir, taskId)` and never read `--vendor` at all, so a
+  dry run silently reported the routed vendor while claiming nothing was wrong —
+  at either flag position. It now threads the override through the same
+  `vendorOverride || resolveVendor(...)` formula and the same `assertVendorApproved`
+  gate real dispatch uses, plus `validateHostVendorSeparation` (pure — env + static
+  table, no spawn). A dry run that would be refused now says so, with the same
+  error code. `assertVendorDispatchable` stays excluded on purpose: its own doc
+  comment requires non-dispatch surfaces to skip it so a disabled vendor remains
+  introspectable. Closes `ISSUE-resolve-ignores-vendor-override.md`.
+- **`tests/integration/execute-dispatch-e2e.test.js` fixture** — its
+  `.hopper/AGENTS.md` had no `## Approved Vendors`, so v0.40.0's fail-closed gate
+  refused it and 2 of its 7 tests sat red from 2026-07-31. **Nothing noticed
+  because `npm test` globs `tests/unit/` only** — the same reason this repo's own
+  dogfood `.hopper/AGENTS.md` broke undetected in the same release. A discovery
+  scan of every fixture carrying an `Active Agent Instances` table found all four
+  unit fixtures migrated and only the integration one missed: the miss tracks
+  exactly what does and does not get executed.
+- **`engines.node` was inaccurate** — declared `>=18`, but
+  `tests/unit/dashboard-log.test.js` imports a raw `.ts` file with no transpile
+  step, which needs Node's type-stripping (backported in **22.18.0**), and
+  `npm test`'s unquoted glob only resolves from the Node 22 line onward on shells
+  that do not expand it. Corrected to `>=22.18.0`. This is a claim correction, not
+  a capability change — nothing worked on Node 18 before this release either.
+
+### Added
+
+- **CI** (`.github/workflows/validate.yml`) — this repo had none; every prior
+  "tests pass" was one person's local macOS run. 3 OS × Node 22/24, `fail-fast:
+  false`, running `npm ci`, unit tests, the vendored-copy sync check, the
+  standalone smoke banner, and **integration tests** (quoted glob, so node's own
+  `--test` resolves it identically on every platform).
+- **`tests/unit/resolve-vendor-override.test.js`** (6 tests) — override honored at
+  both flag positions, refused when not approved, unchanged without an override.
+- **`tests/unit/readme-hosts-badge.test.js`** — asserts every `README*.md`'s hosts
+  badge equals the `hosts/` directory count + 1 (standalone). Both sides
+  discovered, neither hardcoded. That badge read `4` against an actual `7` for two
+  months across several releases while three host directories were added.
+
+### Changed
+
+- The tests badge no longer carries a count. It went stale within the session that
+  last corrected it (adding four guard tests invalidated the number immediately),
+  and a test asserting the count would alter the count it asserts. `hosts` is
+  different — it is discoverable, so it got a guard instead.
+
 ## [0.42.0] - 2026-08-03
 
 ### Added
