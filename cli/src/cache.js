@@ -102,21 +102,77 @@ export function readCacheWithDiagnostics() {
   };
 }
 
+// Human-readable text for the two diagnostic codes that mean "this machine
+// could not establish an owner-only cache path" (as opposed to e.g. a
+// malformed cache file, which is a different failure entirely). This rides
+// alongside the existing closed diagnostic_code values -- diagnostic_code
+// stays the stable, machine-comparable identifier consumed by
+// inventory-contract.js and callers; this table only adds the sentence a
+// human reads when a probe/write fails closed. No new diagnostic taxonomy is
+// introduced.
+//
+// Before this table existed, prepareCacheParent()/createOwnerOnlyExclusive()
+// caught the real hardening/assertion failure (icacls status, stderr, or a
+// thrown security-seam error) in a bare `catch (_) { return false; }` --
+// the reason was discarded, not merely hidden from the user. writeCache()
+// then threw an Error whose message WAS the diagnostic code itself, so even
+// a caller that logged the exception only ever saw a bare code with zero
+// explanation. This table is what lets writeCache()/setVendorCache()/
+// recoverCache() attach an explanation that actually says (a) owner-only
+// permissions could not be established here, (b) the vendor cache is
+// therefore disabled -- not silently skipped, and (c) that is deliberate
+// fail-closed behavior, not a bug.
+const OWNER_ONLY_DIAGNOSTIC_MESSAGES = {
+  'inventory-cache-parent-owner-only-failed':
+    'Could not establish an owner-only cache directory on this machine: hardening ran, but the '
+    + 'owner-only permission check on the cache directory still failed afterward. The vendor '
+    + 'capability cache is therefore disabled -- this is not a silent failure -- so no cache file '
+    + 'will be created or updated until owner-only permissions can be established here. This is a '
+    + 'deliberate fail-closed decision (data another local account could read or tamper with must '
+    + 'not be written), not a bug.',
+  'inventory-cache-write-owner-only-failed':
+    'Could not create an owner-only cache file on this machine: hardening ran, but the owner-only '
+    + 'permission check on the new file still failed afterward. The vendor capability cache is '
+    + 'therefore disabled -- this is not a silent failure -- so this write is rejected and no cache '
+    + 'file will be created or updated. This is a deliberate fail-closed decision (data another '
+    + 'local account could read or tamper with must not be written), not a bug.',
+};
+
+/**
+ * Human-readable explanation for an owner-only cache diagnostic code, or
+ * null when the code isn't one of the two owner-only-establishment
+ * failures this table covers (e.g. a malformed cache file gets no entry
+ * here -- it is a different kind of failure with its own existing
+ * handling). See OWNER_ONLY_DIAGNOSTIC_MESSAGES above.
+ */
+export function ownerOnlyDiagnosticMessage(diagnosticCode) {
+  return OWNER_ONLY_DIAGNOSTIC_MESSAGES[diagnosticCode] || null;
+}
+
+function ownerOnlyFailure(diagnosticCode) {
+  const err = new Error(OWNER_ONLY_DIAGNOSTIC_MESSAGES[diagnosticCode] || diagnosticCode);
+  err.code = diagnosticCode;
+  return err;
+}
+
 /**
  * Write cache atomically via an owner-only temp + rename.
  *
  * The same production filesystem and security seams as explicit recovery are
  * accepted here so every cache payload is protected before its first byte is
  * written. A failed hardening step is deliberately closed to a diagnostic
- * code: the active cache must remain untouched.
+ * code: the active cache must remain untouched. The thrown Error's `.code`
+ * is the closed diagnostic code (unchanged shape for existing callers that
+ * compare it); `.message` is now the human-readable explanation from
+ * ownerOnlyDiagnosticMessage() instead of the bare code string.
  */
 export function writeCache(data, { fsOps = DEFAULT_FS_OPS, security = {} } = {}) {
   const path = cachePath();
   const mergedSecurity = { ...DEFAULT_SECURITY, ...security };
-  if (!prepareCacheParent(path, fsOps, mergedSecurity)) throw new Error('inventory-cache-parent-owner-only-failed');
+  if (!prepareCacheParent(path, fsOps, mergedSecurity)) throw ownerOnlyFailure('inventory-cache-parent-owner-only-failed');
   const tmp = `${path}.tmp.${process.pid}.${Date.now()}`;
   const temp = createOwnerOnlyExclusive(tmp, fsOps, mergedSecurity);
-  if (!temp.created) throw new Error('inventory-cache-write-owner-only-failed');
+  if (!temp.created) throw ownerOnlyFailure('inventory-cache-write-owner-only-failed');
   try {
     fsOps.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf-8');
     fsOps.renameSync(tmp, path);
@@ -184,7 +240,12 @@ export function setVendorCache(name, entry, { fsOps = DEFAULT_FS_OPS, security =
   const prior = readCacheWithOutcome();
   const mergedSecurity = { ...DEFAULT_SECURITY, ...security };
   if (!prepareCacheParent(path, fsOps, mergedSecurity)) {
-    return { written: false, outcome: prior.outcome, diagnostic_code: 'inventory-cache-parent-owner-only-failed' };
+    return {
+      written: false,
+      outcome: prior.outcome,
+      diagnostic_code: 'inventory-cache-parent-owner-only-failed',
+      diagnostic_message: ownerOnlyDiagnosticMessage('inventory-cache-parent-owner-only-failed'),
+    };
   }
   const lockPath = `${path}.lock`;
   acquireLock(lockPath, LOCK_ACQUIRE_TIMEOUT_MS);
@@ -204,12 +265,21 @@ export function setVendorCache(name, entry, { fsOps = DEFAULT_FS_OPS, security =
     try {
       writeCache(c, { fsOps, security: mergedSecurity });
     } catch (err) {
-      const diagnostic_code = err && err.message === 'inventory-cache-parent-owner-only-failed'
+      // err.code (not err.message -- see writeCache()/ownerOnlyFailure() above)
+      // is the closed, comparable identifier; err.message is now a human
+      // sentence, not something safe to switch on.
+      const diagnostic_code = err && err.code === 'inventory-cache-parent-owner-only-failed'
         ? 'inventory-cache-parent-owner-only-failed'
-        : err && err.message === 'inventory-cache-write-owner-only-failed'
+        : err && err.code === 'inventory-cache-write-owner-only-failed'
           ? 'inventory-cache-write-owner-only-failed'
         : 'inventory-cache-write-failed';
-      return { written: false, outcome: current.outcome, diagnostic_code };
+      const diagnostic_message = ownerOnlyDiagnosticMessage(diagnostic_code);
+      return {
+        written: false,
+        outcome: current.outcome,
+        diagnostic_code,
+        ...(diagnostic_message ? { diagnostic_message } : {}),
+      };
     }
     return { written: true, outcome: current.outcome, diagnostic_code: 'none' };
   } finally {
@@ -310,25 +380,41 @@ function windowsIdentity() {
   return domain && name ? `${domain}\\${name}` : name;
 }
 
-// `icacls <path>`'s default listing interleaves SACL "Mandatory Label"
-// (integrity level) entries with DACL ACE lines, using the same visual
+// `icacls <path>`'s default listing CAN interleave a SACL "Mandatory Label"
+// (integrity level) entry with real DACL ACE lines, using the same visual
 // shape (`principal:(flags)`) as a real permission grant -- e.g. a stock
 // `icacls C:\` shows `Mandatory Label\High Mandatory Level:(OI)(NP)(IO)(NW)`
 // on the very same listing as the real owner/SYSTEM/Administrators DACL
 // grants. A Mandatory Label is not a discretionary access grant to another
-// principal (it cannot be used by anyone to read or write the object), so
-// it must never be counted as a competing ACE when asserting "exactly one
-// owner-only grant exists". Concretely: GitHub Actions windows-latest
-// redirects TEMP/TMP onto the ephemeral D:\ drive; if that drive's root (or
-// any ancestor) carries an inheritable Mandatory Label -- plausible for
-// freshly-provisioned/ephemeral volumes, mirroring the drive-root example
-// above -- every directory created under it (including every
-// fs.mkdtempSync() cache dir) inherits that label. Counting it as a second
-// ACE would make owner-only hardening that genuinely succeeded look like it
-// failed, i.e. a false fail-closed that is indistinguishable from a real
-// security defect without this exclusion. Excluding it does not weaken the
-// check: we still require exactly one DACL grant and still require it to
-// belong to our own identity.
+// principal (it cannot be used by anyone to read or write the object), so it
+// must never be counted as a competing ACE when asserting "exactly one
+// owner-only grant exists".
+//
+// Status as of the 2026-08-03 real windows-latest CI diagnostic
+// (scripts/diag-windows-acl.mjs): this exclusion was added on the
+// hypothesis that GitHub Actions' ephemeral D:\ TEMP redirect carries an
+// inheritable Mandatory Label that was masquerading as a second ACE. That
+// hypothesis is now DISPROVEN for the failures it was meant to fix -- the
+// runner's actual `icacls <dir>` output after hardening contains no
+// "Mandatory Label" line at all; it shows three ordinary DACL grants
+// (SYSTEM, Administrators, and the run identity, none carrying the `(I)`
+// inherited flag), which this filter correctly leaves uncounted-for-nothing
+// -- i.e. it is observed to be inert on that runner, not the cause of (or
+// fix for) the 23 failures. See ownerOnlyFailure()/OWNER_ONLY_DIAGNOSTIC_
+// MESSAGES above for the actual, confirmed cause: `/inheritance:r` only
+// strips ACEs carrying `(I)`, and none of those three do.
+//
+// It is kept anyway, deliberately, because the underlying fact it encodes
+// (a Mandatory Label is not a discretionary grant and must not be counted
+// as one) is independently true of `icacls` output in general -- documented
+// Windows behavior, not specific to this runner -- and excluding it does
+// not weaken the check: "exactly one DACL grant, belonging to our own
+// identity" is unchanged either way. On a host where a Mandatory Label
+// really is present, omitting this filter would make owner-only hardening
+// that genuinely succeeded look like it failed. This function is exercised
+// by the "destructive counter-proof" tests below on every platform, so it
+// remains provably inert-or-correct rather than an unverified guess sitting
+// in the security-critical path.
 function windowsAclLines(stdout) {
   return String(stdout || '')
     .split(/\r?\n/)
@@ -337,10 +423,17 @@ function windowsAclLines(stdout) {
     .filter((line) => !/^mandatory label\\/i.test(line));
 }
 
-function hardenWindowsAcl(path) {
+// `spawnIcacls` defaults to the real `child_process.spawnSync` binding but is
+// an explicit parameter (not a closed-over import) so tests can force this
+// exact function -- the real decision logic, not a re-implementation of it
+// -- to run on any platform with a fabricated `icacls` result. That is what
+// lets the Windows fail-closed behavior be exercised (and its destructive
+// counter-proof asserted) on macOS/Linux CI, not only on a real Windows
+// runner. See tests/unit/cache.test.js.
+function hardenWindowsAcl(path, { spawnIcacls = spawnSync } = {}) {
   const identity = windowsIdentity();
   if (!identity) throw new Error('current Windows identity is unavailable');
-  const result = spawnSync('icacls', [path, '/inheritance:r', '/grant:r', `${identity}:(F)`], {
+  const result = spawnIcacls('icacls', [path, '/inheritance:r', '/grant:r', `${identity}:(F)`], {
     encoding: 'utf-8',
     windowsHide: true,
   });
@@ -349,10 +442,10 @@ function hardenWindowsAcl(path) {
   }
 }
 
-function assertWindowsOwnerOnly(path) {
+function assertWindowsOwnerOnly(path, { spawnIcacls = spawnSync } = {}) {
   const identity = windowsIdentity();
   if (!identity) return false;
-  const result = spawnSync('icacls', [path], { encoding: 'utf-8', windowsHide: true });
+  const result = spawnIcacls('icacls', [path], { encoding: 'utf-8', windowsHide: true });
   if (result.status !== 0) return false;
   const aclLines = windowsAclLines(result.stdout);
   return aclLines.length === 1
@@ -389,20 +482,22 @@ function prepareCacheParent(path, fsOps, security) {
   }
 }
 
-function assertWindowsParentOwnerOnly(path) {
+// See the `spawnIcacls` comment on hardenWindowsAcl() above -- same reason.
+function assertWindowsParentOwnerOnly(path, { spawnIcacls = spawnSync } = {}) {
   const identity = windowsIdentity();
   if (!identity) return false;
-  const result = spawnSync('icacls', [path], { encoding: 'utf-8', windowsHide: true });
+  const result = spawnIcacls('icacls', [path], { encoding: 'utf-8', windowsHide: true });
   if (result.status !== 0) return false;
   const aclLines = windowsAclLines(result.stdout);
   return aclLines.length === 1
     && aclLines[0].toLowerCase().endsWith(`${identity.toLowerCase()}:(oi)(ci)(f)`);
 }
 
-function hardenWindowsDirectoryAcl(path) {
+// See the `spawnIcacls` comment on hardenWindowsAcl() above -- same reason.
+function hardenWindowsDirectoryAcl(path, { spawnIcacls = spawnSync } = {}) {
   const identity = windowsIdentity();
   if (!identity) throw new Error('current Windows identity is unavailable');
-  const result = spawnSync('icacls', [path, '/inheritance:r', '/grant:r', `${identity}:(OI)(CI)(F)`], {
+  const result = spawnIcacls('icacls', [path, '/inheritance:r', '/grant:r', `${identity}:(OI)(CI)(F)`], {
     encoding: 'utf-8',
     windowsHide: true,
   });
@@ -485,7 +580,11 @@ export function recoverCache({ vendor = null, entry = null, now = () => new Date
   let currentBackupPath = null;
   try {
     if (!prepareCacheParent(path, fsOps, mergedSecurity)) {
-      return { committed: false, diagnostic_code: 'inventory-cache-parent-owner-only-failed' };
+      return {
+        committed: false,
+        diagnostic_code: 'inventory-cache-parent-owner-only-failed',
+        diagnostic_message: ownerOnlyDiagnosticMessage('inventory-cache-parent-owner-only-failed'),
+      };
     }
     activeExists = fsOps.existsSync(path);
     if (activeExists) active = fsOps.readFileSync(path);
@@ -578,4 +677,16 @@ export function staleness(probedAt) {
 // call it cannot themselves run outside a real Windows machine, but the
 // parsing logic itself is pure and platform-independent, so it can and
 // should be regression-tested everywhere `npm test` runs.
-export { CACHE_VERSION, STALE_DAYS_DEFAULT, windowsAclLines };
+//
+// hardenWindowsAcl / assertWindowsOwnerOnly / hardenWindowsDirectoryAcl /
+// assertWindowsParentOwnerOnly are exported for the same reason and take the
+// same cross-platform-testing approach one step further: each now accepts an
+// injectable `spawnIcacls` (defaulting to the real `child_process.spawnSync`),
+// so a test can force the REAL decision logic above -- not a re-implementation
+// of it -- to run on macOS/Linux with a fabricated icacls result, proving the
+// Windows fail-closed behavior (and its destructive counter-proof) without
+// requiring a real Windows machine. See tests/unit/cache.test.js.
+export {
+  CACHE_VERSION, STALE_DAYS_DEFAULT, windowsAclLines,
+  hardenWindowsAcl, assertWindowsOwnerOnly, hardenWindowsDirectoryAcl, assertWindowsParentOwnerOnly,
+};

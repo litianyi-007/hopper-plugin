@@ -5,7 +5,7 @@
 > Vendor-neutral background dispatch for AI agents
 
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
-![Version](https://img.shields.io/badge/version-0.44.0-3DDC97)
+![Version](https://img.shields.io/badge/version-0.45.0-3DDC97)
 ![Tests](https://img.shields.io/badge/tests-passing-3DDC97)
 ![Hosts](https://img.shields.io/badge/hosts-7-111827)
 
@@ -108,6 +108,18 @@ Approved Vendors の状態が表示されないし、`commands/setup.md` と
   ようになった**——これを「このガードはずっと有効だった」と読んではならない。
 - 自動リトライしない、自動で vendor を切り替えない、フォールバックもしない——1回の
   spawn は1回の spawn でしかない。
+- **Windows では vendor プローブキャッシュが利用できない。** このキャッシュはプローブ
+  診断情報を含むため、書き込み前にディレクトリとファイルを owner-only に固める必要が
+  ある。POSIX では `0700`/`0600` であり、実際に成立する。Windows では成立しない——
+  GitHub Actions `windows-latest` での実測(2026-08-03)では、固めた後も
+  `NT AUTHORITY\SYSTEM` と `BUILTIN\Administrators` がフルコントロールを保持しており、
+  そもそも Administrators はいつでも所有権を奪える。**hopper は fail-closed を選ぶ**:
+  owner-only を確立できなければ、「その主体は数えない」とアサーションを緩めるのではなく、
+  **キャッシュ書き込みを拒否する**。代償として、Windows では vendor 能力を毎回
+  プローブし直すことになり、キャッシュは再利用されない。この制限は以前から存在して
+  いたが**一度も効いていなかった**——固める処理は実際には何もしておらず、
+  アサーション自体が実行されたことがなかった。本リポジトリに初めて CI を入れたことで
+  表面化した。
 - 権威ある情報源は `hopper-dispatch --rules`(`.hopper/DISPATCH.md` に書き出される)
   である。**この README 内の表や記述はすべてスナップショットであり、乖離しうる**——
   実際に判断を下す前には、`--rules` をその場で実行した結果を正とすること。

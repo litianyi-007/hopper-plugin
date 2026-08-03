@@ -5,7 +5,7 @@
 > Vendor-neutral background dispatch for AI agents
 
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
-![Version](https://img.shields.io/badge/version-0.44.0-3DDC97)
+![Version](https://img.shields.io/badge/version-0.45.0-3DDC97)
 ![Tests](https://img.shields.io/badge/tests-passing-3DDC97)
 ![Hosts](https://img.shields.io/badge/hosts-7-111827)
 
@@ -81,6 +81,14 @@ vendor CLI。状态全部落在 `.hopper/` 下的 markdown 与 JSONL 文件里�
   false,追不上它本该拦的那一种情况。v0.39.0 起改成按 `VENDOR_FAMILY` 族比较,**现在才
   真的成立**——不要把它读成"这条守卫一直有效"。
 - 不自动重试、不自动切 vendor、不做 fallback——一次 spawn 就是一次 spawn。
+- **Windows 上 vendor 探测缓存不可用。** 该缓存含探测诊断信息,写入前必须先把目录
+  和文件加固成 owner-only。POSIX 上这是 `0700`/`0600`,能真正做到;Windows 上做不到——
+  实测(2026-08-03,GitHub Actions `windows-latest`)加固后 `NT AUTHORITY\SYSTEM` 与
+  `BUILTIN\Administrators` 仍持有完全控制,而 Administrators 无论如何都能夺取所有权。
+  **hopper 选择 fail-closed:做不到 owner-only 就拒绝写缓存**,而不是把断言放松到
+  「这几个主体不算数」。代价是 Windows 上每次都要重新探测 vendor 能力,不能复用缓存。
+  这条限制此前一直存在且**从未生效过**(加固实际没起作用、断言也从没被执行过),
+  是本仓第一次接上 CI 才发现的。
 - 权威来源是 `hopper-dispatch --rules`(会写进 `.hopper/DISPATCH.md`)。**本 README 里
   的表和描述都是快照,会漂**——真正要做判断前,以 `--rules` 现场跑出来的为准。
 

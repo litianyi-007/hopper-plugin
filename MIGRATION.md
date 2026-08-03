@@ -11,6 +11,26 @@ It is the only BREAKING entry in this file.
 
 ---
 
+## v0.45.0 (2026-08-03) — Windows users: the vendor probe cache is now explicitly unavailable
+
+**What changed.** On Windows, owner-only permissions for the vendor probe cache
+cannot actually be established (measured, not assumed: after hardening, SYSTEM
+and Administrators still hold full control). hopper now refuses the cache write
+instead of proceeding, and says so with a readable diagnostic.
+
+**Will your project break?** Not on macOS or Linux — nothing changes there.
+On Windows, `--probe` / `--deep` results are no longer cached, so capabilities
+are re-probed each time. Note this is not new exposure: the hardening never
+worked, so the cache was already being written without the protection it claimed
+— the change is that hopper now stops rather than pretending.
+
+**What to do.** Nothing. If you want caching on Windows, the blocker is that
+`icacls /inheritance:r /grant:r` does not remove explicit SYSTEM /
+Administrators ACEs; a fix would have to remove them outright, which was
+considered and declined.
+
+---
+
 ## v0.44.0 (2026-08-03) — no action for existing projects
 
 **What changed.** Three defects that the CI added in v0.43.0 surfaced on its

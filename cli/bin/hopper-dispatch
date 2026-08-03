@@ -58,7 +58,7 @@ import { resolve, join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
-const VERSION = '0.44.0';
+const VERSION = '0.45.0';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -2154,6 +2154,10 @@ async function runProbe(target, { recoverCache: shouldRecoverCache = false } = {
         const recovery = recoverCache({ vendor: v, entry });
         if (!recovery.committed || recovery.diagnostic_code !== 'none') {
           process.stderr.write(`${recovery.diagnostic_code}\n`);
+          // A bare code is not "visible" — an owner-only refusal is a deliberate
+          // fail-closed decision, and the user has to be able to tell that apart
+          // from a bug. cache.js supplies the explanation; print it when present.
+          if (recovery.diagnostic_message) process.stderr.write(`${recovery.diagnostic_message}\n`);
           if (!recovery.committed) {
             process.exitCode = 1;
             continue;
@@ -2163,6 +2167,7 @@ async function runProbe(target, { recoverCache: shouldRecoverCache = false } = {
         const write = setVendorCache(v, entry);
         if (!write.written) {
           process.stderr.write(`${write.diagnostic_code}; use --recover-cache for explicit recovery\n`);
+          if (write.diagnostic_message) process.stderr.write(`${write.diagnostic_message}\n`);
           process.exitCode = 1;
           continue;
         }

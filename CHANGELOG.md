@@ -19,6 +19,57 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.45.0] - 2026-08-03
+
+### Changed — Windows vendor cache now fails closed (user ruling)
+
+The 23 Windows failures were **true positives**. A diagnostic step run on the
+real `windows-latest` runner printed raw `icacls` output: after the hardening
+command reported `status 0 / Successfully processed 1 files`, the DACL was
+**byte-identical to before it** — `NT AUTHORITY\SYSTEM`, `BUILTIN\Administrators`
+and the runner identity all still held `(OI)(CI)(F)`. None of the three carried
+an `(I)` marker, i.e. they are explicit rather than inherited ACEs, so
+`/inheritance:r` (which removes *inherited* ACEs) removed nothing and `/grant:r`
+only replaced the named identity's own grant. **Owner-only hardening on Windows
+had never actually worked; the assertion was right.** Nobody knew because
+nothing had ever executed that code path.
+
+Per the user's ruling, hopper **fails closed**: if owner-only cannot be
+established, the cache write is refused. The alternatives — removing SYSTEM /
+Administrators, or accepting them as permitted principals and relaxing the
+assertion — were both declined. Consequence, stated plainly in all three
+READMEs: **the vendor probe cache is unavailable on Windows**; capabilities are
+re-probed every time.
+
+- A refusal now carries a `diagnostic_message` alongside the existing
+  `diagnostic_code`, saying what could not be established, that the cache is
+  therefore disabled, and that this is a deliberate fail-closed decision rather
+  than a bug. `cli/bin/hopper-dispatch` prints it — a bare code is not "visible."
+- The win32 ACL helpers take an injectable `spawnIcacls`, so **the decision logic
+  now executes on macOS/Linux too**. Previously it ran only on a real Windows
+  box, which is exactly why a non-functioning security control survived.
+- Tests assert the refusal on Windows rather than skipping — skipping would have
+  left this boundary unguarded there, which is the failure mode this whole batch
+  keeps rediscovering.
+
+### Corrected
+
+- 0.44.0's "exclude `Mandatory Label` lines from the ACE count" was written
+  against a hypothesis the runner **disproved** — that output contains no
+  Mandatory Label line at all. The exclusion is kept (a SACL integrity label is
+  genuinely never a discretionary grant, and it carries its own regression
+  tests), but its comment no longer presents a refuted inference as the
+  established cause. Had that change "worked," it would have masked the real
+  defect.
+
+### Not verified
+
+Whether `/inheritance:r` fails to strip explicit ACEs on every Windows image, or
+only this runner, is unconfirmed. The destructive counter-proofs establish the
+decision logic in both directions — a stuck ACL is refused with no tmp residue,
+a genuinely clean one is accepted — so the assertion is not vacuously
+always-reject. Only real Windows CI establishes the OS behavior itself.
+
 ## [0.44.0] - 2026-08-03
 
 Everything here was found by the CI added in 0.43.0, on its first runs. All three

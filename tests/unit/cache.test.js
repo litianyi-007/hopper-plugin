@@ -5,7 +5,8 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import {
   readCache, readCacheWithOutcome, writeCache, getVendorCache, setVendorCache, recoverCache,
-  isStale, staleness, cachePath, CACHE_VERSION, windowsAclLines,
+  isStale, staleness, cachePath, CACHE_VERSION, windowsAclLines, ownerOnlyDiagnosticMessage,
+  hardenWindowsAcl, assertWindowsOwnerOnly, hardenWindowsDirectoryAcl, assertWindowsParentOwnerOnly,
 } from '../../cli/src/cache.js';
 import * as fs from 'node:fs';
 import { mkdtempSync, rmSync, existsSync, readFileSync, readdirSync, writeFileSync, utimesSync } from 'node:fs';
@@ -31,15 +32,157 @@ function withTmpCache(fn) {
   }
 }
 
+// --- Windows fail-closed: user ruling (2026-08-03) -----------------------
+//
+// A real windows-latest GitHub Actions runner diagnostic (scripts/diag-
+// windows-acl.mjs) confirmed `/inheritance:r` does not strip pre-existing
+// EXPLICIT (non-`(I)`) SYSTEM/Administrators grants, so owner-only hardening
+// never actually succeeds there and the 23 tests that assumed an ordinary
+// write always succeeds were wrong to assume that on Windows. The accepted
+// consequence, by explicit user decision, is: on a machine where owner-only
+// cannot be established, the vendor cache write is REJECTED (fail-closed),
+// not silently downgraded and not skipped. Two disjoint groups of tests
+// below encode this:
+//
+//   1. ALWAYS_OWNER_ONLY_SECURITY -- tests whose real subject is something
+//      else entirely (sanitization, merging, locking, retention, outcome
+//      detection, ...) use this fully OS-independent "owner-only always
+//      succeeds" stub, so they exercise their actual subject
+//      deterministically on every platform instead of accidentally
+//      depending on this host's real chmod/icacls behavior.
+//
+//   2. forcedWindowsSecurity()+WIN32 branches -- tests whose real subject IS
+//      the owner-only mechanism itself either (a) force the REAL
+//      windows-specific functions (imported above, not reimplemented) to
+//      run on any platform via an injected fake `icacls`, so the Windows
+//      fail-closed decision is provably exercised by every `npm test` run
+//      and not only a real Windows CI runner (the "destructive
+//      counter-proof" tests just below), or (b) run through the real,
+//      unmocked, platform-gated DEFAULT_SECURITY and branch their
+//      assertions on the real `process.platform` (further down), giving an
+//      additional real-environment sanity check layered on top of (a) for
+//      whichever platform actually runs the suite.
+const WIN32 = process.platform === 'win32';
+
+const ALWAYS_OWNER_ONLY_SECURITY = {
+  prepareParentOwnerOnly() {},
+  assertParentOwnerOnly() { return true; },
+  prepareOwnerOnly() {},
+  assertOwnerOnly() { return true; },
+};
+
+const FAKE_WIN_DOMAIN = 'runnervmr7g38';
+const FAKE_WIN_USER = 'runneradmin';
+const FAKE_WIN_IDENTITY = `${FAKE_WIN_DOMAIN}\\${FAKE_WIN_USER}`;
+
+function withForcedWindowsIdentity(fn) {
+  const prevUser = process.env.USERNAME;
+  const prevDomain = process.env.USERDOMAIN;
+  process.env.USERNAME = FAKE_WIN_USER;
+  process.env.USERDOMAIN = FAKE_WIN_DOMAIN;
+  try {
+    return fn();
+  } finally {
+    if (prevUser === undefined) delete process.env.USERNAME; else process.env.USERNAME = prevUser;
+    if (prevDomain === undefined) delete process.env.USERDOMAIN; else process.env.USERDOMAIN = prevDomain;
+  }
+}
+
+function icaclsOk(stdout = 'Successfully processed 1 files; Failed processing 0 files.') {
+  return () => ({ status: 0, stdout, stderr: '' });
+}
+
+// Reproduces the EXACT stuck-ACL shape from the real windows-latest
+// diagnostic (scripts/diag-windows-acl.mjs, 2026-08-03): the hardening
+// command itself reports success, but the follow-up read-back still shows
+// three explicit (non-inherited) ACEs -- SYSTEM, Administrators, and the
+// run identity -- because `/inheritance:r` only strips ACEs carrying the
+// `(I)` inherited flag, and none of these three do.
+function stuckReadback(suffix) {
+  return icaclsOk([
+    `NT AUTHORITY\\SYSTEM:${suffix}`,
+    `BUILTIN\\Administrators:${suffix}`,
+    `${FAKE_WIN_IDENTITY}:${suffix}`,
+    '',
+    'Successfully processed 1 files; Failed processing 0 files.',
+  ].join('\r\n'));
+}
+
+// A genuinely successful hardening: exactly one ACE, owned by the run identity.
+function cleanReadback(suffix) {
+  return icaclsOk([
+    `${FAKE_WIN_IDENTITY}:${suffix}`,
+    '',
+    'Successfully processed 1 files; Failed processing 0 files.',
+  ].join('\r\n'));
+}
+
+/**
+ * A `security` override that forces the REAL windows-specific hardening and
+ * assertion functions (imported from cache.js) to run regardless of host
+ * OS, reading back either the diagnosed-stuck ACL (`mode: 'stuck'`) or a
+ * genuinely clean one (`mode: 'clean'`) at both the parent-directory and
+ * temp-file level.
+ */
+function forcedWindowsSecurity(mode) {
+  const readback = mode === 'stuck' ? stuckReadback : cleanReadback;
+  return {
+    prepareParentOwnerOnly(path, { fsOps }) {
+      fsOps.chmodSync(path, 0o700);
+      hardenWindowsDirectoryAcl(path, { spawnIcacls: icaclsOk() });
+    },
+    assertParentOwnerOnly(path) {
+      return assertWindowsParentOwnerOnly(path, { spawnIcacls: readback('(OI)(CI)(F)') });
+    },
+    prepareOwnerOnly(path, { fsOps }) {
+      fsOps.chmodSync(path, 0o600);
+      hardenWindowsAcl(path, { spawnIcacls: icaclsOk() });
+    },
+    assertOwnerOnly(path) {
+      return assertWindowsOwnerOnly(path, { spawnIcacls: readback('(F)') });
+    },
+  };
+}
+
+// Checks the (a)/(b)/(c) content the user's ruling requires of an
+// owner-only diagnostic message, without hardcoding the exact prose (so
+// wording can evolve without every call site becoming brittle).
+function assertOwnerOnlyDiagnosticMessage(message) {
+  assert.equal(typeof message, 'string', 'diagnostic_message must be a string, not silently absent');
+  assert.match(message, /owner-only/i, '(a) must say owner-only permissions could not be established');
+  assert.match(message, /cache is therefore disabled/i, '(b) must say the vendor cache is disabled');
+  assert.match(message, /not a silent failure/i, '(b) must say this is not a silent failure');
+  assert.match(message, /deliberate fail-closed/i, '(c) must say this is deliberate fail-closed behavior');
+  assert.match(message, /not a bug/i, '(c) must say this is not a bug');
+}
+
+// writeCache() throws (rather than returning a result object) on owner-only
+// failure; this asserts the thrown Error carries the closed `.code` plus the
+// human-readable `.message` from ownerOnlyDiagnosticMessage().
+function assertThrowsOwnerOnlyParentFailure(fn) {
+  assert.throws(fn, (err) => {
+    assert.equal(err.code, 'inventory-cache-parent-owner-only-failed');
+    assertOwnerOnlyDiagnosticMessage(err.message);
+    return true;
+  });
+}
+
 // --- windowsAclLines: icacls output parsing (platform-independent, so it
 // runs on every OS even though the win32-gated callers only run on
-// Windows). Regression coverage for a real bug found via GitHub Actions
-// windows-latest CI: `icacls <path>`'s default listing interleaves SACL
-// "Mandatory Label" (integrity level) entries with real DACL ACE lines
-// using the same `principal:(flags)` shape, which used to make owner-only
-// hardening that genuinely succeeded look like it failed whenever the
-// target inherited a Mandatory Label (plausible on GitHub Actions
-// windows-latest, which redirects TEMP/TMP onto the ephemeral D:\ drive).
+// Windows). `icacls <path>`'s default listing CAN interleave SACL
+// "Mandatory Label" (integrity level) entries with real DACL ACE lines using
+// the same `principal:(flags)` shape, which would make owner-only hardening
+// that genuinely succeeded look like it failed if such a label were present
+// and counted as a competing ACE. This was HYPOTHESIZED as the cause of the
+// 23 real windows-latest CI failures; the 2026-08-03 diagnostic run
+// (scripts/diag-windows-acl.mjs) disproved that hypothesis for those
+// specific failures -- the runner's actual icacls output carries no
+// Mandatory Label line at all (see cache.js's windowsAclLines() comment for
+// the confirmed cause and cache.js's own destructive-counter-proof tests
+// further down for the fail-closed behavior that hypothesis doesn't
+// explain). The exclusion is kept anyway as independently-correct, generic
+// icacls-parsing behavior; these four tests remain regression coverage for
+// that parsing rule on its own terms, not for the 23-failure root cause.
 test('windowsAclLines excludes an inherited Mandatory Label line, keeping only the real DACL grant', () => {
   const stdout = [
     'C:\\Users\\runneradmin\\AppData\\Local\\Temp\\hopper-cache-abc123 FV-AZ123-45\\runneradmin:(F)',
@@ -76,6 +219,52 @@ test('windowsAclLines: no ACE lines at all yields an empty array (fails closed, 
   assert.deepEqual(windowsAclLines(undefined), []);
 });
 
+// --- Destructive counter-proof: Windows fail-closed, forced onto whatever
+// platform runs this suite ------------------------------------------------
+//
+// These two tests exercise the REAL windows-specific hardening/assertion
+// functions (imported from cache.js, not reimplemented here) via
+// forcedWindowsSecurity(), so the Windows fail-closed decision from the
+// user's ruling is proven on every `npm test` run -- macOS, Linux, or
+// Windows -- not only when a real windows-latest CI runner happens to be
+// green. Both directions are required: reject must be reachable (the
+// diagnosed-stuck ACL from the real CI run), and accept must ALSO be
+// reachable (a genuinely clean ACL), or the assertion would be vacuously
+// always-reject and would not actually be guarding anything.
+
+test('destructive counter-proof (reject): the diagnosed-stuck Windows ACL readback (SYSTEM + Administrators + identity, none inherited) rejects the write, leaves no tmp/lock residue, and reports the real diagnostic', () => {
+  withTmpCache((tmp) => {
+    const result = withForcedWindowsIdentity(() => setVendorCache('codex', { models: ['gpt-5'] }, {
+      security: forcedWindowsSecurity('stuck'),
+    }));
+
+    assert.equal(result.written, false);
+    assert.equal(result.outcome, 'missing');
+    assert.equal(result.diagnostic_code, 'inventory-cache-parent-owner-only-failed');
+    assert.equal(result.diagnostic_message, ownerOnlyDiagnosticMessage('inventory-cache-parent-owner-only-failed'));
+    assertOwnerOnlyDiagnosticMessage(result.diagnostic_message);
+
+    assert.equal(existsSync(cachePath()), false, 'no cache file may be created when owner-only can never be established');
+    assert.deepEqual(
+      readdirSync(tmp).filter((name) => name.includes('.tmp.') || name.endsWith('.lock')),
+      [],
+      'a rejected write must leave no tmp or lock residue',
+    );
+  });
+});
+
+test('destructive counter-proof (accept): a genuinely clean Windows ACL readback (exactly one grant, owned by the run identity) succeeds -- proving the assertion is not vacuously always-reject', () => {
+  withTmpCache(() => {
+    const result = withForcedWindowsIdentity(() => setVendorCache('codex', { models: ['gpt-5'], introspection_supported: 'full' }, {
+      security: forcedWindowsSecurity('clean'),
+    }));
+
+    assert.deepEqual(result, { written: true, outcome: 'missing', diagnostic_code: 'none' });
+    assert.ok(existsSync(cachePath()), 'a genuinely clean ACL readback must still produce a cache file');
+    assert.deepEqual(getVendorCache('codex').models, ['gpt-5']);
+  });
+});
+
 test('readCache returns null when file does not exist', () => {
   withTmpCache(() => {
     assert.equal(readCache(), null);
@@ -88,7 +277,10 @@ test('readCacheWithOutcome distinguishes missing, v1, malformed, and version mis
       outcome: 'missing', cache: null, diagnostic_code: 'none',
     });
 
-    writeCache({ version: CACHE_VERSION, host: 'x', probed_at_global: '', vendors: {} });
+    // This test is about outcome DETECTION (missing/ok/malformed/version-
+    // mismatch), not about real owner-only ACL behavior -- ALWAYS_OWNER_ONLY_SECURITY
+    // keeps it deterministic on every platform (see the top-of-file comment).
+    writeCache({ version: CACHE_VERSION, host: 'x', probed_at_global: '', vendors: {} }, { security: ALWAYS_OWNER_ONLY_SECURITY });
     assert.equal(readCacheWithOutcome().outcome, 'ok-v1');
 
     writeFileSync(join(tmp, 'vendor-capabilities.json'), '{ not JSON', 'utf-8');
@@ -107,7 +299,13 @@ test('ordinary cache create and update harden an empty temp before writing sensi
   withTmpCache((tmp) => {
     const path = cachePath();
     const observed = [];
+    // This test is about call-ORDER (prepare/assert before payload bytes),
+    // not real ACL success -- parent-level hooks are also stubbed to a
+    // no-op success (ALWAYS_OWNER_ONLY_SECURITY) so this stays deterministic
+    // on every platform instead of silently depending on this host's real
+    // chmod/icacls for the parent directory.
     const security = {
+      ...ALWAYS_OWNER_ONLY_SECURITY,
       prepareOwnerOnly(tempPath) {
         observed.push(['prepare', tempPath, readFileSync(tempPath, 'utf-8')]);
       },
@@ -134,14 +332,25 @@ test('ordinary cache write fails closed before payload when owner-only hardening
     const active = '{"version":1,"host":"old","probed_at_global":"","vendors":{},"active":"must remain byte-identical"}';
     writeFileSync(path, active, 'utf-8');
 
-    assert.deepEqual(
-      setVendorCache(
-        'kimi',
-        { models: ['replacement'] },
-        { security: { prepareOwnerOnly: () => { throw new Error('simulated ACL failure'); } } },
-      ),
-      { written: false, outcome: 'ok-v1', diagnostic_code: 'inventory-cache-write-owner-only-failed' },
+    // Parent-level hooks are stubbed to a no-op success (ALWAYS_OWNER_ONLY_SECURITY)
+    // so this test isolates the TEMP-file-level failure it's actually
+    // about, rather than depending on this host's real parent-directory
+    // ACL behavior too.
+    const result = setVendorCache(
+      'kimi',
+      { models: ['replacement'] },
+      {
+        security: {
+          ...ALWAYS_OWNER_ONLY_SECURITY,
+          prepareOwnerOnly: () => { throw new Error('simulated ACL failure'); },
+        },
+      },
     );
+    assert.equal(result.written, false);
+    assert.equal(result.outcome, 'ok-v1');
+    assert.equal(result.diagnostic_code, 'inventory-cache-write-owner-only-failed');
+    assert.equal(result.diagnostic_message, ownerOnlyDiagnosticMessage('inventory-cache-write-owner-only-failed'));
+    assertOwnerOnlyDiagnosticMessage(result.diagnostic_message);
     assert.equal(readFileSync(path, 'utf-8'), active);
     assert.deepEqual(readdirSync(tmp).filter((name) => name.includes('.tmp.')), []);
   });
@@ -166,7 +375,9 @@ test('cache parent hardening happens before lock, temp, or payload and fails clo
         written: false,
         outcome: 'missing',
         diagnostic_code: 'inventory-cache-parent-owner-only-failed',
+        diagnostic_message: ownerOnlyDiagnosticMessage('inventory-cache-parent-owner-only-failed'),
       });
+      assertOwnerOnlyDiagnosticMessage(result.diagnostic_message);
       assert.deepEqual(readdirSync(parent), [], 'failed parent hardening must not write lock, temp, or payload');
     } finally {
       process.env.HOPPER_CACHE_DIR = prior;
@@ -186,7 +397,9 @@ test('cache parent hardening failure preserves active bytes and is public-safe',
       written: false,
       outcome: 'ok-v1',
       diagnostic_code: 'inventory-cache-parent-owner-only-failed',
+      diagnostic_message: ownerOnlyDiagnosticMessage('inventory-cache-parent-owner-only-failed'),
     });
+    assertOwnerOnlyDiagnosticMessage(result.diagnostic_message);
     assert.equal(readFileSync(path, 'utf-8'), active);
     assert.deepEqual(readdirSync(tmp).filter((name) => name.endsWith('.lock') || name.includes('.tmp.')), []);
     assert.equal(projectInventoryEntry('claude', {
@@ -199,6 +412,9 @@ test('cache parent hardening failure preserves active bytes and is public-safe',
 
 test('setVendorCache creates a v1 cache only when missing and additively preserves unknown root, vendor, and provenance fields', () => {
   withTmpCache(() => {
+    // This test is about additive field preservation, not real ACL behavior
+    // -- ALWAYS_OWNER_ONLY_SECURITY keeps both writes deterministic on every
+    // platform.
     writeCache({
       version: CACHE_VERSION,
       host: 'future-host',
@@ -217,7 +433,7 @@ test('setVendorCache creates a v1 cache only when missing and additively preserv
           },
         },
       },
-    });
+    }, { security: ALWAYS_OWNER_ONLY_SECURITY });
 
     const result = setVendorCache('claude', {
       models: ['fable'],
@@ -225,7 +441,7 @@ test('setVendorCache creates a v1 cache only when missing and additively preserv
       probed_at: '2026-07-22T00:00:00.000Z',
       introspection_supported: 'partial',
       provenance: { source_kind: 'static' },
-    });
+    }, { security: ALWAYS_OWNER_ONLY_SECURITY });
     assert.deepEqual(result, { written: true, outcome: 'ok-v1', diagnostic_code: 'none' });
 
     const entry = getVendorCache('claude');
@@ -242,13 +458,14 @@ test('setVendorCache creates a v1 cache only when missing and additively preserv
 
 test('Kimi, Claude, and OpenCode cache writes retain only canonical provenance rather than raw probe diagnostics', () => {
   withTmpCache(() => {
+    // Sanitization is the subject here, not ACL success -- ALWAYS_OWNER_ONLY_SECURITY.
     setVendorCache('kimi', {
       models: ['configured-alias'],
       models_source: 'C:\\Users\\person\\.kimi-code\\config.toml',
       binary_path: 'C:\\Users\\person\\bin\\kimi.cmd',
       notes: ['provider=private-account stderr=secret'],
       provenance: { source_kind: 'config', binary_availability: 'present', binary_basename: 'kimi' },
-    });
+    }, { security: ALWAYS_OWNER_ONLY_SECURITY });
     const entry = getVendorCache('kimi');
     assert.equal(entry.models_source, 'config');
     assert.equal(Object.hasOwn(entry, 'binary_path'), false);
@@ -261,6 +478,7 @@ test('Kimi, Claude, and OpenCode cache writes retain only canonical provenance r
 
 test('setVendorCache removes sensitive legacy fields from every vendor and nested provenance while retaining canonical and unknown benign fields', () => {
   withTmpCache(() => {
+    // Field sanitization is the subject here, not ACL success -- ALWAYS_OWNER_ONLY_SECURITY.
     writeCache({
       version: CACHE_VERSION,
       host: 'x',
@@ -294,7 +512,7 @@ test('setVendorCache removes sensitive legacy fields from every vendor and neste
           },
         },
       },
-    });
+    }, { security: ALWAYS_OWNER_ONLY_SECURITY });
 
     setVendorCache('future-vendor', {
       models: ['future-safe'],
@@ -318,7 +536,7 @@ test('setVendorCache removes sensitive legacy fields from every vendor and neste
         provider_url: 'https://private.example.invalid/future-nested',
         future_provenance: 'retain-me-too',
       },
-    });
+    }, { security: ALWAYS_OWNER_ONLY_SECURITY });
 
     const cache = readCache();
     const sensitiveKeys = new Set([
@@ -388,6 +606,8 @@ test('ordinary CLI probe fails closed on malformed cache without spawning recove
 
 test('CLI inventory readers use the closed projection instead of raw cache path, source, or notes', () => {
   withTmpCache((tmp) => {
+    // This is a CLI-reading test; the in-process writeCache() setup step is
+    // not the subject, so ALWAYS_OWNER_ONLY_SECURITY keeps it deterministic.
     writeCache({
       version: CACHE_VERSION,
       host: 'x',
@@ -405,7 +625,7 @@ test('CLI inventory readers use the closed projection instead of raw cache path,
           diagnostic_code: 'none',
         },
       },
-    });
+    }, { security: ALWAYS_OWNER_ONLY_SECURITY });
     for (const args of [['--models', 'claude'], ['--capabilities', 'claude']]) {
       const child = spawnSync(process.execPath, [DISPATCH_CLI, ...args], {
         encoding: 'utf-8', env: { ...process.env, HOPPER_CACHE_DIR: tmp },
@@ -473,7 +693,22 @@ test('recoverCache makes a fresh v1 cache through an owner-only temp and exclusi
     const active = '{"version":999,"secret":"old"}\n';
     writeFileSync(path, active, 'utf-8');
 
+    // Real, unmocked production security path (no override): an end-to-end
+    // sanity check of whichever platform actually runs this suite, layered
+    // on top of the cross-platform-forced destructive counter-proof tests
+    // above (which already prove the underlying decision logic on every
+    // platform, including the Windows fail-closed branch this test can only
+    // reach for real on an actual windows-latest runner).
     const recovered = recoverCache({ now: () => new Date('2026-07-22T01:02:03.000Z'), randomHex: () => 'deadbeef' });
+    if (WIN32) {
+      assert.equal(recovered.committed, false);
+      assert.equal(recovered.diagnostic_code, 'inventory-cache-parent-owner-only-failed');
+      assertOwnerOnlyDiagnosticMessage(recovered.diagnostic_message);
+      assert.equal(readFileSync(path, 'utf-8'), active, 'a rejected recovery must not touch the active file');
+      assert.deepEqual(recoveryBackupNames(tmp), [], 'a rejected recovery must not create a backup');
+      assert.deepEqual(readdirSync(tmp).filter((name) => name.includes('.tmp.')), []);
+      return;
+    }
     assert.deepEqual(recovered, { committed: true, diagnostic_code: 'none' });
     assert.equal(readCacheWithOutcome().outcome, 'ok-v1');
     const backups = recoveryBackupNames(tmp);
@@ -485,7 +720,16 @@ test('recoverCache makes a fresh v1 cache through an owner-only temp and exclusi
 
 test('recoverCache installs a missing active cache without creating a backup', () => {
   withTmpCache((tmp) => {
+    // See the platform-branch comment on the test above.
     const result = recoverCache();
+    if (WIN32) {
+      assert.equal(result.committed, false);
+      assert.equal(result.diagnostic_code, 'inventory-cache-parent-owner-only-failed');
+      assertOwnerOnlyDiagnosticMessage(result.diagnostic_message);
+      assert.equal(readCacheWithOutcome().outcome, 'missing');
+      assert.deepEqual(recoveryBackupNames(tmp), []);
+      return;
+    }
     assert.deepEqual(result, { committed: true, diagnostic_code: 'none' });
     assert.equal(readCacheWithOutcome().outcome, 'ok-v1');
     assert.deepEqual(recoveryBackupNames(tmp), []);
@@ -497,7 +741,10 @@ test('recoverCache removes a temp whose owner-only assertion fails before touchi
     const path = cachePath();
     const active = '{"version":2,"keep":"exact bytes"}';
     writeFileSync(path, active, 'utf-8');
-    const result = recoverCache({ security: { assertOwnerOnly: () => false } });
+    // Isolates the TEMP-file-level assertion failure this test is about;
+    // parent-level hooks get a no-op success (ALWAYS_OWNER_ONLY_SECURITY)
+    // so this doesn't also depend on this host's real parent ACL behavior.
+    const result = recoverCache({ security: { ...ALWAYS_OWNER_ONLY_SECURITY, assertOwnerOnly: () => false } });
     assert.deepEqual(result, { committed: false, diagnostic_code: 'inventory-cache-recovery-backup-create-failed' });
     assert.equal(readFileSync(path, 'utf-8'), active);
     assert.deepEqual(readdirSync(tmp).filter((name) => name.includes('.tmp.')), []);
@@ -511,8 +758,10 @@ test('recoverCache deletes a newly-created backup when its owner-only assertion 
     const active = '{"version":2,"keep":"exact bytes"}';
     writeFileSync(path, active, 'utf-8');
     let assertions = 0;
+    // Same isolation rationale as the test above.
     const result = recoverCache({
       security: {
+        ...ALWAYS_OWNER_ONLY_SECURITY,
         prepareOwnerOnly: () => {},
         assertOwnerOnly: () => ++assertions === 1,
       },
@@ -529,7 +778,15 @@ test('recoverCache fails closed after eight exclusive backup-name collisions', (
     const active = '{"version":2}';
     writeFileSync(path, active, 'utf-8');
     writeFileSync(join(tmp, 'vendor-capabilities.json.recovery-20260722T010203000Z-deadbeef.bak'), 'existing', 'utf-8');
-    const result = recoverCache({ now: () => new Date('2026-07-22T01:02:03.000Z'), randomHex: () => 'deadbeef' });
+    // Collision handling is the subject here, not ACL success -- without
+    // ALWAYS_OWNER_ONLY_SECURITY a real Windows fail-closed would mask this
+    // scenario entirely (it would never get past the parent-level check to
+    // exercise the collision logic at all).
+    const result = recoverCache({
+      now: () => new Date('2026-07-22T01:02:03.000Z'),
+      randomHex: () => 'deadbeef',
+      security: ALWAYS_OWNER_ONLY_SECURITY,
+    });
     assert.deepEqual(result, { committed: false, diagnostic_code: 'inventory-cache-recovery-backup-create-failed' });
     assert.equal(readFileSync(path, 'utf-8'), active);
   });
@@ -542,10 +799,13 @@ test('recoverCache retention uses timestamp then complete basename, excludes the
     const prefix = 'vendor-capabilities.json.recovery-20260721T000000000Z-';
     for (const suffix of ['aaaaaaaa', 'bbbbbbbb', 'cccccccc']) writeFileSync(join(tmp, `${prefix}${suffix}.bak`), suffix, 'utf-8');
 
+    // Retention/prune logic is the subject here, not ACL success --
+    // ALWAYS_OWNER_ONLY_SECURITY on both calls.
     let failPrune = true;
     const failed = recoverCache({
       now: () => new Date('2026-07-22T01:02:03.000Z'),
       randomHex: () => 'deadbeef',
+      security: ALWAYS_OWNER_ONLY_SECURITY,
       fsOps: recoveryFs({
         unlinkSync: (target) => {
           if (failPrune && target.endsWith('.bak')) throw new Error('retention denied');
@@ -558,7 +818,11 @@ test('recoverCache retention uses timestamp then complete basename, excludes the
     assert.equal(recoveryBackupNames(tmp).length, 4, 'a failed prune may leave a temporary retention excess');
 
     failPrune = false;
-    const healed = recoverCache({ now: () => new Date('2026-07-22T01:02:04.000Z'), randomHex: () => 'feedface' });
+    const healed = recoverCache({
+      now: () => new Date('2026-07-22T01:02:04.000Z'),
+      randomHex: () => 'feedface',
+      security: ALWAYS_OWNER_ONLY_SECURITY,
+    });
     assert.deepEqual(healed, { committed: true, diagnostic_code: 'none' });
     const backups = recoveryBackupNames(tmp).sort();
     assert.equal(backups.length, 3);
@@ -575,9 +839,11 @@ test('recoverCache keeps active bytes unchanged when prune precedes a failed rep
     for (const suffix of ['aaaaaaaa', 'bbbbbbbb', 'cccccccc']) {
       writeFileSync(join(tmp, `vendor-capabilities.json.recovery-20260721T000000000Z-${suffix}.bak`), suffix, 'utf-8');
     }
+    // Replace-failure handling is the subject here, not ACL success -- ALWAYS_OWNER_ONLY_SECURITY.
     const result = recoverCache({
       now: () => new Date('2026-07-22T01:02:03.000Z'),
       randomHex: () => 'deadbeef',
+      security: ALWAYS_OWNER_ONLY_SECURITY,
       fsOps: recoveryFs({ renameSync: () => { throw new Error('replace failed'); } }),
     });
     assert.deepEqual(result, { committed: false, diagnostic_code: 'inventory-cache-recovery-replace-failed' });
@@ -590,7 +856,11 @@ test('recoverCache reports durability unknown only after atomic replacement has 
   withTmpCache(() => {
     const path = cachePath();
     writeFileSync(path, '{"version":2,"old":true}', 'utf-8');
-    const result = recoverCache({ fsOps: recoveryFs({ fsyncSync: () => { throw new Error('durability unknown'); } }) });
+    // Durability-reporting is the subject here, not ACL success -- ALWAYS_OWNER_ONLY_SECURITY.
+    const result = recoverCache({
+      security: ALWAYS_OWNER_ONLY_SECURITY,
+      fsOps: recoveryFs({ fsyncSync: () => { throw new Error('durability unknown'); } }),
+    });
     assert.deepEqual(result, { committed: true, diagnostic_code: 'inventory-cache-recovery-durability-unknown' });
     assert.equal(readCacheWithOutcome().outcome, 'ok-v1');
   });
@@ -606,6 +876,14 @@ test('writeCache + readCache roundtrip preserves data', () => {
         codex: { models: ['gpt-5'], introspection_supported: 'full', probed_at: '2026-05-21T12:00:00Z' },
       },
     };
+    // Real, unmocked production security path (no override) -- see the
+    // platform-branch comment on the recoverCache "owner-only temp" test
+    // above; this is the writeCache()-level counterpart.
+    if (WIN32) {
+      assertThrowsOwnerOnlyParentFailure(() => writeCache(data));
+      assert.equal(readCache(), null);
+      return;
+    }
     writeCache(data);
     const got = readCache();
     assert.deepEqual(got, data);
@@ -614,22 +892,44 @@ test('writeCache + readCache roundtrip preserves data', () => {
 
 test('readCache returns null on version mismatch (no auto-migration)', () => {
   withTmpCache(() => {
-    writeCache({ version: 999, host: 'x', probed_at_global: '', vendors: {} });
+    // Setting up a version-999 file on disk is not about ACL success --
+    // write the raw bytes directly rather than going through writeCache()'s
+    // owner-only gate (same technique other tests in this file use for
+    // malformed-shaped setup, e.g. via writeFileSync).
+    writeFileSync(cachePath(), JSON.stringify({ version: 999, host: 'x', probed_at_global: '', vendors: {} }), 'utf-8');
     assert.equal(readCache(), null);
   });
 });
 
 test('getVendorCache returns null when vendor not cached', () => {
   withTmpCache(() => {
-    setVendorCache('codex', { models: [], introspection_supported: 'full' });
+    // Real, unmocked production security path (no override) -- see the
+    // platform-branch comment on the recoverCache "owner-only temp" test above.
+    const result = setVendorCache('codex', { models: [], introspection_supported: 'full' });
+    if (WIN32) {
+      assert.equal(result.written, false);
+      assert.equal(result.diagnostic_code, 'inventory-cache-parent-owner-only-failed');
+    } else {
+      assert.equal(result.written, true);
+    }
     assert.equal(getVendorCache('kimi'), null);
   });
 });
 
 test('setVendorCache preserves other vendor entries', () => {
   withTmpCache(() => {
-    setVendorCache('codex', { models: ['gpt-5'], introspection_supported: 'full' });
-    setVendorCache('kimi', { models: ['default'], introspection_supported: 'config-only' });
+    // Real, unmocked production security path (no override) -- see the
+    // platform-branch comment on the recoverCache "owner-only temp" test above.
+    const codexWrite = setVendorCache('codex', { models: ['gpt-5'], introspection_supported: 'full' });
+    const kimiWrite = setVendorCache('kimi', { models: ['default'], introspection_supported: 'config-only' });
+    if (WIN32) {
+      assert.equal(codexWrite.written, false);
+      assert.equal(codexWrite.diagnostic_code, 'inventory-cache-parent-owner-only-failed');
+      assert.equal(kimiWrite.written, false);
+      assert.equal(getVendorCache('codex'), null);
+      assert.equal(getVendorCache('kimi'), null);
+      return;
+    }
     const codex = getVendorCache('codex');
     const kimi = getVendorCache('kimi');
     assert.deepEqual(codex.models, ['gpt-5']);
@@ -679,8 +979,19 @@ test('cachePath uses HOPPER_CACHE_DIR override', () => {
 
 test('writeCache atomic — no leftover tmp files', () => {
   withTmpCache((tmp) => {
-    writeCache({ version: CACHE_VERSION, host: 'x', probed_at_global: '', vendors: {} });
     const finalFile = join(tmp, 'vendor-capabilities.json');
+    // Real, unmocked production security path (no override) -- see the
+    // platform-branch comment on the recoverCache "owner-only temp" test
+    // above. "No leftover tmp files" is the invariant either way: on
+    // POSIX a successful write leaves none; on Windows a REJECTED write
+    // (per the user's fail-closed ruling) must ALSO leave none.
+    if (WIN32) {
+      assertThrowsOwnerOnlyParentFailure(() => writeCache({ version: CACHE_VERSION, host: 'x', probed_at_global: '', vendors: {} }));
+      assert.equal(existsSync(finalFile), false);
+      assert.deepEqual(readdirSync(tmp).filter((f) => f.includes('.tmp.')), []);
+      return;
+    }
+    writeCache({ version: CACHE_VERSION, host: 'x', probed_at_global: '', vendors: {} });
     assert.ok(existsSync(finalFile));
     // Check no .tmp.* leftovers in the cache dir
     const dirs = readdirSync(tmp);
@@ -711,6 +1022,11 @@ test('F2-fix: parallel setVendorCache calls preserve all entries (sync barrier)'
   // Children sleep until the shared START_AT (set by us below to "now + 1.5s",
   // generous enough that all 5 children finish module-load before firing).
   const startAt = Date.now() + 1500;
+  // Lock/race semantics are the subject here, not real ACL success -- an
+  // inline no-op "owner-only always succeeds" stub (mirrors
+  // ALWAYS_OWNER_ONLY_SECURITY above; duplicated inline because this script
+  // runs in a separate child process/module scope that can't import test
+  // helpers) keeps this deterministic on every platform.
   const script = `
     import { setVendorCache, readCache } from '${cacheJsUrl}';
     const vendor = process.argv[1];
@@ -718,8 +1034,14 @@ test('F2-fix: parallel setVendorCache calls preserve all entries (sync barrier)'
     // Spin-sleep until target time (avoids setTimeout jitter)
     while (Date.now() < startAt) { /* tight loop, last ~few ms only */ }
     const fireAt = Date.now();
-    setVendorCache(vendor, { models: [vendor + '-m1'], introspection_supported: 'full', probed_at: new Date().toISOString() });
-    process.stdout.write(JSON.stringify({ vendor, fireAt }));
+    const security = {
+      prepareParentOwnerOnly() {},
+      assertParentOwnerOnly() { return true; },
+      prepareOwnerOnly() {},
+      assertOwnerOnly() { return true; },
+    };
+    const write = setVendorCache(vendor, { models: [vendor + '-m1'], introspection_supported: 'full', probed_at: new Date().toISOString() }, { security });
+    process.stdout.write(JSON.stringify({ vendor, fireAt, written: write.written }));
   `;
 
   const results = await Promise.all(vendors.map((v) => new Promise((res, rej) => {
@@ -744,6 +1066,8 @@ test('F2-fix: parallel setVendorCache calls preserve all entries (sync barrier)'
   assert.ok(fireSpread < 250,
     `sync barrier failed — children fired ${fireSpread}ms apart, too wide to exercise race (timestamps: ${fireTimes.join(', ')})`);
 
+  for (const r of results) assert.equal(r.written, true, `vendor '${r.vendor}' write must report success under the forced owner-only-always-succeeds stub`);
+
   // Read the final cache directly
   const finalRaw = readFileSync(join(tmp, 'vendor-capabilities.json'), 'utf-8');
   const finalCache = JSON.parse(finalRaw);
@@ -760,8 +1084,9 @@ test('F2-fix: stale lockfile (>30s old) is auto-cleared', () => {
     writeFileSync(lockPath, '', 'utf-8');
     const oldTime = new Date(Date.now() - 60_000);
     utimesSync(lockPath, oldTime, oldTime);
+    // Stale-lock clearing is the subject here, not ACL success -- ALWAYS_OWNER_ONLY_SECURITY.
     // setVendorCache should succeed — stale lock auto-cleared
-    setVendorCache('codex', { models: ['x'], introspection_supported: 'full' });
+    setVendorCache('codex', { models: ['x'], introspection_supported: 'full' }, { security: ALWAYS_OWNER_ONLY_SECURITY });
     const c = readCache();
     assert.ok(c.vendors.codex);
   });

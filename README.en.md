@@ -5,7 +5,7 @@
 > Vendor-neutral background dispatch for AI agents
 
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
-![Version](https://img.shields.io/badge/version-0.44.0-3DDC97)
+![Version](https://img.shields.io/badge/version-0.45.0-3DDC97)
 ![Tests](https://img.shields.io/badge/tests-passing-3DDC97)
 ![Hosts](https://img.shields.io/badge/hosts-7-111827)
 
@@ -115,6 +115,18 @@ credibility doesn't rest on overselling.
   guard has always been in effect."
 - No automatic retry, no automatic vendor switching, no fallback — one spawn
   is one spawn.
+- **The vendor probe cache is unavailable on Windows.** That cache carries probe
+  diagnostics, so its directory and files must be hardened to owner-only before
+  anything is written. On POSIX that is `0700`/`0600` and it genuinely holds. On
+  Windows it does not: measured on GitHub Actions `windows-latest` (2026-08-03),
+  after hardening `NT AUTHORITY\SYSTEM` and `BUILTIN\Administrators` still hold
+  full control, and Administrators can take ownership regardless. **hopper fails
+  closed — if owner-only cannot be established, the cache write is refused**
+  rather than relaxing the assertion to "those principals don't count." The cost
+  is that vendor capabilities are re-probed every time on Windows, with no cache
+  reuse. This limit was always there and **never took effect**: the hardening
+  silently did nothing and the assertion had never been executed. Adding CI to
+  this repo for the first time is what surfaced it.
 - The authoritative source is `hopper-dispatch --rules` (also written to
   `.hopper/DISPATCH.md`). **The tables and descriptions in this README are
   snapshots, and they drift** — before you actually rely on one, run
