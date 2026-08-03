@@ -331,7 +331,25 @@ test('Kimi runner emits content-free process_alive liveness while text output is
     runnerClosed = new Promise((resolve) => runner.once('close', resolve));
 
     await waitFor(() => existsSync(counterPath));
-    const rawLog = await waitFor(() => existsSync(logPath) && readFileSync(logPath, 'utf-8'));
+    // The fake kimi wrapper writes its stdout and stderr sentinels as two
+    // independent OS pipes; the runner tees each stream to the shared log
+    // file as its own 'data' events arrive (cli/bin/hopper-runner's
+    // teeToLog), with no guaranteed ordering between the two streams. A
+    // readiness check that only waits for the log file to become non-empty
+    // races: it can observe the log right after ONE sentinel has landed and
+    // before the other stream's chunk has been written, asserting on partial
+    // content depending on which stream happened to arrive first (reproduced
+    // locally, on macOS, on both Node 22 and Node 24 — this is a stream
+    // arrival-order race, not a Windows- or Node-24-specific behavior
+    // change). Wait for BOTH sentinels' content to be present — assert on
+    // content, not on arrival order.
+    const rawLog = await waitFor(() => {
+      if (!existsSync(logPath)) return false;
+      const content = readFileSync(logPath, 'utf-8');
+      const hasBoth = /HOSTILE_KIMI_STDOUT_SENTINEL/.test(content)
+        && /HOSTILE_KIMI_STDERR_SENTINEL/.test(content);
+      return hasBoth ? content : false;
+    });
     assert.match(rawLog, /HOSTILE_KIMI_STDOUT_SENTINEL/);
     assert.match(rawLog, /HOSTILE_KIMI_STDERR_SENTINEL/);
     const liveness = await waitFor(() => progress.readProgressEvents({ hopperDir, taskId })

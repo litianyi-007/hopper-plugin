@@ -162,7 +162,21 @@ test('executeDispatch public sync entry permits explicit danger-full-access for 
     assert.equal(result.output.status, 'success');
     assert.match(result.output.text, /FAKE_KIMI_OK/);
     assert.equal(readFileSync(fixture.counterFile, 'utf-8'), '1', 'explicit full-access should spawn fake kimi exactly once');
-    assert.deepEqual(readdirSync(fixture.handoffsDir), [], 'successful sync call without --write creates no handoff artifact');
+    // Windows only: kimi is reached through a cmd.exe `.cmd` shim here (cmd-shim regime),
+    // and the kimi adapter is NOT stdin-capable (stdinMode: 'none', no promptStdin). Per
+    // the newline-gated rule in cli/src/prompt-delivery.js (ISSUE-opencode-windows-
+    // multiline-prompt-truncation), composePrompt() ALWAYS produces a multi-line prompt
+    // (parts joined with '\n\n---\n\n'), so on the win-cmd-shim regime a non-stdin vendor
+    // ALWAYS takes the pointer-file channel — regardless of prompt size. `<taskId>-
+    // prompt.md` is therefore a REQUIRED delivery artifact on Windows for this fixture,
+    // not a stray leftover: it is a recognized, permanent artifact type (ARTIFACT_SUFFIXES
+    // in cli/src/archive.js lists it alongside -output.md/-progress.log). Exclude ONLY
+    // that one expected file here and keep the assertion strict for anything else —
+    // do not weaken this to "don't check artifacts on Windows".
+    const expectedWindowsArtifacts = process.platform === 'win32' ? ['T-KIMI-PUBLIC-prompt.md'] : [];
+    const unexpectedHandoffFiles = readdirSync(fixture.handoffsDir)
+      .filter((f) => !expectedWindowsArtifacts.includes(f));
+    assert.deepEqual(unexpectedHandoffFiles, [], 'successful sync call without --write creates no handoff artifact beyond the Windows-required prompt-delivery pointer file');
   } finally {
     rmSync(fixture.tmp, { recursive: true, force: true });
   }

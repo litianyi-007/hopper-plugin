@@ -63,17 +63,6 @@ jobs:
       #
       # Net effect: this step needs Node >=22.18.0, which "22" (floating to
       # latest 22.x via setup-node) already satisfies.
-      # TEMPORARY (v0.44.x). The Windows cache-hardening failures survived one
-      # hypothesis-driven fix; this prints the runner's actual icacls output so
-      # the next attempt is grounded in observation rather than a second guess
-      # made from a macOS machine. continue-on-error so it always reports, and
-      # placed before the tests so its output is not buried under a failure.
-      # Delete once the real cause is fixed.
-      - name: DIAG — raw icacls behavior on this runner (Windows only)
-        if: runner.os == 'Windows'
-        continue-on-error: true
-        run: node scripts/diag-windows-acl.mjs
-
       - name: Run unit tests
         run: npm test
 

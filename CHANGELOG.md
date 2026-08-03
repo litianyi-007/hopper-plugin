@@ -19,6 +19,46 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.45.1] - 2026-08-03
+
+Test-and-CI only; the shipped plugin is unchanged from 0.45.0.
+
+### Fixed (tests)
+
+- Three tests carried platform assumptions that only a real Windows/Node-24 lane
+  could disprove:
+  - `execute-dispatch-e2e`'s "sync call creates no handoff artifact" was never
+    platform-universal. On Windows a non-stdin vendor reached through a cmd.exe
+    shim always takes the pointer-file delivery channel — `composePrompt()`
+    always emits multi-line text, so the newline gate fires regardless of size.
+    The test now excludes exactly `<taskId>-prompt.md` and still asserts nothing
+    **else** landed. `-prompt.md` is a first-class artifact (`archive.js`'s
+    `ARTIFACT_SUFFIXES`), not a stray file, so the code was left alone.
+  - `lifecycle-regression`'s "content-free process_alive" readiness poll returned
+    on the log file being merely non-empty. stdout and stderr are separate pipes
+    with separate append fds; whichever lands first satisfied it. **This is a
+    latent race, not a Node 24 or Windows behavior change** — reproduced locally
+    on macOS + Node 22 (failed on iteration 7 of 40) with a failure signature
+    byte-identical to CI's. The poll now waits for both sentinels. 60 isolated
+    repeats on each of Node 22 and 24: 0 failures.
+  - `setup`/`vendor-probe` cache assumptions were aligned with the Windows
+    fail-closed behavior in 0.45.0, and the probe-redaction assertion moved onto
+    the in-memory `probe()` result so it runs on every platform instead of only
+    where the cache is writable.
+
+### Removed
+
+- The temporary `scripts/diag-windows-acl.mjs` and its CI step. It did its job:
+  it turned "Windows hardening is broken" from a hypothesis into an observation,
+  after the first hypothesis-driven fix had already failed.
+
+### Recorded, not fixed
+
+- `ISSUE-prompt-artifact-lifecycle-and-windows-permissions.md` — `-prompt.md`
+  holds the complete composed prompt inside the project, nothing ever deletes any
+  of the five artifact types, and its `0600` is best-effort on Windows where we
+  now know permission hardening does not take effect.
+
 ## [0.45.0] - 2026-08-03
 
 ### Changed — Windows vendor cache now fails closed (user ruling)

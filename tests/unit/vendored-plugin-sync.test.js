@@ -22,8 +22,8 @@ test('plugins/hopper vendored copy stays in sync with main source (codex#17066 d
     `plugins/hopper/ drifted from the main source. Fix: \`node scripts/sync-vendored-plugin.mjs\` then commit plugins/hopper/.\n${r.stdout}\n${r.stderr}`);
 });
 
-test('0.45.0 release metadata and static command surfaces stay aligned', () => {
-  const version = '0.45.0';
+test('0.45.1 release metadata and static command surfaces stay aligned', () => {
+  const version = '0.45.1';
   const manifests = [
     'package.json',
     '.claude-plugin/plugin.json',
