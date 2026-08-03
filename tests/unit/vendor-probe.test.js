@@ -113,7 +113,7 @@ test('kimi probe uses provider list JSON when Kimi Code 0.14+ is available', asy
 });
 
 test('kimi probe closes config and process diagnostics before result or cache storage', async (t) => {
-  const { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync } = await import('node:fs');
+  const { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, chmodSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');
   const { join, delimiter } = await import('node:path');
   const { probe } = await import('../../cli/src/vendor-probe/kimi.js');
@@ -158,7 +158,6 @@ test('kimi probe closes config and process diagnostics before result or cache st
   process.env.HOPPER_CACHE_DIR = join(tmp, 'cache');
   try {
     const result = await probe();
-    setVendorCache('kimi', result);
     const forbidden = [privateConfigPath, 'https://probe-private.invalid', 'private-provider', 'private-auth', 'private-stderr'];
     const assertClosed = (value) => {
       if (typeof value === 'string') {
@@ -169,8 +168,29 @@ test('kimi probe closes config and process diagnostics before result or cache st
         Object.values(value).forEach(assertClosed);
       }
     };
+    // Primary assertion: redaction happens INSIDE probe() itself (kimi.js never
+    // puts the raw config path, stderr, or provider/auth excerpts into the
+    // returned object -- only closed notes/provenance strings) -- well before
+    // any cache write. Assert it on the in-memory result directly so this
+    // security property is verified on every platform, including a real
+    // Windows host where the cache write below never happens at all (fail-
+    // closed, 2026-08-03 user ruling: owner-only can never be established
+    // there -- see cache.test.js for the diagnostic writeup).
     assertClosed(result);
-    assertClosed(JSON.parse(readFileSync(cachePath(), 'utf-8')));
+
+    // Secondary: the same closed shape must also survive an actual cache
+    // round-trip wherever the write can succeed. On POSIX this ordinarily
+    // succeeds, so this stays a real end-to-end check there (unchanged
+    // rigor). On Windows the write fails closed -- assert THAT instead of
+    // crashing on a guaranteed ENOENT for a file that was never created.
+    const cacheWrite = setVendorCache('kimi', result);
+    if (isWindows) {
+      assert.equal(cacheWrite.written, false, 'Windows fail-closed: owner-only cannot be established, so the cache write is rejected');
+      assert.equal(existsSync(cachePath()), false, 'a rejected write must leave no cache file (nothing to leak from)');
+    } else {
+      assert.equal(cacheWrite.written, true, 'POSIX cache write must succeed (unchanged rigor)');
+      assertClosed(JSON.parse(readFileSync(cachePath(), 'utf-8')));
+    }
   } finally {
     if (savedPath === undefined) delete process.env.PATH;
     else process.env.PATH = savedPath;
@@ -182,7 +202,7 @@ test('kimi probe closes config and process diagnostics before result or cache st
 });
 
 test('mimo and kimi probes close binary paths and raw process diagnostics before result or cache storage', async (t) => {
-  const { mkdtempSync, writeFileSync, readFileSync, rmSync, chmodSync } = await import('node:fs');
+  const { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync, chmodSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');
   const { join, delimiter } = await import('node:path');
   const { probe: mimoProbe } = await import('../../cli/src/vendor-probe/mimo.js');
@@ -239,7 +259,6 @@ test('mimo and kimi probes close binary paths and raw process diagnostics before
   process.env.KIMI_CODE_HOME = join(tmp, 'empty-kimi-home');
   try {
     const results = { mimo: await mimoProbe(), kimi: await kimiProbe() };
-    for (const [vendor, result] of Object.entries(results)) setVendorCache(vendor, result);
     const secrets = [tmp, privateModelStderr, privateAuthExcerpt, privateKimiStderr];
     const assertClosed = (value) => {
       if (typeof value === 'string') {
@@ -250,10 +269,32 @@ test('mimo and kimi probes close binary paths and raw process diagnostics before
         Object.values(value).forEach(assertClosed);
       }
     };
+    // Primary: redaction happens INSIDE mimo.js/kimi.js's probe() -- neither
+    // ever puts raw model/auth stdout+stderr or the resolved binary path into
+    // the returned object -- well before any cache write. Assert it on the
+    // in-memory results directly so this holds on every platform, including a
+    // real Windows host where the cache write below fails closed (2026-08-03
+    // user ruling) and never touches disk at all.
     assertClosed(results);
-    assertClosed(JSON.parse(readFileSync(cachePath(), 'utf-8')));
     assert.equal(Object.hasOwn(results.mimo, 'binary_path'), false);
     assert.equal(Object.hasOwn(results.kimi, 'binary_path'), false);
+
+    // Secondary: the same closed shape must also survive an actual cache
+    // round-trip wherever the write can succeed (POSIX, unchanged rigor). On
+    // Windows the write fails closed for both vendors -- assert THAT instead
+    // of a guaranteed ENOENT on a file that was never created.
+    const writes = Object.fromEntries(Object.entries(results).map(([vendor, result]) => [vendor, setVendorCache(vendor, result)]));
+    if (isWindows) {
+      for (const [vendor, w] of Object.entries(writes)) {
+        assert.equal(w.written, false, `Windows fail-closed: ${vendor} cache write must be rejected`);
+      }
+      assert.equal(existsSync(cachePath()), false, 'a rejected write must leave no cache file (nothing to leak from)');
+    } else {
+      for (const [vendor, w] of Object.entries(writes)) {
+        assert.equal(w.written, true, `POSIX cache write for ${vendor} must succeed (unchanged rigor)`);
+      }
+      assertClosed(JSON.parse(readFileSync(cachePath(), 'utf-8')));
+    }
   } finally {
     if (savedPath === undefined) delete process.env.PATH;
     else process.env.PATH = savedPath;

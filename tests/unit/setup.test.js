@@ -18,6 +18,34 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const DISPATCH_BIN = resolve(__dirname, '..', '..', 'cli', 'bin', 'hopper-dispatch');
 
+// --- Windows fail-closed context (2026-08-03 user ruling; see cache.test.js
+// for the full diagnostic writeup) --------------------------------------
+//
+// A real windows-latest CI diagnostic showed `/inheritance:r` cannot strip
+// pre-existing explicit SYSTEM/Administrators ACEs, so owner-only can never
+// be established on Windows and every vendor-cache WRITE fails closed there
+// -- deliberately, not a bug. buildVendorReadiness() (cli/src/setup.js) calls
+// cache.js's setVendorCache() internally with NO injectable `security`
+// override (adding one would be a cli/ change, out of scope for this
+// test-only fix), so the two tests below that exercise buildVendorReadiness's
+// OWN persist path can only observe the real fail-closed decision on an
+// actual win32 host, guarded by `WIN32` below (same layering as
+// cache.test.js's recoverCache() tests).
+const WIN32 = process.platform === 'win32';
+
+// An OS-independent "owner-only always succeeds" security stub, used ONLY to
+// seed test fixtures (an existing cache entry) so that step isn't itself
+// subject to the ambient platform's real cache-write security -- the actual
+// subject under test elsewhere is buildVendorReadiness's own never-clobber
+// decision, not the cache write's owner-only mechanism. Same rationale/shape
+// as cache.test.js's ALWAYS_OWNER_ONLY_SECURITY.
+const ALWAYS_OWNER_ONLY_SECURITY = {
+  prepareParentOwnerOnly() {},
+  assertParentOwnerOnly() { return true; },
+  prepareOwnerOnly() {},
+  assertOwnerOnly() { return true; },
+};
+
 test('setup: buildVendorReadiness returns one well-formed row per registered vendor', async () => {
   const rows = await buildVendorReadiness();
   assert.equal(rows.length, listAdapters().length);
@@ -259,14 +287,28 @@ test('V3 deep: persist gate — true writes the live catalog to cache; false sup
   process.env.HOPPER_CACHE_DIR = tmp;
   try {
     const fakeProbe = async () => ({ introspection_supported: 'full', models: ['gpt-5.5', 'gpt-6'], models_source: 'fake' });
-    // persist:false → no cache file written
+    // persist:false → no cache file written (true on every platform).
     await buildVendorReadiness({ only: 'codex', deep: true, persist: false, probeFn: fakeProbe });
     assert.equal(getVendorCache('codex'), null, 'persist:false must not write the cache');
-    // persist:true → cache reflects the live catalog
+
+    // persist:true → cache reflects the live catalog -- EXCEPT on a real Windows
+    // host, where buildVendorReadiness's internal (non-injectable) setVendorCache()
+    // call fails closed (see the WIN32 comment above): owner-only can never be
+    // established there, so no cache entry is ever produced. That is the
+    // deliberate fail-closed decision, not a bug -- assert its ABSENCE instead of
+    // its presence on Windows. This can only be forced on a genuine win32 host
+    // (unlike cache.test.js's forcedWindowsSecurity(), buildVendorReadiness()
+    // doesn't plumb an injectable `security` through to this internal call), so
+    // unlike most Windows branches in this suite, this one is not cross-platform
+    // forceable without a cli/ change -- out of scope for this fix.
     await buildVendorReadiness({ only: 'codex', deep: true, persist: true, probeFn: fakeProbe });
     const cached = getVendorCache('codex');
-    assert.ok(cached && Array.isArray(cached.models), 'persist:true writes a cache entry');
-    assert.deepEqual(cached.models, ['gpt-5.5', 'gpt-6']);
+    if (WIN32) {
+      assert.equal(cached, null, 'Windows fail-closed: owner-only can never be established here, so persist:true still writes nothing');
+    } else {
+      assert.ok(cached && Array.isArray(cached.models), 'persist:true writes a cache entry');
+      assert.deepEqual(cached.models, ['gpt-5.5', 'gpt-6']);
+    }
   } finally {
     if (oldEnv === undefined) delete process.env.HOPPER_CACHE_DIR; else process.env.HOPPER_CACHE_DIR = oldEnv;
     rmSync(tmp, { recursive: true, force: true });
@@ -278,8 +320,16 @@ test('V3 deep: a non-live (partial) probe never clobbers an existing cache entry
   const oldEnv = process.env.HOPPER_CACHE_DIR;
   process.env.HOPPER_CACHE_DIR = tmp;
   try {
-    // seed a good prior cache entry
-    setVendorCache('claude', { models: ['sonnet', 'opus'], introspection_supported: 'partial', probed_at: '2020-01-01T00:00:00.000Z' });
+    // Seed a good prior cache entry through the OS-independent
+    // ALWAYS_OWNER_ONLY_SECURITY stub (see top-of-file comment): this test's real
+    // subject is buildVendorReadiness's OWN never-clobber decision for a
+    // partial/static probe -- for such a probe `liveEnumerated` is false, so
+    // buildVendorReadiness never even calls setVendorCache (cli/src/setup.js) --
+    // which holds on every platform, including a real Windows host where cache
+    // writes otherwise fail closed. Seeding through the real, ambient,
+    // platform-gated security would make the FIXTURE SETUP itself subject to
+    // that unrelated fail-closed decision, which isn't what this test is about.
+    setVendorCache('claude', { models: ['sonnet', 'opus'], introspection_supported: 'partial', probed_at: '2020-01-01T00:00:00.000Z' }, { security: ALWAYS_OWNER_ONLY_SECURITY });
     const fakeProbe = async () => ({ introspection_supported: 'partial', models: ['sonnet', 'opus', 'haiku', 'fable'], models_source: 'static' });
     await buildVendorReadiness({ only: 'claude', deep: true, persist: true, probeFn: fakeProbe });
     const cached = getVendorCache('claude');
