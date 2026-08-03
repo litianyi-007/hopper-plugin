@@ -234,15 +234,32 @@ function releaseLock(lockPath) {
  * F2-fix: holds an exclusive file lock for the read-merge-write critical section
  * so parallel `--probe codex` / `--probe opencode` invocations cannot drop each
  * other's entries.
+ *
+ * R2-race-fix: the pre-lock read of the cache file (formerly `prior`, used
+ * only to report `outcome` on the rare parent-owner-only-failure path) has
+ * been removed from the common/hot path. It used to run unconditionally,
+ * before the lock was even attempted, which meant every parallel caller
+ * opened the SAME destination file for reading while ANOTHER caller could
+ * simultaneously be holding the lock and mid-`renameSync(tmp, path)` onto
+ * that exact path. POSIX rename is atomic and tolerates a concurrent reader
+ * with no error either side; Windows' MoveFileEx-based replace can instead
+ * surface a transient sharing-violation (EBUSY/EPERM) on the RENAME side
+ * when another handle holds the destination open, so this unlocked read
+ * was a real -- if narrow -- window for the lock-holder's write to fail
+ * with `inventory-cache-write-failed` even though the lock itself was never
+ * broken. Every remaining touch of the cache file inside this function now
+ * happens only after `acquireLock()`, so no caller opens the shared path
+ * outside the critical section. The one place `outcome` is still needed
+ * (the parent-owner-only-failure return below) computes it lazily, only on
+ * that already-rare failure branch, not on every call.
  */
 export function setVendorCache(name, entry, { fsOps = DEFAULT_FS_OPS, security = {} } = {}) {
   const path = cachePath();
-  const prior = readCacheWithOutcome();
   const mergedSecurity = { ...DEFAULT_SECURITY, ...security };
   if (!prepareCacheParent(path, fsOps, mergedSecurity)) {
     return {
       written: false,
-      outcome: prior.outcome,
+      outcome: readCacheWithOutcome().outcome,
       diagnostic_code: 'inventory-cache-parent-owner-only-failed',
       diagnostic_message: ownerOnlyDiagnosticMessage('inventory-cache-parent-owner-only-failed'),
     };

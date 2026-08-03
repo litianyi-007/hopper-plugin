@@ -19,6 +19,37 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.45.2] - 2026-08-03
+
+### Fixed
+
+- **`setVendorCache` touched the shared cache file outside its own lock.** The
+  function opened `readCacheWithOutcome()` unconditionally at the top, before
+  `acquireLock()` — its result was needed by exactly one rare branch (the
+  parent-owner-only hardening failure), but it ran on every call. That read could
+  land while another process, holding the lock, was mid-`renameSync` over the same
+  destination. On POSIX a concurrent reader never disturbs a rename; on Windows
+  the `MoveFileEx`-based replace can raise a transient sharing violation
+  (EBUSY/EPERM) when another handle holds the destination open. The read is now
+  inside the one branch that needs it, so **every touch of the shared file happens
+  under the lock**.
+
+  No retry, no sleep, no timeout change — those would have made the light green
+  without making the check hold. Atomicity is unchanged (write-to-temp + atomic
+  rename), and the fail-closed paths are byte-for-byte untouched.
+
+### Not established
+
+Why `windows-latest` + Node 22 passed while Node 24 failed. The failure could not
+be reproduced on macOS at all — 50 runs on each of Node 22 and 24, before *and*
+after the fix, all green — so the specific scheduling difference is unknown and is
+not being guessed at. What is established: the unlocked read existed, it is the
+only unsynchronized access to the shared file in that path, and removing it costs
+nothing. The destructive counter-proof (disabling the lock entirely → 10/10
+failures with lost vendor entries) confirms the test still detects real loss, so
+the fix is not vacuous. Confirmation that it resolves the reported failure can
+only come from a green `windows-latest, 24` CI run.
+
 ## [0.45.1] - 2026-08-03
 
 Test-and-CI only; the shipped plugin is unchanged from 0.45.0.
