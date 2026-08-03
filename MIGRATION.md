@@ -11,6 +11,24 @@ It is the only BREAKING entry in this file.
 
 ---
 
+## v0.44.0 (2026-08-03) — no action for existing projects
+
+**What changed.** Three defects that the CI added in v0.43.0 surfaced on its
+first runs, all pre-existing: `verifyPidImage` misreporting a legitimate node
+process on Linux + Node 24 (which made `--stop` silently decline to stop jobs it
+owned), and the Windows vendor-cache owner-only hardening reporting failure when
+it had actually succeeded (`icacls` Mandatory Label counted as a competing ACE).
+
+**Will your project break?** No. Both are repairs of checks that were reporting
+the wrong answer; neither loosens a boundary. If you run hopper on Linux with
+Node 24, `--stop` starts working again. If you run it on Windows, vendor cache
+writes stop being refused spuriously — note that they were *refused*, i.e. it
+failed closed, so nothing unprotected was ever written.
+
+**What to do.** Nothing.
+
+---
+
 ## v0.43.0 (2026-08-03) — no action for existing projects
 
 **What changed.** `--resolve <task-id> --vendor <v>` now actually applies the

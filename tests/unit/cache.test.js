@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import {
   readCache, readCacheWithOutcome, writeCache, getVendorCache, setVendorCache, recoverCache,
-  isStale, staleness, cachePath, CACHE_VERSION,
+  isStale, staleness, cachePath, CACHE_VERSION, windowsAclLines,
 } from '../../cli/src/cache.js';
 import * as fs from 'node:fs';
 import { mkdtempSync, rmSync, existsSync, readFileSync, readdirSync, writeFileSync, utimesSync } from 'node:fs';
@@ -30,6 +30,51 @@ function withTmpCache(fn) {
     rmSync(tmp, { recursive: true, force: true });
   }
 }
+
+// --- windowsAclLines: icacls output parsing (platform-independent, so it
+// runs on every OS even though the win32-gated callers only run on
+// Windows). Regression coverage for a real bug found via GitHub Actions
+// windows-latest CI: `icacls <path>`'s default listing interleaves SACL
+// "Mandatory Label" (integrity level) entries with real DACL ACE lines
+// using the same `principal:(flags)` shape, which used to make owner-only
+// hardening that genuinely succeeded look like it failed whenever the
+// target inherited a Mandatory Label (plausible on GitHub Actions
+// windows-latest, which redirects TEMP/TMP onto the ephemeral D:\ drive).
+test('windowsAclLines excludes an inherited Mandatory Label line, keeping only the real DACL grant', () => {
+  const stdout = [
+    'C:\\Users\\runneradmin\\AppData\\Local\\Temp\\hopper-cache-abc123 FV-AZ123-45\\runneradmin:(F)',
+    '                                                                  Mandatory Label\\Medium Mandatory Level:(OI)(NP)(IO)(NW)',
+    '',
+    'Successfully processed 1 files; Failed processing 0 files.',
+  ].join('\r\n');
+  const lines = windowsAclLines(stdout);
+  assert.deepEqual(lines, ['C:\\Users\\runneradmin\\AppData\\Local\\Temp\\hopper-cache-abc123 FV-AZ123-45\\runneradmin:(F)']);
+});
+
+test('windowsAclLines is case-insensitive about the Mandatory Label prefix', () => {
+  const stdout = [
+    'C:\\dir FV-AZ123-45\\runneradmin:(OI)(CI)(F)',
+    '        MANDATORY LABEL\\High Mandatory Level:(OI)(NP)(IO)(NW)',
+  ].join('\r\n');
+  assert.equal(windowsAclLines(stdout).length, 1);
+});
+
+test('windowsAclLines destructive counter-proof: a REAL second grant is still counted (not swallowed by the Mandatory Label exclusion)', () => {
+  const stdout = [
+    'C:\\dir FV-AZ123-45\\runneradmin:(F)',
+    '        Everyone:(F)',
+    '',
+    'Successfully processed 1 files; Failed processing 0 files.',
+  ].join('\r\n');
+  const lines = windowsAclLines(stdout);
+  assert.equal(lines.length, 2, 'a genuine competing DACL grant must still break the owner-only invariant');
+});
+
+test('windowsAclLines: no ACE lines at all yields an empty array (fails closed, not a false pass)', () => {
+  assert.deepEqual(windowsAclLines('Successfully processed 1 files; Failed processing 0 files.'), []);
+  assert.deepEqual(windowsAclLines(''), []);
+  assert.deepEqual(windowsAclLines(undefined), []);
+});
 
 test('readCache returns null when file does not exist', () => {
   withTmpCache(() => {

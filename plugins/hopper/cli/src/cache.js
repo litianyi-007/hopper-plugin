@@ -310,6 +310,33 @@ function windowsIdentity() {
   return domain && name ? `${domain}\\${name}` : name;
 }
 
+// `icacls <path>`'s default listing interleaves SACL "Mandatory Label"
+// (integrity level) entries with DACL ACE lines, using the same visual
+// shape (`principal:(flags)`) as a real permission grant -- e.g. a stock
+// `icacls C:\` shows `Mandatory Label\High Mandatory Level:(OI)(NP)(IO)(NW)`
+// on the very same listing as the real owner/SYSTEM/Administrators DACL
+// grants. A Mandatory Label is not a discretionary access grant to another
+// principal (it cannot be used by anyone to read or write the object), so
+// it must never be counted as a competing ACE when asserting "exactly one
+// owner-only grant exists". Concretely: GitHub Actions windows-latest
+// redirects TEMP/TMP onto the ephemeral D:\ drive; if that drive's root (or
+// any ancestor) carries an inheritable Mandatory Label -- plausible for
+// freshly-provisioned/ephemeral volumes, mirroring the drive-root example
+// above -- every directory created under it (including every
+// fs.mkdtempSync() cache dir) inherits that label. Counting it as a second
+// ACE would make owner-only hardening that genuinely succeeded look like it
+// failed, i.e. a false fail-closed that is indistinguishable from a real
+// security defect without this exclusion. Excluding it does not weaken the
+// check: we still require exactly one DACL grant and still require it to
+// belong to our own identity.
+function windowsAclLines(stdout) {
+  return String(stdout || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /:\([A-Z]/i.test(line))
+    .filter((line) => !/^mandatory label\\/i.test(line));
+}
+
 function hardenWindowsAcl(path) {
   const identity = windowsIdentity();
   if (!identity) throw new Error('current Windows identity is unavailable');
@@ -317,7 +344,9 @@ function hardenWindowsAcl(path) {
     encoding: 'utf-8',
     windowsHide: true,
   });
-  if (result.status !== 0) throw new Error('icacls hardening failed');
+  if (result.status !== 0) {
+    throw new Error(`icacls hardening failed (status=${result.status}): ${(result.stderr || result.stdout || '').trim().slice(0, 500)}`);
+  }
 }
 
 function assertWindowsOwnerOnly(path) {
@@ -325,10 +354,7 @@ function assertWindowsOwnerOnly(path) {
   if (!identity) return false;
   const result = spawnSync('icacls', [path], { encoding: 'utf-8', windowsHide: true });
   if (result.status !== 0) return false;
-  const aclLines = String(result.stdout || '')
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => /:\([A-Z]/i.test(line));
+  const aclLines = windowsAclLines(result.stdout);
   return aclLines.length === 1
     && aclLines[0].toLowerCase().endsWith(`${identity.toLowerCase()}:(f)`);
 }
@@ -368,10 +394,7 @@ function assertWindowsParentOwnerOnly(path) {
   if (!identity) return false;
   const result = spawnSync('icacls', [path], { encoding: 'utf-8', windowsHide: true });
   if (result.status !== 0) return false;
-  const aclLines = String(result.stdout || '')
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => /:\([A-Z]/i.test(line));
+  const aclLines = windowsAclLines(result.stdout);
   return aclLines.length === 1
     && aclLines[0].toLowerCase().endsWith(`${identity.toLowerCase()}:(oi)(ci)(f)`);
 }
@@ -383,7 +406,9 @@ function hardenWindowsDirectoryAcl(path) {
     encoding: 'utf-8',
     windowsHide: true,
   });
-  if (result.status !== 0) throw new Error('icacls parent hardening failed');
+  if (result.status !== 0) {
+    throw new Error(`icacls parent hardening failed (status=${result.status}): ${(result.stderr || result.stdout || '').trim().slice(0, 500)}`);
+  }
 }
 
 function bestEffortUnlink(path, fsOps) {
@@ -548,4 +573,9 @@ export function staleness(probedAt) {
   return `${(hours / 24).toFixed(1)}d ago`;
 }
 
-export { CACHE_VERSION, STALE_DAYS_DEFAULT };
+// Exported for direct, cross-platform unit testing of the icacls output
+// parser (see windowsAclLines() above) -- the win32-gated code paths that
+// call it cannot themselves run outside a real Windows machine, but the
+// parsing logic itself is pure and platform-independent, so it can and
+// should be regression-tested everywhere `npm test` runs.
+export { CACHE_VERSION, STALE_DAYS_DEFAULT, windowsAclLines };

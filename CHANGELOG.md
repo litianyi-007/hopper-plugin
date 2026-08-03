@@ -19,6 +19,61 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.44.0] - 2026-08-03
+
+Everything here was found by the CI added in 0.43.0, on its first runs. All three
+are pre-existing defects, not regressions from that batch — they were simply
+never executed before.
+
+### Fixed
+
+- **`verifyPidImage` returned `mismatch` for a legitimate node process on
+  Linux + Node 24** (`cli/src/subprocess.js`). It read `ps -p <pid> -o comm=`,
+  i.e. the kernel's `TASK_COMM`, capped at 15 visible characters. Confirmed from
+  real Actions logs: under Node 24 on `ubuntu-latest` a plain `node --test`
+  process's comm does not contain "node", while the identical setup-node install
+  shape under Node 22 on the same image does. `background.js` treats `mismatch`
+  as "never kill", so this did not risk killing an unrelated process — it
+  silently broke `--stop`'s ability to stop a job it legitimately owned. Now
+  resolves `/proc/<pid>/exe` first on Linux (kernel-maintained, untruncated,
+  not rewritable by process-title tricks) and falls back to `ps` for
+  permission-denied / no-procfs cases. Deliberately does **not** fall back to a
+  full command-line substring match, which could false-`match` on an argument
+  containing "node". Net risk movement: fewer false `mismatch`, no new path to a
+  false `match`. The exact upstream Node change was not identified — recorded as
+  such in `ISSUE-verifypidimage-linux-node24-comm-mismatch.md` rather than
+  guessed at.
+- **All 23 Windows cache failures were one bug** (`cli/src/cache.js`). Every one
+  carried the same `inventory-cache-parent-owner-only-failed` diagnostic from
+  `prepareCacheParent()` — the first step of every cache write; the file-level
+  ACL helpers were never even reached. `icacls <path>`'s listing interleaves
+  SACL **Mandatory Label** (integrity level) entries with real DACL ACEs using
+  the same `principal:(flags)` shape, and the "exactly one ACE" assertion counted
+  the label as a second, competing grant — so hardening that genuinely succeeded
+  was reported as failed. A Mandatory Label grants no one access, so excluding it
+  from that count is a correctness fix, not a relaxation: the exactly-one-grant
+  requirement and the identity check are unchanged. Verified fail-closed is
+  intact by injecting a real competing grant (`Everyone:(F)`) — write refused,
+  no tmp file leaked.
+
+### Added
+
+- **`windowsAclLines` is exported and unit-tested on every platform**
+  (4 tests, incl. the `Everyone:(F)` counter-proof as a permanent regression
+  test). The parser is pure string handling; only its callers are win32-gated.
+  That this logic had never run outside a real Windows box is precisely why the
+  bug above survived — the tests now run everywhere `npm test` does.
+- `icacls` failure messages now carry `status` and `stderr` instead of a bare
+  string. Inert today (an outer `catch(_)` still swallows them), but a future
+  real Windows failure is diagnosable rather than a black box.
+
+### Not verified
+
+Both fixes were developed and tested on macOS. The `/proc/<pid>/exe` branch and
+the real `icacls` path **never executed locally** — local runs prove no
+regression and correct fallback, not that either platform-specific branch works.
+Only the CI run for this commit can establish that.
+
 ## [0.43.0] - 2026-08-03
 
 ### Fixed

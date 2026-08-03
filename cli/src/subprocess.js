@@ -11,7 +11,7 @@
 //   NOT by port — children may be unrelated.
 
 import { spawn, execSync } from 'node:child_process';
-import { existsSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readlinkSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { prepareSubjectRootGuard, wrapSubjectRootInvocation } from './subject-root-guard.js';
 
 // Phase 6c F1: task-type-aware timeout floors.
@@ -394,6 +394,41 @@ export function killProcessTree(pid, isWindows) {
  * already run outside the dispatch invariant. On any ambiguity it returns
  * 'unknown' and leaves the kill/no-kill decision to the caller.
  *
+ * HOPPER-6b (2026-08): on Linux, `ps -p <pid> -o comm=` reads the kernel's
+ * TASK_COMM field, capped at 15 visible characters. By default (no `--title`
+ * flag, which is the only call site that invokes uv_set_process_title outside
+ * user code) this should just be the plain basename of the exec'd binary
+ * ("node", 4 chars — well under the cap regardless of install path depth).
+ * But confirmed via real GitHub Actions job logs (not simulated, not
+ * reproduced by guesswork) that under Node 24 on ubuntu-latest, comm for a
+ * bog-standard `node --test` process comes back as something that does NOT
+ * contain "node" at all — while the exact same actions/setup-node install
+ * shape (`/opt/hostedtoolcache/node/<version>/x64/bin/node`) under Node 22 on
+ * the same runner image comes back matching. Path depth and OS were held
+ * constant; only the Node major version differed and only 24 broke, so this
+ * is a genuine Node-24-on-Linux behavior change, not a fluke of one run or a
+ * property of long install paths per se. We were not able to pin the exact
+ * upstream Node commit responsible (deps/uv is byte-identical at 1.51.0
+ * between the two lines, and the obvious call sites are unchanged), only that
+ * it reproduces deterministically in CI. Net effect: comm-only detection can
+ * falsely return 'mismatch' for a perfectly legitimate node process. That does
+ * not risk killing an unrelated process (background.js treats 'mismatch' as
+ * "never kill"), but it does silently break `--stop`'s ability to actually
+ * stop an in-progress job it legitimately owns — on Linux, under Node 24.
+ *
+ * Fix: on Linux, first resolve the executable via `/proc/<pid>/exe` (a
+ * kernel-maintained symlink to the exact binary that was exec'd, which cannot
+ * be spoofed by prctl/process-title tricks the way comm apparently can) and
+ * check ITS basename — this is exactly what comm was trying to approximate.
+ * `ps -o comm=` remains the fallback (permission-denied on /proc/<pid>/exe for
+ * a different-UID process, non-Linux POSIX, or /proc unavailable in some
+ * containers), so the original "flag a genuinely different process" guarantee
+ * is unchanged: this only ever turns a previously-false 'mismatch' for a real
+ * node PID into 'match'; it never turns a genuinely non-node PID into 'match'
+ * (deliberately not falling back to a full-command-line substring check,
+ * which could false-positive on a CLI argument that happens to contain
+ * "node").
+ *
  * @param {number} pid
  * @param {object} [opts]
  * @param {string} [opts.expectImageIncludes]  case-insensitive substring (default 'node')
@@ -403,8 +438,8 @@ export function killProcessTree(pid, isWindows) {
 export function verifyPidImage(pid, { expectImageIncludes = 'node', isWindows = platform() === 'win32' } = {}) {
   if (!pid || pid <= 0) return 'unknown';
   const needle = String(expectImageIncludes).toLowerCase();
-  try {
-    if (isWindows) {
+  if (isWindows) {
+    try {
       const out = execSync(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`, {
         encoding: 'utf-8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'],
       });
@@ -413,16 +448,44 @@ export function verifyPidImage(pid, { expectImageIncludes = 'node', isWindows = 
       const image = (out.split(',')[0] || '').replace(/^"|"$/g, '').trim().toLowerCase();
       if (!image) return 'unknown';
       return image.includes(needle) ? 'match' : 'mismatch';
+    } catch (_) {
+      // tasklist failed, or PID not found → cannot determine
+      return 'unknown';
     }
+  }
+
+  let sawEvidence = false;
+
+  // Linux only: untruncated executable path, sidesteps the 15-char comm
+  // truncation entirely (HOPPER-6b above).
+  if (platform() === 'linux') {
+    try {
+      const exe = readlinkSync(`/proc/${pid}/exe`).replace(/ \(deleted\)$/, '');
+      const base = (exe.split('/').pop() || '').toLowerCase();
+      if (base) {
+        sawEvidence = true;
+        if (base.includes(needle)) return 'match';
+      }
+    } catch (_) {
+      // ENOENT (pid gone/no such process), EACCES (different-user process —
+      // preserves the original "flag someone else's process" behavior via
+      // the ps fallback below), or /proc unavailable → fall through.
+    }
+  }
+
+  try {
     const out = execSync(`ps -p ${pid} -o comm=`, {
       encoding: 'utf-8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'],
     }).trim().toLowerCase();
-    if (!out) return 'unknown';
-    return out.includes(needle) ? 'match' : 'mismatch';
+    if (out) {
+      sawEvidence = true;
+      if (out.includes(needle)) return 'match';
+    }
   } catch (_) {
-    // ps/tasklist failed, or PID not found → cannot determine
-    return 'unknown';
+    // ps failed, or PID not found → nothing more to learn from ps
   }
+
+  return sawEvidence ? 'mismatch' : 'unknown';
 }
 
 /**
