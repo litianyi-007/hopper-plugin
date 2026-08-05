@@ -1,0 +1,19 @@
+ISSUE-background-runner-lost-terminal-bookkeeping.md
+  s_1041a0bf708325::t_3d152b43424fba 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "097b54eee89ff45685947892067ecd908ec072fc",
+  "prompts": {},
+  "sessions": {
+    "s_1041a0bf708325": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea34b70a-ec9b-454c-8b82-22f0b463dcbd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}
