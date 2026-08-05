@@ -252,3 +252,33 @@ test('simpleDiff: marks additions and leaves untouched lines as context', () => 
   assert.ok(d.some((l) => l === '+ NEW'));
   assert.ok(!d.some((l) => l.startsWith('- ')), 'a pure insertion has no deletions');
 });
+
+test('stamp is REFRESHED when stale, not only written when absent', () => {
+  // A workspace that has been fully migrated must stop reporting the version it
+  // was originally scaffolded at. Migrations detect structurally, so a stale stamp
+  // does not make a wrong decision today — but it keeps showing an old baseline
+  // for an up-to-date workspace, which is the same misleading state this module
+  // exists to remove.
+  const stamped = OLD_AGENTS.replace('# Agent Instances', '# Agent Instances\n\n<!-- hopper-scaffold-version: 0.46.0 -->');
+  const { root, hopperDir } = oldWorkspace({ agents: stamped, dispatch: null });
+  try {
+    const plan = planWorkspaceMigrations(hopperDir, { version: '0.48.1' });
+    const entry = plan.entries.find((e) => e.id === 'scaffold-stamp');
+    assert.ok(entry, 'a stale stamp is reported');
+    assert.match(entry.reason, /0\.46\.0/);
+
+    applyWorkspaceMigrations(hopperDir, { dryRun: false, version: '0.48.1' });
+    const after = readFileSync(join(hopperDir, 'AGENTS.md'), 'utf-8');
+    assert.equal(readScaffoldStamp(after), '0.48.1', 'stamp refreshed in place');
+    assert.equal((after.match(/hopper-scaffold-version/g) || []).length, 1, 'exactly one stamp — not appended twice');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a current stamp is left alone (no churn on every run)', () => {
+  const stamped = OLD_AGENTS.replace('# Agent Instances', '# Agent Instances\n\n<!-- hopper-scaffold-version: 0.48.1 -->');
+  const { root, hopperDir } = oldWorkspace({ agents: stamped, dispatch: null });
+  try {
+    const plan = planWorkspaceMigrations(hopperDir, { version: '0.48.1' });
+    assert.ok(!plan.entries.some((e) => e.id === 'scaffold-stamp'), 'no work when already current');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});

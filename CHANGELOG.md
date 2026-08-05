@@ -19,6 +19,19 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.48.1] - 2026-08-05
+
+### Fixed — 水印只写不刷，迁移完成后仍报旧基线
+
+0.48.0 的 `scaffold-stamp` 迁移只在水印**缺失**时触发。于是一个已完成迁移的工作区
+会永远显示它最初被 scaffold 的版本——实测那个外部项目迁完后仍报「水印 0.46.0，
+当前 v0.48.0」。
+
+迁移是按**结构**检测的（这一列存在吗？），所以陈旧水印今天不会导致错误决策；但它
+会对一个实际已经最新的工作区持续显示旧基线，而「显示的状态与实际不符」正是这个模块
+存在的理由。现在水印缺失时写入、陈旧时**就地刷新**（不会追加第二条），已是最新时
+不做任何改动（避免每次运行都产生 churn）。
+
 ## [0.48.0] - 2026-08-05
 
 升级对账。0.47.x 修的是「hopper 看不见机器上发生了什么」；这一版修的是

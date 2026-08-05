@@ -169,10 +169,20 @@ export const MIGRATIONS = [
     file: 'AGENTS.md',
     since: '0.48.0',
     breaking: false,
-    title: '写入 scaffold 版本水印（后续漂移检测的前提）',
-    detect: (content) => (readScaffoldStamp(content) ? null : 'AGENTS.md 没有版本水印，无法判断它相对插件落后多少'),
+    title: '写入 / 刷新 scaffold 版本水印（后续漂移检测的基线）',
+    // Fires both when the stamp is ABSENT and when it is STALE. Refreshing matters:
+    // migrations detect structurally (does the column exist?), so a stale stamp does
+    // not currently cause wrong decisions — but it would keep reporting an old
+    // baseline for a workspace that has in fact been fully migrated, which is the
+    // same species of misleading state this whole module exists to remove.
+    detect: (content, { version }) => {
+      const stamp = readScaffoldStamp(content);
+      if (!stamp) return 'AGENTS.md 没有版本水印，无法判断它相对插件落后多少';
+      return isOlder(stamp, version) ? `水印停在 ${stamp}，当前 v${version} —— 刷新后漂移基线才准确` : null;
+    },
     apply: (content, { version }) => {
       const stamp = `<!-- ${SCAFFOLD_STAMP_PREFIX} ${version} -->`;
+      if (readScaffoldStamp(content)) return String(content).replace(STAMP_RE, stamp);
       const lines = String(content).split(/\r?\n/);
       // Place it right after the H1 so it is the first thing both a human and a
       // parser meet. Falls back to the very top for a file with no H1.
