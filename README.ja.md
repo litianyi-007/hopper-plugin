@@ -5,7 +5,7 @@
 > Vendor-neutral background dispatch for AI agents
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Version](https://img.shields.io/badge/version-0.48.1-3DDC97)
+![Version](https://img.shields.io/badge/version-0.49.0-3DDC97)
 ![Tests](https://img.shields.io/badge/tests-passing-3DDC97)
 ![Hosts](https://img.shields.io/badge/hosts-7-111827)
 
@@ -42,6 +42,33 @@ moonshot、`copilot` / `opencode` / `mimo` / `agy` はマルチバックエン�
 が自分自身と同じアカウント体系にタスクを転送してしまうのを防ぐ。バックグラウンドタスクは
 `hopper-runner` によって起動され、dashboard は同じ `.hopper/` 状態を読み取るだけの
 read-only な消費者である。
+
+## いつ使うか / いつ使わないか
+
+**Hopper が責任を持つのは「結果」であって「過程」ではありません。** spawn は一度きり、
+リトライもフォールバックもなく、vendor は自分のコンテキストを持たない別プロセスで動く
+ため途中で軌道修正できません。追加の問いかけは新しい dispatch になります。
+
+dispatch の前に2つ確認し、どちらか通らなければホスト側で処理してください。
+
+1. **正解を自分で算出できるか。** できるなら自分でやる。ソースの要約、コミット履歴、
+   ファイル検索、バージョン確認は答えが一意に決まる問い合わせであり、dispatch は数分と
+   数ドルを払って**より信頼性の低い**答えを返します。（実測：ある review dispatch は
+   5分16秒 / 153万トークン / $0.74。比較対象の `git log` は 40ms。）
+2. **問い全体を今この場で書き切れるか。** 書けないなら探索的な作業であり、探索に必要な
+   軌道修正は単発 spawn の dispatch では提供できません。
+
+両方通ったら、決め手は**独立性に価値があるか**です。自分のコンテキスト・先入観・誤りを
+共有しない答えが欲しいのかどうか。
+
+判断基準は主題ではなく**成果物**です。コードレビューはソースを読み**ます**が、それは
+手段であり、成果物は判断なので dispatch すべきです。「このモジュールの説明」も
+ソースを読みますが、返るのは自分で作れるデータなので dispatch すべきではありません。
+
+**「使わない」側に対応する task-type は存在せず、その不在こそが実行面の制約です。**
+brief の意図を推測する仕組みは要りません。詳細は
+[`docs/WHEN-TO-USE.md`](docs/WHEN-TO-USE.md)、
+`hopper-dispatch --task-types` も型ごとに同じ「用途/非用途」を表示します。
 
 ## vendor 制御の2層
 

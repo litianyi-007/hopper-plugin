@@ -106,8 +106,8 @@ export function declaredRepository(root = pluginRoot()) {
  * @returns {Promise<{ version: string|null, source: string, error: string|null }>}
  */
 export async function fetchUpstreamVersion({ repo = declaredRepository(), fetchImpl = globalThis.fetch, timeoutMs = 8000 } = {}) {
-  if (!repo) return { version: null, source: 'none', error: '插件元数据里没有声明 GitHub repository' };
-  if (typeof fetchImpl !== 'function') return { version: null, source: 'none', error: '此 Node 运行时没有 fetch' };
+  if (!repo) return { version: null, source: 'none', error: 'the plugin metadata declares no GitHub repository' };
+  if (typeof fetchImpl !== 'function') return { version: null, source: 'none', error: 'this Node runtime has no fetch' };
   const url = `https://raw.githubusercontent.com/${repo}/HEAD/.claude-plugin/plugin.json`;
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), timeoutMs);
@@ -116,7 +116,7 @@ export async function fetchUpstreamVersion({ repo = declaredRepository(), fetchI
     if (!res || !res.ok) return { version: null, source: url, error: `HTTP ${res ? res.status : '?'}` };
     const body = await res.json();
     const version = typeof body?.version === 'string' ? body.version : null;
-    return { version, source: url, error: version ? null : '上游清单里没有 version 字段' };
+    return { version, source: url, error: version ? null : 'the upstream manifest has no version field' };
   } catch (err) {
     // Offline is a normal outcome, not a failure of the command.
     return { version: null, source: url, error: String((err && err.message) || err) };
@@ -184,39 +184,39 @@ export function buildUpdateReport({ install, running, upstream, migrationEntries
   if (upstream.version) {
     upToDate = !isOlder(running, upstream.version);
     lines.push(`  Latest         v${upstream.version}`);
-    lines.push(`  Status         ${upToDate ? '已是最新' : `落后 —— 可升级到 v${upstream.version}`}`);
+    lines.push(`  Status         ${upToDate ? 'up to date' : `behind — v${upstream.version} is available`}`);
     if (!upToDate) {
       behind = entriesBetween(migrationEntries, running, upstream.version);
       const breaking = behind.filter((e) => e.breaking);
       if (breaking.length) {
-        lines.push(`  ⚠ BREAKING     区间内有 ${breaking.length} 条破坏性变更：`);
+        lines.push(`  ⚠ BREAKING     ${breaking.length} breaking change(s) between here and there:`);
         for (const b of breaking) lines.push(`                 · v${b.version} ${b.title}`);
       }
       lines.push(`  Upgrade with   ${install.upgradeHint}`);
-      lines.push('                 （hopper 不代为安装：装代码是宿主的职责，见 cli/src/update-check.js 顶部说明）');
+      lines.push('                 (hopper does not install for you — installing is the host\'s job; see the header of cli/src/update-check.js)');
     }
   } else {
-    lines.push(`  Latest         未知 —— ${upstream.error}`);
-    lines.push('  （只读网络查询失败不影响下面的本地检查）');
+    lines.push(`  Latest         unknown — ${upstream.error}`);
+    lines.push('  (a failed read-only lookup does not affect the local checks below)');
   }
 
   lines.push('');
   lines.push('Workspace');
   let workspaceDrifted = false;
   if (!workspacePlan) {
-    lines.push('  不在 .hopper 工作区内 —— 跳过');
+    lines.push('  not inside a .hopper workspace — skipped');
   } else if (workspacePlan.errors.length) {
     for (const e of workspacePlan.errors) lines.push(`  ⚠ ${e}`);
   } else if (!workspacePlan.entries.length) {
-    lines.push(`  .hopper/ 与 v${running} 一致（水印 ${workspacePlan.stamp || '无'}）`);
+    lines.push(`  .hopper/ matches v${running} (stamp ${workspacePlan.stamp || 'none'})`);
   } else {
     workspaceDrifted = true;
-    lines.push(`  水印 ${workspacePlan.stamp || '无'}，当前 v${running} —— ${workspacePlan.entries.length} 项待迁移：`);
+    lines.push(`  stamp ${workspacePlan.stamp || 'none'} vs plugin v${running} — ${workspacePlan.entries.length} migration(s) pending:`);
     for (const e of workspacePlan.entries) {
       lines.push(`    ${e.breaking ? '⚠ BREAKING ' : '           '}${e.id.padEnd(26)} ${e.reason}`);
     }
-    lines.push('  预览：hopper-dispatch --migrate-config --dry-run');
-    lines.push('  应用：hopper-dispatch --migrate-config --yes');
+    lines.push('  Preview:  hopper-dispatch --migrate-config');
+    lines.push('  Apply:    hopper-dispatch --migrate-config --yes');
   }
 
   return { upToDate, behind, workspaceDrifted, lines };

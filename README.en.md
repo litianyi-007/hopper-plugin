@@ -5,7 +5,7 @@
 > Vendor-neutral background dispatch for AI agents
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Version](https://img.shields.io/badge/version-0.48.1-3DDC97)
+![Version](https://img.shields.io/badge/version-0.49.0-3DDC97)
 ![Tests](https://img.shields.io/badge/tests-passing-3DDC97)
 ![Hosts](https://img.shields.io/badge/hosts-7-111827)
 
@@ -44,6 +44,34 @@ deliberately left unfamilied. Same family means dispatch is refused, so a host
 can't route a task back into its own account family. Background jobs are
 started by `hopper-runner`; the dashboard is a read-only consumer of that same
 `.hopper/` state.
+
+## When to use it — and when not to
+
+**Hopper is accountable for a result. It is not a place to run a process you need to
+steer.** One spawn, no retry, no fallback; the vendor runs in a separate process with
+none of your context and cannot be redirected mid-flight — a follow-up is a new dispatch.
+
+Two questions before dispatching. Either one failing means do it in-host:
+
+1. **Could you compute the one correct answer yourself?** If yes, do it. Source
+   summaries, commit logs, file searches and version lookups are determinate queries; a
+   dispatch spends minutes and dollars to return a *less* reliable answer. (Measured: a
+   review dispatch ran 5m16s / 1.53M tokens / $0.74 against the 40ms `git log` it was
+   being compared with.)
+2. **Can you state the whole question right now?** If no, the work is exploratory, and
+   exploration needs steering a single-spawn dispatch cannot provide.
+
+Both pass → the deciding question is **whether independence is the point**: is the value
+in an answer that does not share your context, priors and mistakes?
+
+Judge by the **deliverable**, not the topic. A code review *must* read source — that is
+its method; the deliverable is a judgment, so dispatch it. "Tell me what this module
+does" also reads source but hands back data you can produce directly, so do not.
+
+**There is no task-type for the "do not" cases, and that absence is the enforcement** —
+nothing has to guess at a brief's intent. Full rationale:
+[`docs/WHEN-TO-USE.md`](docs/WHEN-TO-USE.md); `hopper-dispatch --task-types` prints the
+same for/not-for note per type.
 
 ## Two layers of vendor control
 

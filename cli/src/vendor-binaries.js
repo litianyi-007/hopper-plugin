@@ -37,6 +37,7 @@
 import { spawnSync } from 'node:child_process';
 import { getAdapter } from './vendors/index.js';
 import { resolveAllCommandsOnPath, resolveCommandWithKnownPaths } from './path-resolve.js';
+import { compareVersionDesc } from './version.js';
 
 /** Cap for any vendor-emitted string we keep, so a pathological CLI cannot flood the report. */
 const RAW_VERSION_CAP = 80;
@@ -234,7 +235,7 @@ export function formatBinarySummary(report) {
   const head = `${name} ${String(shown).padEnd(10)}`;
 
   if (s.verdict === 'conflict') {
-    const newest = [...s.distinctVersions].sort(compareVersionDescLocal)[0];
+    const newest = [...s.distinctVersions].sort(compareVersionDesc)[0];
     const behind = s.spawnedVersion && newest && s.spawnedVersion !== newest
       ? ` — spawning ${s.spawnedVersion}, newest present is ${newest}`
       : '';
@@ -247,16 +248,6 @@ export function formatBinarySummary(report) {
   return `${head} 1 install${dup}`;
 }
 
-/** Local copy of setup.js's comparator — this module must not import from setup.js (setup.js imports this one). */
-function compareVersionDescLocal(a, b) {
-  const parts = (v) => String(v).split(/[-+]/)[0].split('.').map((n) => Number.parseInt(n, 10) || 0);
-  const [pa, pb] = [parts(a), parts(b)];
-  for (let i = 0; i < Math.max(pa.length, pb.length); i += 1) {
-    const d = (pb[i] || 0) - (pa[i] || 0);
-    if (d !== 0) return d;
-  }
-  return 0;
-}
 
 /**
  * FULL provenance including absolute paths — for the `--binaries` local

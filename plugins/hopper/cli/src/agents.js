@@ -253,7 +253,7 @@ function parseApprovedCell(raw) {
 const APPROVED_VENDORS_SKELETON = [
   '## Approved Vendors',
   '',
-  '<!-- 本项目允许派发的 vendor。未列或 Approved=no 的一律拒绝，--vendor 覆盖也不例外。 -->',
+  '<!-- Vendors this project permits dispatching to. A vendor that is absent, or present with Approved=no, is refused — an explicit --vendor override does not bypass this. -->',
   '',
   '| Vendor | Approved | Approved by | Date | Scope / Notes |',
   '|---|---|---|---|---|',

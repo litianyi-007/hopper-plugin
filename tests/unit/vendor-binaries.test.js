@@ -298,7 +298,7 @@ test('--setup renders every section (guards the unconditional `return;` regressi
   // 03330ea (2026-07-22) left an unconditional `return;` in runSetup(), so for a
   // month `--setup` printed a terse vendor dump and silently skipped EVERYTHING
   // below it. It survived undetected precisely because the renderer had zero test
-  // coverage (ISSUE-setup-sandbox-column-dead-code.md says so explicitly). This
+  // coverage (docs/archive/ISSUES.md#setup-sandbox-column-dead-code says so explicitly). This
   // test is that coverage: it asserts on the SECTIONS, so any future early return
   // — wherever it is placed — fails here instead of shipping.
   const bin = fileURLToPath(new URL('../../cli/bin/hopper-dispatch', import.meta.url));

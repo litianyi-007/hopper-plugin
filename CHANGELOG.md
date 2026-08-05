@@ -19,6 +19,113 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.49.0] - 2026-08-05
+
+Role positioning. Hopper had no stated answer to "should this be dispatched at all" —
+not in the README, not in the router skill, not in `--task-types`. This release writes
+that answer down, puts it where the decision is made, and adds the one task-type its
+absence was hiding.
+
+### Added — `docs/WHEN-TO-USE.md`, and pointers at every decision point
+
+**Hopper is accountable for a result. It is not a place to run a process you need to
+steer.** That is not philosophy, it is the architecture: one spawn, no retry, no
+fallback, no shared context, no way to redirect mid-flight.
+
+Two gates before dispatching, either failing means do it in-host:
+
+1. **Could the host compute the one correct answer itself?** Source summaries, commit
+   logs, version lookups are determinate queries. Measured on one machine: a review
+   dispatch ran 5m16s / 1.53M tokens / $0.74 against the 40ms `git log` it was compared
+   with — and returns a *less* reliable answer.
+2. **Can the whole question be stated now?** If not it is exploratory, and exploration
+   needs steering a single-spawn dispatch cannot give.
+
+The discriminator is the **deliverable, not the topic**. A code review must read source —
+that is its method; the deliverable is a judgment, so dispatch it. "Summarize this
+module" also reads source but hands back data the host can produce, so do not. A blunt
+"no source reading" rule would have killed Hopper's best use case.
+
+Three tiers, deliberately not two: **recommended** / **not recommended** / **forbidden**.
+Collapsing the last two loses the boundary between wasting money and letting an
+unreviewed process write to the repository.
+
+**The enforcement already existed and needed no new code**: the task-type registry IS the
+policy surface. There is no `source-read` type, so nothing has to guess at a brief's
+intent. No heuristic gating was added, and none should be.
+
+Pointers added to `skills/hopper/SKILL.md` (which opened straight into mechanics with no
+"should you" step at all), `skills/hopper-dispatch/SKILL.md`, `commands/dispatch.md`, all
+three READMEs, and the scaffolded `.hopper/AGENTS.md` — so every new project inherits it.
+A consistency test fails if a pointer stops pointing.
+
+### Added — `decision-review` and `tech-research` task-types
+
+`decision-review` closes a real gap: a host stuck between two designs had nothing to
+dispatch to. `spec-blindspot-hunt` hunts unknown-unknowns; it does not rule on a known
+fork. It is read-only, and its vendor **must be heterogeneous to the host** — a ruling
+from the same model family is your own reasoning with extra latency. It is also the most
+justified use of `--swarm`: N independent rulings on one contested fork.
+
+Its verdict vocabulary is its own (`CHOOSE_<option-id>` / `NEITHER` /
+`INSUFFICIENT_INPUT`) rather than the review PASS/FAIL set, where "PASS" would have meant
+"option A" and read as approval of the host's leaning.
+
+`tech-research` (HOW to build) is separate from `prd-research` (WHAT to build). Adding a
+type rather than widening `prd-research` was chosen deliberately: renaming would break the
+`Default vendor` row every existing project keys on that name. Web search auto-enables for
+it; `decision-review` deliberately does NOT auto-enable search — it rules on context the
+host supplied, and search would invite it to go re-survey instead.
+
+### Added — `--task-types` now says what each type is for, and is not for
+
+The cheapest possible intervention, placed exactly where the choice is made. A bare list
+of names cannot distinguish "Hopper has no type for this" from "I have not found the right
+one yet".
+
+### Added — `--migrate-config` adds task-type frames a project is missing
+
+A type is only dispatchable once `.hopper/tasks/<type>.md` exists, so an upgraded project
+would get the new type in the registry with no frame to dispatch it — and `--task-types`
+reads the PROJECT's frames, so it would keep listing the old set with nothing explaining
+why. Add-only: an existing frame is left exactly as the project wrote it.
+
+### Changed — capability text unified to English
+
+Every user-facing capability string (CLI output, migration titles and reasons, the
+templates written into user projects, skills, commands, docs) is English. Two deliberate
+exceptions:
+
+- The `只读` literal in `cli/src/dispatch.js`'s read-only detection regex, and the docs
+  describing it. That is a **feature** — it matches Chinese task briefs — not prose.
+  Removing it would break read-only auto-downgrade for Chinese-language projects.
+- `README.md` / `README.ja.md` stay in their languages. They are localizations; converting
+  them would delete the localization and leave two identical English READMEs. The new
+  positioning section was written into each in its own language, pointing at the English
+  canonical doc.
+
+### Changed — 18 `ISSUE-*.md` files consolidated into `docs/archive/ISSUES.md`
+
+Scattered across the repository root they answered no question well: you had to open all
+eighteen to learn which were still open, and they crowded out README / MIGRATION /
+CHANGELOG. The archive opens with a status index — **6 open, 10 closed, 2 unparseable** —
+which makes the open ones *more* visible than eighteen loose files did.
+
+Bodies are reproduced **verbatim**, including their original language mix: several are
+cited from source comments as the reason code is shaped the way it is, and they are
+evidence. Historical records are not rewritten. All 19 inbound references were repointed
+to `docs/archive/ISSUES.md#<slug>` — except in `.hopper/queue.md` and
+`.hopper/handoffs/leader-tasklist.md`, which are immutable history: a path recorded there
+records what was true then, and editing it would be editing the record.
+
+### Changed — `cli/src/version.js` (internal)
+
+Three modules had each grown their own copy of the same version comparator, and
+`scaffold.js` ↔ `workspace-drift.js` had become an import cycle. Both fixed by a leaf
+module. Three hand-copies of a comparator is how one of them ends up lexicographic while
+the others are not — and a lexicographic version sort reports `0.131.0` as newer than
+`0.146.0`, which this codebase has already paid for once.
+
 ## [0.48.1] - 2026-08-05
 
 ### Fixed — 水印只写不刷，迁移完成后仍报旧基线
@@ -142,7 +249,7 @@ vendor CLI，而 Windows 的路径大小写又恰好把泄漏遮住了。
 ### Fixed — `--setup` 的大半份报告是 dead code，包括唯一的配置漂移 lint
 
 `runSetup()` 里有一个无条件 `return;`（`03330ea`，2026-07-22 引入），挡在整份报告
-之前。已登记为 `ISSUE-setup-sandbox-column-dead-code.md`（2026-07-29），但当时把范围
+之前。已登记为 [`setup-sandbox-column-dead-code`](docs/archive/ISSUES.md#setup-sandbox-column-dead-code)（2026-07-29），但当时把范围
 记成了「Sandbox 一列」。**实际被挡掉的是**：Runtime/Workspace 块、verdict、vendors
 表（含 Sandbox 列）、Auth notes、`--deep` 的两个 drift 段、Task-type policy lint、
 Next steps。
@@ -316,7 +423,7 @@ Test-and-CI only; the shipped plugin is unchanged from 0.45.0.
 
 ### Recorded, not fixed
 
-- `ISSUE-prompt-artifact-lifecycle-and-windows-permissions.md` — `-prompt.md`
+- [`prompt-artifact-lifecycle-and-windows-permissions`](docs/archive/ISSUES.md#prompt-artifact-lifecycle-and-windows-permissions) — `-prompt.md`
   holds the complete composed prompt inside the project, nothing ever deletes any
   of the five artifact types, and its `0600` is best-effort on Windows where we
   now know permission hardening does not take effect.
@@ -394,7 +501,7 @@ never executed before.
   full command-line substring match, which could false-`match` on an argument
   containing "node". Net risk movement: fewer false `mismatch`, no new path to a
   false `match`. The exact upstream Node change was not identified — recorded as
-  such in `ISSUE-verifypidimage-linux-node24-comm-mismatch.md` rather than
+  such in [`verifypidimage-linux-node24-comm-mismatch`](docs/archive/ISSUES.md#verifypidimage-linux-node24-comm-mismatch) rather than
   guessed at.
 - **All 23 Windows cache failures were one bug** (`cli/src/cache.js`). Every one
   carried the same `inventory-cache-parent-owner-only-failed` diagnostic from
@@ -440,7 +547,7 @@ Only the CI run for this commit can establish that.
   table, no spawn). A dry run that would be refused now says so, with the same
   error code. `assertVendorDispatchable` stays excluded on purpose: its own doc
   comment requires non-dispatch surfaces to skip it so a disabled vendor remains
-  introspectable. Closes `ISSUE-resolve-ignores-vendor-override.md`.
+  introspectable. Closes [`resolve-ignores-vendor-override`](docs/archive/ISSUES.md#resolve-ignores-vendor-override).
 - **`tests/integration/execute-dispatch-e2e.test.js` fixture** — its
   `.hopper/AGENTS.md` had no `## Approved Vendors`, so v0.40.0's fail-closed gate
   refused it and 2 of its 7 tests sat red from 2026-07-31. **Nothing noticed
@@ -489,7 +596,7 @@ Only the CI run for this commit can establish that.
   because an audit happened to look; nothing surfaces the breakage on its own —
   see that entry for the full account. Explicitly does not restate v0.38.0's
   documentation fix as a capability change (that file's own prior mistake pattern).
-- **`ISSUE-resolve-ignores-vendor-override.md`** (new) — records a confirmed code
+- **[`resolve-ignores-vendor-override`](docs/archive/ISSUES.md#resolve-ignores-vendor-override)** (new) — records a confirmed code
   defect found while writing this batch: `--resolve <task-id> --vendor <v>` never
   reads `--vendor` (the branch at `cli/bin/hopper-dispatch`'s `--resolve` handler
   calls `runResolve(hopperDir, taskId)` with no vendor param, unlike `--adhoc`/sync

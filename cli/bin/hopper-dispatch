@@ -16,7 +16,7 @@ import { renderRulesMarkdown } from '../src/rules.js';
 import { compatCheckForAdapter } from '../src/vendor-compat.js';
 import { buildVendorReadiness, summarizeReadiness, formatModelDrift, buildRuntimeReport, buildNextSteps, buildTaskTypePolicyReport } from '../src/setup.js';
 import { formatBinaryReport, formatBinarySummary, enumerateVendorBinaries, probeBinaryVersions } from '../src/vendor-binaries.js';
-import { planWorkspaceMigrations, applyWorkspaceMigrations, simpleDiff, currentVersion } from '../src/workspace-drift.js';
+import { planWorkspaceMigrations, applyWorkspaceMigrations, simpleDiff, currentVersion, missingTaskFrames } from '../src/workspace-drift.js';
 import { detectInstallKind, fetchUpstreamVersion, parseMigrationEntries, buildUpdateReport } from '../src/update-check.js';
 import { modelKeysMatch } from '../src/model-normalize.js';
 import { evaluateModelCheck } from '../src/model-check.js';
@@ -61,7 +61,7 @@ import { resolve, join, dirname, basename, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
-const VERSION = '0.48.1';
+const VERSION = '0.49.0';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -176,6 +176,25 @@ export function isHopperWorkspace(candidate, fsOps = { existsSync, statSync }) {
     return false;
   }
 }
+
+/**
+ * One-line "what this is for" per shipped task-type, rendered by `--task-types`.
+ * Kept next to the renderer rather than in scaffold.js: these are decision-support
+ * text for the HOST choosing whether to dispatch, not part of the frame the VENDOR
+ * receives. A project may also have types of its own — those simply have no note.
+ */
+const TASK_TYPE_NOTES = Object.freeze({
+  'spec-write': 'author a spec/design doc. NOT for writing product code.',
+  'code-impl': 'implement against an existing spec. Write-capable — the one tier that edits.',
+  'code-review-adversarial': 'hunt defects the author would miss. Reads source as METHOD; the deliverable is a judgment.',
+  'code-review-acceptance': 'verify a change against stated acceptance criteria.',
+  'decision-review': 'rule on a fork YOU have already framed. Vendor must be heterogeneous to the host, or the ruling is not independent.',
+  'sidecar-polish': 'hygiene/cleanup on existing output. Declare review-only vs edit-allowed up front.',
+  'spec-blindspot-hunt': 'surface unknown-unknowns in a plan. NOT for ruling on a known fork — that is decision-review.',
+  'prd-research': 'WHAT to build: needs, prior art, comparable products. Web search auto-enabled.',
+  'tech-research': 'HOW to build it: compare libraries/patterns/architectures. Web search auto-enabled.',
+  'market-research': 'market / competitor / trend brief. Web search auto-enabled.',
+});
 
 function findHopperDir() {
   if (process.env.HOPPER_DIR) {
@@ -399,7 +418,7 @@ async function main() {
     const running = currentVersion();
     const install = detectInstallKind();
     const upstream = args.includes('--offline')
-      ? { version: null, error: '--offline：跳过网络查询' }
+      ? { version: null, error: '--offline: upstream lookup skipped' }
       : await fetchUpstreamVersion();
     let migrationEntries = [];
     try {
@@ -419,8 +438,8 @@ async function main() {
   if (args.includes('--migrate-config')) {
     const wsDir = findHopperDir();
     if (!wsDir) {
-      console.error('Error: 不在 .hopper 工作区内 —— --migrate-config 迁移的是项目配置。');
-      console.error('先 cd 到含 .hopper/ 的目录，或用 `hopper-dispatch --init-tasks` 新建一个。');
+      console.error('Error: not inside a .hopper workspace — --migrate-config migrates PROJECT config.');
+      console.error('cd into a directory containing .hopper/, or scaffold one with `hopper-dispatch --init-tasks`.');
       process.exit(1);
     }
     const apply = args.includes('--yes');
@@ -440,13 +459,13 @@ async function main() {
       console.log('');
     }
     if (!res.applied.length && !res.refused.length) {
-      console.log(`.hopper/ 已与 v${VERSION} 一致 —— 无需迁移。`);
+      console.log(`.hopper/ already matches v${VERSION} — nothing to migrate.`);
       return;
     }
     for (const a of res.applied) {
       console.log(`${apply ? 'applied ' : 'would apply '}${a.breaking ? '⚠ BREAKING ' : ''}${a.id}  [${a.file}]`);
       console.log(`  ${a.title}`);
-      console.log(`  原因：${a.reason}`);
+      console.log(`  reason: ${a.reason}`);
     }
     console.log('');
     // ONE diff per FILE, not per migration. Migrations targeting the same file are
@@ -457,29 +476,37 @@ async function main() {
     if (!apply) {
       for (const file of [...new Set(res.applied.map((a) => a.file))]) {
         console.log(`--- ${file} ---`);
+        if (file === 'tasks/') {
+          // Multi-file migration: there is no before/after buffer to diff, so show
+          // the files that would be CREATED. Printing an empty diff body here read
+          // as "nothing would change", which is the opposite of the truth.
+          for (const t of missingTaskFrames(wsDir)) console.log(`  + tasks/${t}.md  (new, generated)`);
+          console.log('');
+          continue;
+        }
         if (file === 'DISPATCH.md') {
-          console.log('  （100% 由适配器生成，整份重写；无手写内容可丢，故不展示逐行 diff）');
+          console.log('  (rendered entirely from the adapters and rewritten whole — no hand-written content to lose, so no line diff is shown)');
           console.log('');
           continue;
         }
         const diff = simpleDiff(before[file], res.results[file]);
         for (const d of diff.slice(0, 60)) console.log(`  ${d}`);
-        if (diff.length > 60) console.log(`  … 其余 ${diff.length - 60} 行省略`);
+        if (diff.length > 60) console.log(`  … ${diff.length - 60} more line(s) omitted`);
         console.log('');
       }
     }
     for (const r of res.refused) {
       console.log(`REFUSED ${r.id} — ${r.error}`);
-      console.log('  （拒绝而不是猜：结构被手工改过时，猜测会造成破坏。请按 MIGRATION.md 手动处理。）');
+      console.log('  (refused rather than guessed — when the structure has been hand-edited, guessing does damage. Handle it manually; see MIGRATION.md.)');
       console.log('');
     }
     if (apply) {
       for (const b of res.backups) console.log(`backup: ${b}`);
-      console.log(`记录已追加到 ${join(wsDir, '.migrations', 'log.md')}`);
+      console.log(`Recorded in ${join(wsDir, '.migrations', 'log.md')}`);
       console.log('');
-      console.log('复核一遍再提交：迁移是只增不改的，但填空的部分（尤其 Approved Vendors）需要你自己决定。');
+      console.log('Review before committing: migrations are additive only, but the cells they leave blank — Approved Vendors above all — are yours to decide.');
     } else {
-      console.log('这是预演，未写入任何文件。确认后执行：hopper-dispatch --migrate-config --yes');
+      console.log('Dry run — nothing was written. To apply: hopper-dispatch --migrate-config --yes');
     }
     return;
   }
@@ -710,7 +737,20 @@ async function main() {
   if (args.includes('--task-types')) {
     const types = await listTaskTypes(hopperDir);
     console.log(`hopper-dispatch v${VERSION} — available task-types:`);
-    for (const t of types) console.log(`  - ${t}`);
+    // Each line carries what the type is FOR and, where it is easy to get wrong, what
+    // it is NOT for. This list is where the "should I dispatch at all" decision is
+    // actually made, so it is the cheapest possible place to answer it — a bare list
+    // of names cannot distinguish "Hopper has no type for this" from "I have not
+    // found the right one yet".
+    for (const t of types) {
+      const note = TASK_TYPE_NOTES[t];
+      console.log(`  - ${t}${note ? `\n      ${note}` : ''}`);
+    }
+    console.log('');
+    console.log('Dispatch when the deliverable is a JUDGMENT you cannot trust yourself to make.');
+    console.log('Do not dispatch for data the host can compute itself (source summaries, commit');
+    console.log('logs, version lookups) — there is deliberately no task-type for those, and that');
+    console.log('absence IS the policy. Full rationale: docs/WHEN-TO-USE.md.');
     return;
   }
 
@@ -722,7 +762,7 @@ async function main() {
       console.error('Error: --resolve requires a task-id argument.');
       process.exit(1);
     }
-    // ISSUE-resolve-ignores-vendor-override.md fix: --vendor may appear before or
+    // docs/archive/ISSUES.md#resolve-ignores-vendor-override fix: --vendor may appear before or
     // after --resolve <id> (both orders were reported broken) — scan the whole
     // argv for it, same as --adhoc's valueAfter helper above.
     const resolveVendorFlagIdx = args.indexOf('--vendor');
@@ -867,7 +907,7 @@ function parseDispatchArgs(args) {
 
 async function runResolve(hopperDir, taskId, vendorOverride = null) {
   try {
-    // ISSUE-resolve-ignores-vendor-override.md fix: thread vendorOverride straight
+    // docs/archive/ISSUES.md#resolve-ignores-vendor-override fix: thread vendorOverride straight
     // into resolveDispatch — the SAME `vendorOverride || resolveVendor(...)`
     // formula and the SAME assertVendorApproved(agentsData, vendor) gate
     // (cli/src/dispatch.js:72,77) that a real dispatch applies, not a
@@ -1911,7 +1951,7 @@ async function runSetup({ only = null, deep = false } = {}) {
   // Runtime block, the verdict, the vendor table (incl. the Sandbox column the docs
   // tell users to consult), auth notes, the flag/model drift tiers, the Task-type
   // policy lint and Next steps — was dead code for a month
-  // (ISSUE-setup-sandbox-column-dead-code.md, filed 2026-07-29, scoped only to the
+  // (docs/archive/ISSUES.md#setup-sandbox-column-dead-code, filed 2026-07-29, scoped only to the
   // Sandbox column; the blast radius was in fact the whole report).
   //
   // The lost lint mattered: `--setup`'s "Task-type policy" section is the ONLY

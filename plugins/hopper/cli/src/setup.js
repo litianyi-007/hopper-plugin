@@ -23,6 +23,7 @@ import { getVendorCache, setVendorCache } from './cache.js';
 import { projectInventoryEntry } from './inventory-contract.js';
 import { compatCheckForAdapter } from './vendor-compat.js';
 import { enumerateVendorBinaries, probeBinaryVersions, summarizeBinaryDrift } from './vendor-binaries.js';
+import { compareVersionDesc } from './version.js';
 import { reconcileModels } from './model-normalize.js';
 import { parseAgentsFile } from './agents.js';
 import { listTaskTypes } from './tasks.js';
@@ -324,23 +325,11 @@ export function buildRuntimeReport({
   return { nodeVersion, nodeMajor, nodeOk, minNodeMajor: MIN_NODE_MAJOR, platform, arch, version };
 }
 
-/**
- * Descending semver-ish comparator for the version strings extractVersion() yields
- * (`major.minor.patch` with an optional pre-release/build tail). Numeric segments are
- * compared numerically so `0.146.0` sorts above `0.131.0` — a lexicographic sort would
- * put `0.131.0` first and name the WRONG binary as "newest" in the next-step text.
- * Any tail is ignored; this only has to order observed release versions.
- * @param {string} a @param {string} b
- */
-export function compareVersionDesc(a, b) {
-  const parts = (v) => String(v).split(/[-+]/)[0].split('.').map((n) => Number.parseInt(n, 10) || 0);
-  const [pa, pb] = [parts(a), parts(b)];
-  for (let i = 0; i < Math.max(pa.length, pb.length); i += 1) {
-    const d = (pb[i] || 0) - (pa[i] || 0);
-    if (d !== 0) return d;
-  }
-  return 0;
-}
+// Re-exported so setup.js's existing callers and tests keep their import site; the
+// definition lives in version.js because three modules needed the same comparator,
+// and three hand-copies of a version comparator is how one of them ends up
+// lexicographic while the others are not.
+export { compareVersionDesc } from './version.js';
 
 /**
  * Concrete, ordered next-steps derived from the readiness rows + summary — the actionable tail

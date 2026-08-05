@@ -1,6 +1,6 @@
 {
   "name": "hopper",
-  "version": "0.48.1",
+  "version": "0.49.0",
   "description": "Vendor-neutral background dispatch for AI agent tasks using the llm-hopper file protocol.",
   "author": {
     "name": "litianyi-007 (litianyi)",

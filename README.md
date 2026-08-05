@@ -5,7 +5,7 @@
 > Vendor-neutral background dispatch for AI agents
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Version](https://img.shields.io/badge/version-0.48.1-3DDC97)
+![Version](https://img.shields.io/badge/version-0.49.0-3DDC97)
 ![Tests](https://img.shields.io/badge/tests-passing-3DDC97)
 ![Hosts](https://img.shields.io/badge/hosts-7-111827)
 
@@ -35,6 +35,28 @@ vendor CLI。状态全部落在 `.hopper/` 下的 markdown 与 JSONL 文件里�
 `codex` → openai、`grok` → xai、`kimi` → moonshot;`copilot` / `opencode` / `mimo` / `agy`
 是多后端路由器,刻意不归族。族相同就拒绝派发,防止一个宿主把任务转派回自己同一账号体系。
 后台任务由 `hopper-runner` 拉起,dashboard 是同一份 `.hopper/` 状态的只读消费者。
+
+## 什么时候用它 / 什么时候别用
+
+**Hopper 对结果负责，不对过程负责。** 它是单次 spawn、无重试、无 fallback；vendor 在
+独立进程里跑，不共享你的上下文，中途无法转向——追问就是一次新的派发。
+
+派发前问两个问题，任一不过就自己做：
+
+1. **这个答案你自己能算出来吗？** 能——自己做。源码摘要、提交记录、文件检索、版本号
+   都是确定性查询，走一次派发要花几分钟和几美元，换回来一个**更不可靠**的答案。
+   （实测：一次评审派发 5m16s / 153 万 token / $0.74；被它对比的那条 `git log` 是 40ms。）
+2. **现在能不能把整个问题说完？** 不能——那是探索性工作，而探索需要的引导正是
+   单次派发给不了的。
+
+两问都过，再看**独立性是不是价值来源**：你要的是一个不共享你的上下文、先验和错误的答案吗？
+
+判据是**交付物**，不是主题。代码评审**必须**读源码——那是手段，交付物是判断，该派发；
+「这个模块干了什么」也读源码，但交付物是你自己就能产出的数据，不该派发。
+
+**「不该派发」的那些场景没有对应的 task-type，这就是执行面**——不需要任何东西去猜你
+brief 的意图。完整论述见 [`docs/WHEN-TO-USE.md`](docs/WHEN-TO-USE.md)，
+`hopper-dispatch --task-types` 会按类型打印同样的「用于/不用于」。
 
 ## 两层 vendor 控制
 

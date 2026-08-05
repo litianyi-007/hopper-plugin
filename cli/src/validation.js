@@ -124,8 +124,10 @@ export function resolveDefaultSandbox() {
 export const READ_ONLY_DEFAULT_TASK_TYPES = Object.freeze([
   'code-review-adversarial',
   'code-review-acceptance',
+  'decision-review',
   'spec-blindspot-hunt',
   'prd-research',
+  'tech-research',
   'market-research',
 ]);
 
@@ -136,6 +138,12 @@ export const READ_ONLY_DEFAULT_TASK_TYPES = Object.freeze([
  */
 export const WEB_SEARCH_TASK_TYPES = Object.freeze([
   'prd-research',
+  // `tech-research` evaluates implementation approaches, which almost always means
+  // reading current upstream docs, release notes and issue trackers — the same
+  // web-needing shape as product research, so it auto-enables the same way.
+  // `decision-review` deliberately does NOT: adjudicating a fork the host has
+  // already framed is a judgment over supplied context, not a survey.
+  'tech-research',
   'market-research',
 ]);
 

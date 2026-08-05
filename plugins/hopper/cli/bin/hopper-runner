@@ -356,7 +356,7 @@ async function main() {
       // Stream progress is advisory; terminal frontmatter remains authoritative.
     }
   };
-  // 乙: idle + ceiling instead of one total cap. Per codex Phase 5 audit F2,
+  // NOTE: idle + ceiling instead of one total cap. Per codex Phase 5 audit F2,
   // adapter.timeoutMs honors --reasoning xhigh; it now SEEDS the ceiling (floored
   // to ≥30min by resolveDispatchTimeouts). The real "stuck" detector is idle:
   // the runner pipes vendor stdio straight to logPath (no in-process 'data'

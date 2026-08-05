@@ -1,4 +1,4 @@
-// ISSUE-resolve-ignores-vendor-override.md fix.
+// docs/archive/ISSUES.md#resolve-ignores-vendor-override fix.
 // Anchor: tests/unit/resolve-vendor-override.test.js
 //
 // `--resolve <task-id> --vendor <v>` used to silently ignore --vendor and print

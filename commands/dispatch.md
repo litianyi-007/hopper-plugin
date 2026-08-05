@@ -6,6 +6,15 @@ argument-hint: <task-id> [--background] [--write] [--force] [--web-search] [--mo
 
 This command runs inside a Claude Code session and invokes the host-agnostic `hopper-dispatch` CLI to dispatch one task.
 
+## First: should this be dispatched at all
+
+**Hopper is accountable for a result; it is not a place to run a process you need to steer.** Check both before running anything:
+
+1. **Could the host compute the one correct answer itself?** (source summary, commit log, file search, version lookup) → do it in-host. A dispatch costs minutes and dollars and returns a less reliable answer.
+2. **Can the whole question be stated now?** If not, it is exploratory — and a single-spawn, no-retry dispatch offers no steering.
+
+Judge by the deliverable, not the topic: reading source as the *method* of producing a judgment is exactly what review task-types are for; reading source to hand back a *summary* is not. There is deliberately no task-type for the latter, and that absence is the enforcement — see `docs/WHEN-TO-USE.md`.
+
 ## What this command does
 
 1. Read `.hopper/queue.md` to find the task and validate eligibility (pending + deps done)

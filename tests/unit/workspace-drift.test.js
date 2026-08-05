@@ -91,7 +91,12 @@ test('plan: an old workspace reports every applicable migration, flagging the br
   try {
     const plan = planWorkspaceMigrations(hopperDir, { version: '0.48.0' });
     const ids = plan.entries.map((e) => e.id);
-    assert.deepEqual(ids, ['scaffold-stamp', 'task-policy-columns', 'approved-vendors-section', 'dispatch-md-regenerate']);
+    assert.deepEqual(ids, [
+      'scaffold-stamp', 'task-policy-columns', 'approved-vendors-section',
+      'dispatch-md-regenerate',
+      // The fixture has no tasks/ at all, so every shipped frame is missing.
+      'task-frames',
+    ]);
     assert.equal(plan.stamp, null);
     assert.equal(plan.entries.find((e) => e.id === 'approved-vendors-section').breaking, true,
       'the v0.40.0 fail-closed gate is the one BREAKING migration');
@@ -280,5 +285,41 @@ test('a current stamp is left alone (no churn on every run)', () => {
   try {
     const plan = planWorkspaceMigrations(hopperDir, { version: '0.48.1' });
     assert.ok(!plan.entries.some((e) => e.id === 'scaffold-stamp'), 'no work when already current');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('task-frames: a project missing a newly shipped type gets its frame added', async () => {
+  // A task-type is only dispatchable once .hopper/tasks/<type>.md exists, and
+  // `--task-types` lists the PROJECT's frames — so an upgraded project would show
+  // the old set with nothing on screen explaining why the new type is absent.
+  const { SCAFFOLD_TASK_TYPES } = await import('../../cli/src/scaffold.js');
+  const { missingTaskFrames } = await import('../../cli/src/workspace-drift.js');
+  const { root, hopperDir } = oldWorkspace({ dispatch: null });
+  try {
+    // Give the project every frame EXCEPT the two newest, to model an upgrade.
+    mkdirSync(join(hopperDir, 'tasks'), { recursive: true });
+    const stale = SCAFFOLD_TASK_TYPES.filter((t) => t !== 'decision-review' && t !== 'tech-research');
+    for (const t of stale) writeFileSync(join(hopperDir, 'tasks', `${t}.md`), `# existing ${t}\n`);
+
+    assert.deepEqual(missingTaskFrames(hopperDir).sort(), ['decision-review', 'tech-research']);
+
+    const plan = planWorkspaceMigrations(hopperDir, { version: '0.49.0' });
+    const entry = plan.entries.find((e) => e.id === 'task-frames');
+    assert.ok(entry, 'reported as pending');
+    assert.match(entry.reason, /decision-review/);
+
+    applyWorkspaceMigrations(hopperDir, { dryRun: false, version: '0.49.0' });
+    assert.deepEqual(missingTaskFrames(hopperDir), [], 'both frames written');
+    assert.match(readFileSync(join(hopperDir, 'tasks', 'decision-review.md'), 'utf-8'), /Task-type: decision-review/);
+    // ADD-ONLY: a frame the project already had is left exactly as it wrote it.
+    assert.equal(readFileSync(join(hopperDir, 'tasks', 'spec-write.md'), 'utf-8'), '# existing spec-write\n');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('task-frames: dry run writes no frame files', () => {
+  const { root, hopperDir } = oldWorkspace({ dispatch: null });
+  try {
+    applyWorkspaceMigrations(hopperDir, { dryRun: true, version: '0.49.0' });
+    assert.equal(existsSync(join(hopperDir, 'tasks')), false, 'no tasks/ dir created during a dry run');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

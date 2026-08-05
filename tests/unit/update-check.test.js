@@ -120,7 +120,7 @@ test('buildUpdateReport: behind upstream surfaces BREAKING entries and the host 
   assert.match(text, /BREAKING/);
   assert.match(text, /\/plugin update hopper@agent-hopper/);
   // It must hand the command over, not run it.
-  assert.match(text, /不代为安装/);
+  assert.match(text, /does not install for you/);
 });
 
 test('buildUpdateReport: an unreachable upstream still reports local state', () => {
@@ -144,7 +144,7 @@ test('CLI: --update-check runs outside a workspace and does not fail on --offlin
       encoding: 'utf-8', timeout: 120_000, cwd: empty,
     });
     assert.match(out, /update check/);
-    assert.match(out, /不在 \.hopper 工作区内/);
+    assert.match(out, /not inside a \.hopper workspace/);
   } finally { rmSync(empty, { recursive: true, force: true }); }
 });
 
@@ -166,7 +166,7 @@ test('CLI: --migrate-config defaults to a dry run and writes nothing', () => {
       encoding: 'utf-8', timeout: 120_000, cwd: root,
     });
     assert.match(out, /dry run/);
-    assert.match(out, /未写入任何文件/);
+    assert.match(out, /nothing was written/);
     assert.equal(readFileSync(join(hopperDir, 'AGENTS.md'), 'utf-8'), original, 'nothing written without --yes');
 
     const applied = execFileSync(process.execPath, [BIN, '--migrate-config', '--yes'], {
@@ -178,7 +178,7 @@ test('CLI: --migrate-config defaults to a dry run and writes nothing', () => {
     const again = execFileSync(process.execPath, [BIN, '--migrate-config'], {
       encoding: 'utf-8', timeout: 120_000, cwd: root,
     });
-    assert.match(again, /无需迁移/, 'idempotent through the CLI too');
+    assert.match(again, /nothing to migrate/, 'idempotent through the CLI too');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -187,7 +187,7 @@ test('CLI: --migrate-config outside a workspace fails with a specific message', 
   try {
     assert.throws(
       () => execFileSync(process.execPath, [BIN, '--migrate-config'], { encoding: 'utf-8', timeout: 120_000, cwd: empty, stdio: 'pipe' }),
-      (err) => /不在 \.hopper 工作区内/.test(String(err.stderr)),
+      (err) => /not inside a \.hopper workspace/.test(String(err.stderr)),
     );
   } finally { rmSync(empty, { recursive: true, force: true }); }
 });

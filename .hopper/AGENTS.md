@@ -49,7 +49,7 @@ Previous schema bound `nickname → role → model`. v2.0 binds **`nickname → 
 
 ## Task-type → vendor default preference
 
-<!-- hopper-scaffold-version: 0.48.1 -->
+<!-- hopper-scaffold-version: 0.49.0 -->
 <!-- 本文件生成于 2026-05-20，已两次落后于插件自身 schema（v0.40.0 的 Approved Vendors、
      batch 2 的 Effort policy / Model rule）。上面这行水印用于让 `--setup` 能比对。
      升级插件后跑 `hopper-dispatch --setup` 看 "Task-type policy" 段。 -->
@@ -64,7 +64,7 @@ Plugin routes by Task-type + this table. queue.md row may override via optional 
 >    `cli/src/agents.js` 把这两列做成可选、缺失即静默跳过，所以 `--reasoning` /
 >    `--model` 的 fallback 链第二级一直是死的。之所以一个月没人发现，是因为唯一会
 >    报告它的界面——`--setup` 的 Task-type policy lint——本身也是 dead code
->    （见 `ISSUE-setup-sandbox-column-dead-code.md`）。**两个缺陷互相遮蔽。**
+>    （见 [`setup-sandbox-column-dead-code`](../docs/archive/ISSUES.md#setup-sandbox-column-dead-code)）。**两个缺陷互相遮蔽。**
 > 2. **`code-impl` / `sidecar-polish` 路由到 `kimi-builder`，而 kimi 在
 >    `## Approved Vendors` 里是 `no`** ⇒ 自 v0.40.0 fail-closed 以来这两条必然被拒；
 >    `code-review-adversarial` 的 `(Strategy OOB /codex)` 是括号开头，按 OOB 约定
