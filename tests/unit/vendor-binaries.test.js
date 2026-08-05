@@ -414,3 +414,31 @@ test('--setup renders the workspace relative to cwd, never absolute', () => {
   assert.ok(!line.includes(cwd.replace(/[/\\]$/, '')), `workspace line must not contain the absolute path: ${line}`);
   assert.match(line, /\.hopper|none in cwd|outside cwd/);
 });
+
+test('inventory renders a validated basename even when the binary is NOT found', async () => {
+  // Reproduces a CI-only failure locally. binary_basename was briefly tied to
+  // binaryFound, which rendered `null` whenever the binary was absent. That broke
+  // the closed-projection contract on POSIX ONLY: model-attestation-contract's
+  // fixture plants its binary with writeFileSync's default mode (no exec bit) and
+  // resolveCommandOnPath correctly skips non-executable files — while Windows,
+  // having no exec bit, found it and passed. Pointing PATH at an empty directory
+  // reproduces "not found" on every platform.
+  //
+  // The basename is a STATIC property of the vendor (the adapter's command name),
+  // not an observation, so it must survive a missing binary: "we looked for
+  // `claude` and it is missing" says more than "we looked for null".
+  const { buildVendorReadiness } = await import('../../cli/src/setup.js');
+  const empty = mkdtempSync(join(tmpdir(), 'hopper-empty-path-'));
+  const prevPath = process.env.PATH;
+  try {
+    process.env.PATH = empty;
+    const rows = await buildVendorReadiness({ only: 'claude' });
+    const row = rows[0];
+    assert.equal(row.installed, false, 'nothing is installed under an empty PATH');
+    assert.equal(row.inventory.binaryAvailability, 'missing', 'availability IS an observation — must say missing');
+    assert.equal(row.inventory.binaryBasename, 'claude', 'basename is static and must still render');
+  } finally {
+    process.env.PATH = prevPath;
+    rmSync(empty, { recursive: true, force: true });
+  }
+});

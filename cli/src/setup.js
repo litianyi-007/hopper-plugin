@@ -186,8 +186,21 @@ export async function buildVendorReadiness({ deep = false, only = null, now = ne
         ...(cache || {}),
         provenance: {
           ...((cache && cache.provenance) || { source_kind: 'static' }),
+          // AVAILABILITY is an observation — live check wins over whatever a cache
+          // remembers, because "the cache said present" is exactly the class of
+          // stale claim this work exists to stop.
           binary_availability: install ? (install.binaryFound ? 'present' : 'missing') : 'unknown',
-          binary_basename: install && install.binaryFound ? install.command : null,
+          // BASENAME is not an observation: it is the adapter's own command name,
+          // a static property of the vendor. So it is reported whether or not the
+          // binary was found — "we looked for `claude` and it is missing" carries
+          // strictly more information than "we looked for null". Tying it to
+          // binaryFound broke the closed-projection contract test on POSIX only:
+          // that test plants its fixture binary with writeFileSync's default mode,
+          // i.e. WITHOUT the exec bit, and resolveCommandOnPath deliberately skips
+          // non-executable same-named files (correctly) — while Windows has no
+          // exec bit and found it. The projection still validates the value
+          // against BINARY_BASENAMES, so nothing arbitrary can reach it.
+          binary_basename: install ? install.command : null,
         },
       }, cache ? 'ok-v1' : 'missing'),
       // Zero-spawn on the default tier: enumeration is a pure PATH walk. Versions

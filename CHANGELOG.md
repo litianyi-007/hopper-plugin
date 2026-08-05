@@ -19,6 +19,24 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.47.2] - 2026-08-05
+
+### Fixed — `binary_basename` 在二进制找不到时变成 null，破坏了闭合投影契约
+
+0.47.0 把 `binary_availability` / `binary_basename` 从硬编码改为真实观测，但把
+**两者都**绑在了「是否找到二进制」上。`binary_availability` 该这样——它是观测，
+live 检查必须压过缓存记住的东西（「缓存说 present」正是这轮工作要消灭的那类陈述）。
+但 `binary_basename` **不是观测**，它是 vendor 的静态属性（适配器的命令名）：
+「我找的是 `claude`，没找到」比「我找的是 null」信息量严格更大。
+
+这条只在 **POSIX** 上暴露：`model-attestation-contract.test.js` 用
+`writeFileSync(path, content, 'utf-8')` 种夹具二进制，**不带可执行位**，而
+`resolveCommandOnPath` 会正确地跳过不可执行的同名文件；Windows 没有可执行位概念，
+于是找得到、测试通过。本地全绿、CI 两个平台红。
+
+新增一条能在**任意平台本地复现**的测试：把 PATH 指向空目录，断言
+`binaryAvailability=missing` 的同时 `binaryBasename` 仍然渲染。
+
 ## [0.47.1] - 2026-08-05
 
 0.47.0 的 CI 修复。两条都是**本地跑不出来、只有 CI 能发现**的问题——本机装了 8 个
