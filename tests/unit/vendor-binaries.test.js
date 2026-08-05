@@ -369,25 +369,48 @@ test('--setup stays path-free while --binaries carries the paths', () => {
   // The split is a contract, not a style choice: model-attestation-contract.test.js
   // fails --setup if a discovered binary's directory appears in its output.
   //
-  // Expressed without any literal path separator (which is also what broke the first
-  // version of this test): take the paths --binaries actually printed, and assert
-  // none of them reappear in --setup's binaries section.
+  // PLANTS its own fake binary rather than relying on whatever the host happens to
+  // have installed. The first version of this test asserted "--binaries printed at
+  // least one path", which held on a dev box with eight vendor CLIs and failed on
+  // all three CI runners, where none are installed and every vendor reports "not
+  // found on PATH". Planting makes the assertion true by construction everywhere.
+  const bin = fileURLToPath(new URL('../../cli/bin/hopper-dispatch', import.meta.url));
+  const cwd = fileURLToPath(new URL('../..', import.meta.url));
+  const root = mkdtempSync(join(tmpdir(), 'hopper-pathfree-'));
+  try {
+    const planted = join(root, `codex${EXT}`);
+    writeFileSync(planted, isWindows ? '@exit /b 0\r\n' : '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    const PATH = `${root}${delimiter}${process.env.PATH || ''}`;
+    const env = { ...process.env, PATH, Path: PATH };
+    const run = (args) => execFileSync(process.execPath, [bin, ...args], {
+      encoding: 'utf-8', timeout: 120_000, cwd, env,
+    });
+
+    const binaries = run(['--binaries', 'codex']);
+    assert.ok(binaries.includes(root), '--binaries must print the planted binary path (that is its whole job)');
+
+    const setup = run(['--setup', 'codex']);
+    const section = setup.slice(setup.indexOf('Vendor binaries'), setup.indexOf('Vendor provenance'));
+    assert.ok(section.length > 0, '--setup must have a Vendor binaries section');
+    assert.ok(!setup.includes(root), `--setup leaked the planted path:\n${section}`);
+    assert.match(setup, /--binaries/, '--setup must point at where the paths live');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('--setup renders the workspace relative to cwd, never absolute', () => {
+  // The Runtime block printed an ABSOLUTE workspace path the entire time it was
+  // unreachable dead code. Reviving the report therefore re-introduced a
+  // contract violation that only CI caught (Linux + macOS; Windows masked it on
+  // path casing). Relative is both compliant and more useful: it answers "which
+  // .hopper am I attached to" — findHopperDir walks ancestors — without spelling
+  // out the machine's layout.
   const bin = fileURLToPath(new URL('../../cli/bin/hopper-dispatch', import.meta.url));
   const cwd = fileURLToPath(new URL('../..', import.meta.url));
   const setup = execFileSync(process.execPath, [bin, '--setup'], { encoding: 'utf-8', timeout: 120_000, cwd });
-  const binaries = execFileSync(process.execPath, [bin, '--binaries'], { encoding: 'utf-8', timeout: 120_000, cwd });
-
-  const printedPaths = binaries
-    .split(/\r?\n/)
-    .flatMap((line) => line.trim().split(/\s{2,}/))
-    .map((tok) => tok.trim())
-    .filter((tok) => tok.length > 8 && tok.includes(sep));
-  assert.ok(printedPaths.length > 0, '--binaries must print paths (that is its whole job)');
-
-  const section = setup.slice(setup.indexOf('Vendor binaries'), setup.indexOf('Vendor provenance'));
-  assert.ok(section.length > 0, '--setup must have a Vendor binaries section');
-  for (const printed of printedPaths) {
-    assert.ok(!section.includes(printed), `--setup leaked the path ${printed}`);
-  }
-  assert.match(setup, /--binaries/, '--setup must point at where the paths live');
+  const line = setup.split(/\r?\n/).find((l) => l.includes('Workspace'));
+  assert.ok(line, '--setup must report workspace state');
+  assert.ok(!line.includes(cwd.replace(/[/\\]$/, '')), `workspace line must not contain the absolute path: ${line}`);
+  assert.match(line, /\.hopper|none in cwd|outside cwd/);
 });

@@ -55,11 +55,11 @@ import { publicAdapterDiagnostic } from '../src/adapter-diagnostics.js';
 import { publicModelIdentifier } from '../src/public-identifiers.js';
 import { validateSubjectRootArgument, prepareSubjectRootGuard } from '../src/subject-root-guard.js';
 import { watchFile, unwatchFile, readFileSync, existsSync, openSync, readSync, closeSync, statSync, readdirSync } from 'node:fs';
-import { resolve, join, dirname, basename } from 'node:path';
+import { resolve, join, dirname, basename, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
-const VERSION = '0.47.0';
+const VERSION = '0.47.1';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -1836,7 +1836,30 @@ async function runSetup({ only = null, deep = false } = {}) {
   console.log(`  Node             ${rt.nodeVersion} ${mark(rt.nodeOk)}${rt.nodeOk ? '' : `  (hopper needs Node >= ${rt.minNodeMajor})`}`);
   console.log(`  Platform         ${rt.platform} ${rt.arch}`);
   console.log(`  hopper-dispatch  v${VERSION} ✓`);
-  console.log(`  Workspace        ${hopperDir ? `${hopperDir} ✓` : 'none in cwd — run --init-tasks to scaffold .hopper/'}`);
+  // Workspace is shown RELATIVE TO CWD, never absolute. `--setup` is a public
+  // discovery command and must not emit local filesystem paths — the same contract
+  // that keeps `--binaries`' paths out of here (model-attestation-contract.test.js
+  // plants a workspace under a temp dir and fails if that dir appears in the
+  // output). This line printed the absolute path while it was unreachable dead
+  // code, so nothing caught it until the report was revived; CI did, on Linux and
+  // macOS, while Windows happened to mask it on path casing.
+  //
+  // Relative is also just better here: `.hopper` / `../../.hopper` answers the
+  // question the operator actually has (am I attached to the workspace I think I
+  // am, or to an ancestor's?) more directly than an absolute path does.
+  const workspaceCell = (() => {
+    if (!hopperDir) return 'none in cwd — run --init-tasks to scaffold .hopper/';
+    const rel = relative(process.cwd(), hopperDir);
+    if (!rel) return '. ✓';
+    // Show the path only when it is a PURE upward walk to `.hopper` — i.e.
+    // `.hopper`, `../.hopper`, `../../.hopper`. That reveals depth and nothing
+    // else, which is exactly the useful part (findHopperDir walks ancestors, so
+    // "which one am I attached to" is the real question). Anything else — a
+    // sideways traverse into another tree, or a HOPPER_DIR pointing elsewhere —
+    // would spell out directory names outside the cwd, so report presence only.
+    return /^(\.\.[/\\])*\.hopper$/.test(rel) ? `${rel} ✓` : 'found (outside cwd) ✓';
+  })();
+  console.log(`  Workspace        ${workspaceCell}`);
   console.log('');
 
   // ── Verdict ───────────────────────────────────────────────────────────────

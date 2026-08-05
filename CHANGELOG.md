@@ -19,6 +19,33 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.47.1] - 2026-08-05
+
+0.47.0 的 CI 修复。两条都是**本地跑不出来、只有 CI 能发现**的问题——本机装了 8 个
+vendor CLI，而 Windows 的路径大小写又恰好把泄漏遮住了。
+
+### Fixed — `--setup` 的 Runtime 块输出绝对 workspace 路径
+
+`Workspace <绝对路径>` 这一行在整段渲染器是 dead code 期间一直存在，所以 0.47.0
+把报告复活的同时也复活了一条契约违规：`--setup` / `--check` / `--models` /
+`--capabilities` 是 public discovery 面，不得输出本地文件系统路径
+（`model-attestation-contract.test.js` 会把 workspace 种在临时目录里，输出中出现该
+目录即失败）。Linux 与 macOS 的 CI 抓到了，Windows 因路径大小写差异碰巧漏过。
+
+改为**相对 cwd** 显示，且只在「纯向上走到 `.hopper`」时才显示路径
+（`.hopper` / `../.hopper` / `../../.hopper`）——那只暴露层级、不暴露目录名，
+而层级正是有用的那部分（`findHopperDir()` 会向上遍历，所以「我挂在哪个 workspace
+上」才是真问题）。横向穿进别的树、或 `HOPPER_DIR` 指向别处时，只报「found (outside cwd)」。
+
+### Fixed — 新增的 path-free 契约测试假设本机装了 vendor CLI
+
+`--setup stays path-free while --binaries carries the paths` 断言 `--binaries` 至少
+打印了一个路径。这在装了 8 个 vendor 的开发机上成立，在**三个 CI runner 上全部失败**
+——那里一个 vendor 都没装，每一行都是 "not found on PATH"。改为自己种一个假 binary
+到临时 PATH 上，使断言在任何环境下都由构造成立。
+
+同时补了一条断言 Workspace 行不含绝对路径的测试。
+
 ## [0.47.0] - 2026-08-05
 
 一次外部事故报告的排查，牵出四个互相遮蔽的缺陷。它们放在一起才解释得通：

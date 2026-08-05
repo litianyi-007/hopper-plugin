@@ -49,7 +49,7 @@ Previous schema bound `nickname → role → model`. v2.0 binds **`nickname → 
 
 ## Task-type → vendor default preference
 
-<!-- hopper-scaffold-version: 0.47.0 -->
+<!-- hopper-scaffold-version: 0.47.1 -->
 <!-- 本文件生成于 2026-05-20，已两次落后于插件自身 schema（v0.40.0 的 Approved Vendors、
      batch 2 的 Effort policy / Model rule）。上面这行水印用于让 `--setup` 能比对。
      升级插件后跑 `hopper-dispatch --setup` 看 "Task-type policy" 段。 -->
@@ -79,11 +79,17 @@ Plugin routes by Task-type + this table. queue.md row may override via optional 
 | `sidecar-polish` | codex-builder | codex:medium, grok:medium | verified-latest | 卫生检查用低成本档；原 kimi-builder 未获批准 |
 | `spec-blindspot-hunt` | grok-builder | codex:xhigh, grok:high | verified-latest | 未知的未知需要高推理，且应与撰写者异构（host = Claude Code） |
 
-**本机注意（不是配置问题）。** `Model rule: verified-latest` 解析为该 vendor 适配器的
-`knownGood[0]`，codex 是 `gpt-5.6-sol`，**要求 codex CLI ≥ 0.144**。本开发机上
-`codex` 在 PATH 上解析到的第一个是 **0.131.0**（另有 0.146.0 排在后面），
-所以 codex 派发会 400。这是机器的 PATH 问题，不是本表的问题——
-用 `hopper-dispatch --binaries --deep` 看清楚是哪个文件，移除/重指向遮蔽的那个入口。
+**关于 `Model rule: verified-latest`。** 它解析为该 vendor 适配器的 `knownGood[0]`，
+codex 是 `gpt-5.6-sol`，**要求 codex CLI ≥ 0.144**。
+
+> 2026-08-05：本开发机一度有两份 codex，`codex` 在 PATH 上首先解析到 **0.131.0**
+> （`~/bin/codex*` 手写 shim 指向旧的独立 node 安装），而 nvm4w 的 0.146.0 排在后面
+> ——于是 codex 派发对该模型报 400，症状看着像账号或能力问题。**已修**：删除那两个
+> shim，并把旧 npm-global 的 `@openai/codex` 对齐到 0.146.0。现在 hopper 与交互式
+> shell 都是 0.146.0。
+>
+> 这类问题用 `hopper-dispatch --binaries --deep` 一眼可见（v0.47.0 新增）；
+> `--setup` 的 Vendor binaries 段也会给出无路径摘要。
 
 ---
 
