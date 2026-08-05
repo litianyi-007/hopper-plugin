@@ -19,6 +19,20 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.49.1] - 2026-08-05
+
+### Fixed — an integration test hardcoded the task-type count
+
+`tests/integration/real-fixtures.test.js` asserted `types.length === 6`, so 0.49.0's two
+new task-types failed CI. Now derived from `SCAFFOLD_TASK_TYPES`, which is the same fix
+0.47.2 applied to the release-metadata test — a hardcoded count turns every addition into
+a post-push failure.
+
+Worth noting *why it could not be caught locally*: `npm test` globs `tests/unit/` only,
+and `tests/integration/` runs solely in CI (the workflow says so in a comment). A green
+local run is not evidence about that directory. The full command is
+`node --test "tests/unit/*.test.js" "tests/integration/*.test.js"`.
+
 ## [0.49.0] - 2026-08-05
 
 Role positioning. Hopper had no stated answer to "should this be dispatched at all" —
