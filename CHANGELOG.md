@@ -19,6 +19,74 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.47.0] - 2026-08-05
+
+一次外部事故报告的排查，牵出四个互相遮蔽的缺陷。它们放在一起才解释得通：
+每一个都让另一个更难被发现。
+
+### Fixed — `--setup` 的大半份报告是 dead code，包括唯一的配置漂移 lint
+
+`runSetup()` 里有一个无条件 `return;`（`03330ea`，2026-07-22 引入），挡在整份报告
+之前。已登记为 `ISSUE-setup-sandbox-column-dead-code.md`（2026-07-29），但当时把范围
+记成了「Sandbox 一列」。**实际被挡掉的是**：Runtime/Workspace 块、verdict、vendors
+表（含 Sandbox 列）、Auth notes、`--deep` 的两个 drift 段、Task-type policy lint、
+Next steps。
+
+其中 Task-type policy lint 的丢失代价最大：它是**唯一**会报告 `.hopper/AGENTS.md`
+有没有 batch-2 机器解析列（`Effort policy` / `Model rule`）的界面。它死掉之后，
+batch 2 之前 scaffold 的项目没有任何信号说自己需要迁移。实测发现一个外部项目仍停在
+**v0.28.0** 的 scaffold（落后 18 版），`--model` fallback 链第二级整条失效，
+现场把症状误判成了「`--swarm` 不传 model」。**本插件自己的 dogfood workspace
+也有同样的漂移**，且 `code-impl` / `sidecar-polish` 指向未获批准的 vendor
+（自 v0.40.0 fail-closed 起必然被拒），一并修正。
+
+`03330ea` 合法引入的闭合 inventory 投影与 grok auth-context 边界**保留**，
+折进完整报告而非替换它。新增测试逐段断言，任何位置的下一个提前 return 都会失败。
+
+### Fixed — 经软链调用时静默 exit 0、零输出
+
+直接执行守卫比较的是 `resolve(process.argv[1])` 与 realpath 过的 `import.meta.url`。
+`path.resolve()` 不跟随软链/junction，所以经 npm-global 软链调用时两者永不相等，
+`main()` 根本不跑——**exit 0，零输出**，对自动化调用方而言与成功无法区分。
+
+修复同时关掉第二条同样后果的路径：**Windows 上 `realpathSync` 不规范化大小写**
+（实证：`F:/workspace/…` 与 `F:/WORKSPACE/…` 都能解析且结果不字符串相等），
+任何交出不同大小写 argv[1] 的启动器都会重新制造同一个故障。现在两侧都 realpath、
+都各自 try/catch（此前 `realpathSync(__filename)` 无保护，抛出即模块顶层未捕获异常），
+win32 折叠大小写而 POSIX 不折叠。判定逻辑抽成 `isDirectInvocation()` 并单测。
+
+守卫必须在「否」方向保持严格——`cli/bin/hopper-dispatch` 被测试 import
+（`parseProbeCacheRecoveryArgs`），误判为真会让 `main()` 在测试进程里跑起来。已加断言。
+
+### Fixed — `binary_availability` / `binary_basename` 是硬编码的占位符
+
+`cli/src/setup.js` 在探针缓存缺失时传入字面量 `'unknown'` / `null`，于是每台机器上
+`--setup` 与每份 handoff frontmatter 的这两个字段永远是 unknown。
+`installCheckForAdapter` 早就知道答案，只是没人问。现改为真实观测。
+
+### Added — `--binaries`：一个 vendor 名在 PATH 上究竟解析到几个文件
+
+事故根因不是模型也不是配置，是**一台机器上装了两份 codex**：hopper spawn 到
+`~/bin/codex` 的 0.131.0，而用户 PowerShell 解析到 nvm4w 的 0.146.0。派发因此对
+需要 ≥0.144 的模型报 400，症状看上去像账号或能力问题。hopper 此前无法观测到这件事——
+它只解析 PATH 的第一个命中。
+
+`hopper-dispatch --binaries [<vendor>] [--deep]` 列出每一个命中、dispatch 实际
+spawn 的是哪个、以及（`--deep`）各自版本；版本分歧会升级为 `--setup` 的 Next steps 一条。
+枚举是纯 fs（默认层即可用），版本查询每个文件一次 spawn（仅 `--deep`），
+沿用 `vendor-compat.js` 的 spawn 隔离约定。
+
+**绝对路径只出现在 `--binaries`。** `--setup` / `--check` / `--models` /
+`--capabilities` 是 public discovery 面，按 `model-attestation-contract.test.js`
+的契约不得输出本地路径——`--setup` 给的是无路径摘要（计数、裁决、已解析版本号）。
+`--binaries` 放在 `.hopper/` 工作区闸之上：机器上装了什么是机器的属性，不是队列的。
+
+### Changed — 仓库身份统一，并打了第一个 tag
+
+`git remote` 仍指向重命名前的用户名，而三份元数据已是 `litianyi-007`。GitHub 的
+重命名重定向掩盖了它，但旧用户名可被他人重新注册。已统一。同时打上首个 tag
+`v0.46.0`——此前 0 个 tag，上游版本发现没有可依赖的锚点。
+
 ## [0.46.0] - 2026-08-03
 
 ### Changed — license is now MIT, and the LICENSE file finally contains a license

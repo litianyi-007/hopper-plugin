@@ -9,6 +9,10 @@
 //   - adapter.args()         : derive sandbox-control + web-search support (pure)
 //   - compatCheckForAdapter  : flag/param drift — ONLY in the opt-in `deep` tier,
 //                              which spawns `<vendor> --help` once per vendor.
+//   - enumerateVendorBinaries: every PATH entry answering to the vendor's command
+//                              name + which one dispatch spawns (filesystem only,
+//                              no spawn). probeBinaryVersions() adds the version
+//                              of each and DOES spawn, so it is `deep`-only.
 //
 // One place to answer "is each vendor ready, and what can it do" before a
 // dispatch: installed? · auth? · models? · capability fresh? · full-access? ·
@@ -18,6 +22,7 @@ import { listAdapters, getAdapter, installCheckForAdapter, capabilitiesForAdapte
 import { getVendorCache, setVendorCache } from './cache.js';
 import { projectInventoryEntry } from './inventory-contract.js';
 import { compatCheckForAdapter } from './vendor-compat.js';
+import { enumerateVendorBinaries, probeBinaryVersions, summarizeBinaryDrift } from './vendor-binaries.js';
 import { reconcileModels } from './model-normalize.js';
 import { parseAgentsFile } from './agents.js';
 import { listTaskTypes } from './tasks.js';
@@ -169,15 +174,38 @@ export async function buildVendorReadiness({ deep = false, only = null, now = ne
       dispatchDisabled: adapter && adapter.dispatchDisabled
         ? { reason: adapter.dispatchDisabled.reason, enableEnv: adapter.dispatchDisabled.enableEnv }
         : null,
-      inventory: projectInventoryEntry(name, cache || {
-        provenance: { source_kind: 'static', binary_availability: 'unknown', binary_basename: null },
+      // Binary provenance is OBSERVED, not assumed. Until 2026-08-05 this passed a
+      // literal `binary_availability: 'unknown', binary_basename: null` whenever the
+      // probe cache was absent, so `--setup` and every handoff frontmatter reported
+      // both fields as unknown on every machine — including the one where hopper was
+      // silently spawning a 15-versions-stale codex. installCheckForAdapter already
+      // knew the answer; nothing was asking it. `binary_basename` stays the adapter's
+      // canonical command name (the closed contract rejects anything else, and an
+      // absolute path must never enter this projection — see inventory-contract.js).
+      inventory: projectInventoryEntry(name, {
+        ...(cache || {}),
+        provenance: {
+          ...((cache && cache.provenance) || { source_kind: 'static' }),
+          binary_availability: install ? (install.binaryFound ? 'present' : 'missing') : 'unknown',
+          binary_basename: install && install.binaryFound ? install.command : null,
+        },
       }, cache ? 'ok-v1' : 'missing'),
+      // Zero-spawn on the default tier: enumeration is a pure PATH walk. Versions
+      // require a spawn each, so they are filled in below only under `deep`.
+      binaries: (() => { try { return enumerateVendorBinaries(name); } catch (_) { return null; } })(),
       error,
       compat: null,
     };
     if (deep) {
       try { row.compat = compatCheckForAdapter(name); }
       catch (e) { row.compat = { ran: false, reason: String((e && e.message) || e) }; }
+
+      // Version-probe every DISTINCT binary this vendor's name resolves to (not
+      // just the one dispatch picks) — a second install at a different version is
+      // only visible by comparing them. One spawn per distinct file.
+      if (row.binaries) {
+        try { probeBinaryVersions(row.binaries); } catch (_) { /* advisory; entries keep version:null */ }
+      }
 
       // V3: live-enumerate the vendor's models, reconcile vs hardcoded knownGood.
       const kg = (caps && caps.modelArg && Array.isArray(caps.modelArg.knownGood)) ? caps.modelArg.knownGood : [];
@@ -284,6 +312,24 @@ export function buildRuntimeReport({
 }
 
 /**
+ * Descending semver-ish comparator for the version strings extractVersion() yields
+ * (`major.minor.patch` with an optional pre-release/build tail). Numeric segments are
+ * compared numerically so `0.146.0` sorts above `0.131.0` — a lexicographic sort would
+ * put `0.131.0` first and name the WRONG binary as "newest" in the next-step text.
+ * Any tail is ignored; this only has to order observed release versions.
+ * @param {string} a @param {string} b
+ */
+export function compareVersionDesc(a, b) {
+  const parts = (v) => String(v).split(/[-+]/)[0].split('.').map((n) => Number.parseInt(n, 10) || 0);
+  const [pa, pb] = [parts(a), parts(b)];
+  for (let i = 0; i < Math.max(pa.length, pb.length); i += 1) {
+    const d = (pb[i] || 0) - (pa[i] || 0);
+    if (d !== 0) return d;
+  }
+  return 0;
+}
+
+/**
  * Concrete, ordered next-steps derived from the readiness rows + summary — the actionable tail
  * a setup command should leave the user with (install, authenticate, probe, enable, scaffold).
  * Pure; returns an array of one-line strings (empty when nothing to do).
@@ -298,6 +344,24 @@ export function buildNextSteps(rows, sum, { hopperDir = null } = {}) {
   }
   if (sum.authMissing.length) {
     steps.push(`Authenticate: ${sum.authMissing.join(', ')} — \`hopper-dispatch --check ${sum.authMissing[0]}\` shows the fix.`);
+  }
+  // Version conflict outranks the optional/hygiene steps below it: a stale duplicate
+  // on PATH does not look like a failure anywhere else — dispatch just quietly runs
+  // the wrong binary and the vendor rejects the request for reasons that read as a
+  // model or account problem (live 2026-08-05: codex 0.131.0 shadowing 0.146.0 cost
+  // a full day of misdiagnosis). Only raised when versions were actually observed.
+  for (const r of rows) {
+    if (!r.binaries) continue;
+    const s = summarizeBinaryDrift(r.binaries);
+    if (s.verdict !== 'conflict') continue;
+    const newest = [...s.distinctVersions].sort(compareVersionDesc)[0];
+    const shadowed = s.spawnedVersion && newest && s.spawnedVersion !== newest;
+    steps.push(
+      `${r.name}: ${s.entryCount} installs on PATH at ${s.distinctVersions.length} different versions `
+      + `(${s.distinctVersions.join(', ')})${shadowed ? ` — dispatch spawns ${s.spawnedVersion}, NOT the newest (${newest})` : ''}. `
+      + 'PATH order decides, and it differs per shell. Remove or repoint the shadowing entry '
+      + '(see the Vendor binaries section for exact paths).',
+    );
   }
   const unprobed = rows.filter((r) => r.installed && (!r.models || r.models.length === 0)).map((r) => r.name);
   if (unprobed.length) {

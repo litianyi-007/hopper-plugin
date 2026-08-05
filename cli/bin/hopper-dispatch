@@ -15,6 +15,7 @@ import { scaffoldHopper, scaffoldGovernance } from '../src/scaffold.js';
 import { renderRulesMarkdown } from '../src/rules.js';
 import { compatCheckForAdapter } from '../src/vendor-compat.js';
 import { buildVendorReadiness, summarizeReadiness, formatModelDrift, buildRuntimeReport, buildNextSteps, buildTaskTypePolicyReport } from '../src/setup.js';
+import { formatBinaryReport, formatBinarySummary, enumerateVendorBinaries, probeBinaryVersions } from '../src/vendor-binaries.js';
 import { modelKeysMatch } from '../src/model-normalize.js';
 import { evaluateModelCheck } from '../src/model-check.js';
 import {
@@ -48,7 +49,7 @@ import {
 } from '../src/handoff-attestation.js';
 import { runArchive, findArchivedOutputMd } from '../src/archive.js';
 import { notify } from '../src/notify.js';
-import { resolveCommandWithKnownPaths } from '../src/path-resolve.js';
+import { resolveCommandWithKnownPaths, isDirectInvocation } from '../src/path-resolve.js';
 import { resolvePromptDelivery } from '../src/prompt-delivery.js';
 import { publicAdapterDiagnostic } from '../src/adapter-diagnostics.js';
 import { publicModelIdentifier } from '../src/public-identifiers.js';
@@ -58,7 +59,7 @@ import { resolve, join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
-const VERSION = '0.46.0';
+const VERSION = '0.47.0';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -122,6 +123,7 @@ function printUsage() {
   console.log('  hopper-dispatch --vendors                       List registered vendor adapters');
   console.log('  hopper-dispatch --rules                          Print the GENERATED dispatch-rules matrix (> .hopper/DISPATCH.md)');
   console.log('  hopper-dispatch --check [<vendor>]              Show install + auth status (all, or single vendor)');
+  console.log('  hopper-dispatch --binaries [<vendor>] [--deep]  Show EVERY PATH entry a vendor name resolves to, which one dispatch spawns, and (--deep) each version. Local diagnostic: prints absolute paths.');
   console.log('  hopper-dispatch --capabilities <vendor>         Show static model/reasoning/feature support + cached data if probed');
   console.log('  hopper-dispatch --check-model <vendor> <model> [--json]  Assert model availability pre-dispatch (zero-spawn): verified (exit 0) | catalog-only (exit 2) | not-found (exit 1)');
   console.log('  hopper-dispatch --probe [<vendor>]              Run vendor introspection, write cache to ~/.hopper/cache/');
@@ -336,6 +338,50 @@ async function main() {
       }
       console.error(`Error: ${err.message}`);
       process.exit(1);
+    }
+    return;
+  }
+
+  // Binary provenance — the LOCAL diagnostic that may print absolute paths.
+  // Deliberately NOT folded into `--setup`: that command is one of the four public
+  // discovery surfaces contractually barred from emitting local paths
+  // (model-attestation-contract.test.js). `--setup` shows the path-free summary and
+  // points here; this is where the operator gets the file to delete.
+  //
+  // Placed ABOVE the .hopper/ workspace gate on purpose: which binaries exist on this
+  // machine is a property of the MACHINE, not of a queue. Requiring a workspace would
+  // make it unavailable exactly when it is most needed — diagnosing a host before any
+  // project is set up.
+  if (args.includes('--binaries')) {
+    const idx = args.indexOf('--binaries');
+    const arg = args[idx + 1];
+    const target = arg && !arg.startsWith('-') ? arg : null;
+    const known = listAdapters();
+    if (target && !known.includes(target)) {
+      console.error(`Error: unknown vendor '${target}'. Registered: ${known.join(', ')}`);
+      process.exit(2);
+    }
+    const deepBin = args.includes('--deep');
+    console.log(`hopper-dispatch v${VERSION} — vendor binaries (local diagnostic; shows absolute paths)`);
+    console.log('');
+    let conflicts = 0;
+    for (const name of target ? [target] : known) {
+      let report;
+      try { report = enumerateVendorBinaries(name); }
+      catch (err) { console.log(`  ${name.padEnd(9)} error: ${err.message}`); continue; }
+      if (deepBin) {
+        try { probeBinaryVersions(report); } catch (_) { /* advisory */ }
+      }
+      for (const line of formatBinaryReport(report)) console.log(line);
+      if (report.entries.filter((e) => e.version).map((e) => e.version)
+        .filter((v, i, a) => a.indexOf(v) === i).length > 1) conflicts += 1;
+    }
+    console.log('');
+    if (!deepBin) {
+      console.log('Versions omitted. Add --deep to spawn `<binary> --version` once per distinct file.');
+    } else if (conflicts) {
+      console.log(`${conflicts} vendor(s) resolve to several versions. PATH order decides which one dispatch spawns,`);
+      console.log('and PATH order differs between shells — remove or repoint the shadowing entry.');
     }
     return;
   }
@@ -1762,16 +1808,22 @@ async function runSetup({ only = null, deep = false } = {}) {
   }
   const rows = await buildVendorReadiness({ only, deep });
   const sum = summarizeReadiness(rows);
-  const runtime = buildRuntimeReport({ version: VERSION });
-  console.log(`hopper-dispatch v${VERSION} — setup & readiness`);
-  console.log(`Runtime: node=${runtime.nodeOk ? 'supported' : 'unsupported'} platform=${runtime.platform}`);
-  console.log(`Vendors: ${sum.ready}/${sum.total} installed+ready`);
-  for (const row of rows) {
-    console.log(`${row.name}: status=${row.status} ${renderReadinessAuth(row.name, row)} ${renderSafeInventory(row.inventory)}`);
-  }
-  renderGrokAuthContextBoundary(rows.map((row) => ({ name: row.name, authContext: row.authContext })));
-  console.log('Use --probe for an explicit inventory refresh.');
-  return;
+  // 2026-08-05: an unconditional `return;` used to sit HERE, introduced by 03330ea
+  // ("feat: render model inventory safely", 2026-07-22). Everything below it — the
+  // Runtime block, the verdict, the vendor table (incl. the Sandbox column the docs
+  // tell users to consult), auth notes, the flag/model drift tiers, the Task-type
+  // policy lint and Next steps — was dead code for a month
+  // (ISSUE-setup-sandbox-column-dead-code.md, filed 2026-07-29, scoped only to the
+  // Sandbox column; the blast radius was in fact the whole report).
+  //
+  // The lost lint mattered: `--setup`'s "Task-type policy" section is the ONLY
+  // surface that reports whether an AGENTS.md has the machine-parsed Effort policy /
+  // Model rule columns at all, so projects scaffolded before batch 2 stayed silently
+  // unmigrated — one was found still on a v0.28.0 scaffold, 18 versions later.
+  //
+  // What 03330ea legitimately added — the CLOSED inventory projection
+  // (renderSafeInventory) and the grok auth-context boundary — is preserved below,
+  // folded into the full report rather than replacing it.
   const cell = (s, w) => String(s == null ? '—' : s).slice(0, w).padEnd(w);
 
   // ── Runtime / prerequisites (is the host itself viable?) ──────────────────
@@ -1830,11 +1882,38 @@ async function runSetup({ only = null, deep = false } = {}) {
   if (sum.authMissing.length) console.log(`Not authenticated (hard fail — set up auth before dispatch): ${sum.authMissing.join(', ')}  (run \`--check ${sum.authMissing[0]}\` for the fix)`);
   if (sum.capsStale.length) console.log(`Capability metadata STALE (re-verify the adapter): ${sum.capsStale.join(', ')}`);
 
+  // ── Vendor binaries (HOW MANY installs, and is the spawned one current) ───
+  // Enumeration is zero-spawn, so this renders on the default tier; versions
+  // need one spawn per distinct file and are therefore --deep only. The case
+  // worth surfacing is a vendor name resolving to MORE than one file: hopper
+  // spawns the first on PATH, which is not necessarily the one the operator's
+  // shell runs, and no other hopper surface can see the difference.
+  //
+  // PATH-FREE by contract — `--setup` is a public discovery command and must not
+  // emit local filesystem paths (model-attestation-contract.test.js enforces it
+  // against a binary planted in a temp dir). Absolute paths live in `--binaries`.
+  console.log('\nVendor binaries (what dispatch actually spawns)');
+  for (const r of rows) {
+    console.log(`  ${r.binaries ? formatBinarySummary(r.binaries) : `${cell(r.name, 9)} —`}`);
+  }
+  console.log(`  (paths: \`hopper-dispatch --binaries\`${deep ? '' : '; versions: add `--deep`'})`);
+
+  // Per-vendor auth + closed inventory projection. This is the line 03330ea added
+  // (and which the early `return;` made the ONLY output); it is kept verbatim in
+  // shape because setup.test.js asserts on it — `auth=unverified auth_context=…`
+  // is a real guarantee that a local credential artifact is never presented as
+  // remote authentication proof, and the table's `warn` cell does not say that.
+  console.log('\nVendor provenance (closed projection)');
+  for (const r of rows) {
+    console.log(`  ${r.name}: status=${r.status} ${renderReadinessAuth(r.name, r)} ${renderSafeInventory(r.inventory)}`);
+  }
+
   const notes = rows.filter((r) => r.installed && r.authNotes && r.authNotes.length);
   if (notes.length) {
     console.log('\nAuth notes:');
     for (const r of notes) for (const n of r.authNotes) console.log(`  ${r.name}: ${n}`);
   }
+  renderGrokAuthContextBoundary(rows.map((row) => ({ name: row.name, authContext: row.authContext })));
 
   if (deep) {
     console.log('\nFlag/param drift (`<vendor> --help` vs adapter-emitted flags):');
@@ -2240,7 +2319,12 @@ function runModels(target) {
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === __filename) {
+// Direct-execution guard. Getting this wrong makes the CLI exit 0 with ZERO output —
+// the worst possible failure shape, because callers read it as success. See
+// isDirectInvocation() in cli/src/path-resolve.js for both failure modes it closes
+// (symlink/junction argv, and Windows path casing) and why it must stay strict in
+// the false direction. Covered by tests/unit/entry-guard.test.js.
+if (isDirectInvocation(process.argv[1], __filename)) {
   main().catch((err) => {
     console.error(`Fatal: ${err.message}`);
     process.exit(1);

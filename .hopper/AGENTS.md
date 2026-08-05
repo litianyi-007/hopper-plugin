@@ -42,22 +42,48 @@ Previous schema bound `nickname → role → model`. v2.0 binds **`nickname → 
 | `opencode-builder` | `6db17b47-ba7f-4a16-8890-832ce18c43cb` | opencode (pin 0.14.7) | `opencode run --model <provider/model> "<input>"` | New; pin version per known regression #3213 |
 | `copilot-builder` | `7a1c4d50-3b8e-4f2a-9c11-d4e3f8a9b234` | copilot-cli (Sonnet 4.5 default) | `copilot -p "<input>" --headless` (with `GH_TOKEN` env) | Premium quota meters per call — use sparingly |
 | `agy-builder` | `9e2f1a3d-7b4c-4d8e-a1f6-c3b2d9e4f567` | agy-cli (Antigravity; Google's 2026-06-18 Gemini successor) | `agy -p "<input>" --dangerously-skip-permissions` + `--log-file <path>` | ⚠️ **DISABLED by default (2026-06-26)** — agy 1.0.12 `--print` renders the answer only in its interactive TUI; under a non-TTY stdout (every dispatch) it emits nothing capturable, so hopper REFUSES to dispatch to agy. Override at your own risk with `HOPPER_ENABLE_AGY=1`. A PTY fix is excluded (agy hangs on an open stdin pipe). OAuth-only; run `agy` interactively once to auth. |
+| `grok-builder` | `-` | grok-cli | `grok -p "<input>"` | 2026-08-05 补登记。grok 自 2026-08-03 起在 `## Approved Vendors` 里是 `yes`，却从未有实例行——于是任何指向它的 task-type 都解析不到 vendor。read-only 非 argv 强制（恒 `--permission-mode bypassPermissions`），只读任务事后须 `git status` 核对。 |
 | `critic-claude-opus` | `b3d5e7f9-1a2c-4e8a-b9c1-d4e6f8a9c123` | claude-opus-xhigh (fresh subagent) | (Strategy invokes /codex separately, OOB; not a queue role) | Adversarial review |
 
 ---
 
 ## Task-type → vendor default preference
 
+<!-- hopper-scaffold-version: 0.47.0 -->
+<!-- 本文件生成于 2026-05-20，已两次落后于插件自身 schema（v0.40.0 的 Approved Vendors、
+     batch 2 的 Effort policy / Model rule）。上面这行水印用于让 `--setup` 能比对。
+     升级插件后跑 `hopper-dispatch --setup` 看 "Task-type policy" 段。 -->
+
 Plugin routes by Task-type + this table. queue.md row may override via optional `Vendor` column (not used in initial queue).
 
-| Task-type | Default vendor | Why |
-|---|---|---|
-| `spec-write` | codex-builder | High reasoning; sticky from spec-writing experience in myWriteAssistant |
-| `code-impl` | kimi-builder *(static default — codex F1 fix; no round-robin / stateful rotation)* | Cheap tier handles bulk; if user wants different vendor for specific task, override via row-level Vendor column in queue.md |
-| `code-review-adversarial` | (Strategy OOB /codex) | Out-of-band; not plugin-dispatched |
-| `code-review-acceptance` | codex-builder | Continuity with sticky Leader pattern |
-| `sidecar-polish` | kimi-builder OR deepseek-flash-via-future-adapter | Cheap-fast suitable for hygiene checks |
-| `spec-blindspot-hunt` | codex-builder | High reasoning for unknown-unknowns |
+> **2026-08-05 审计更正（dogfood 自查）。** 这张表有两类问题，都是「本插件自己的
+> workspace 落后于本插件自己的 schema」——和 2026-08-03 补 `## Approved Vendors`
+> 是同一类事故的第二次发作：
+>
+> 1. **缺 `Effort policy` / `Model rule` 两列**（hopper batch 2，2026-07 引入）。
+>    `cli/src/agents.js` 把这两列做成可选、缺失即静默跳过，所以 `--reasoning` /
+>    `--model` 的 fallback 链第二级一直是死的。之所以一个月没人发现，是因为唯一会
+>    报告它的界面——`--setup` 的 Task-type policy lint——本身也是 dead code
+>    （见 `ISSUE-setup-sandbox-column-dead-code.md`）。**两个缺陷互相遮蔽。**
+> 2. **`code-impl` / `sidecar-polish` 路由到 `kimi-builder`，而 kimi 在
+>    `## Approved Vendors` 里是 `no`** ⇒ 自 v0.40.0 fail-closed 以来这两条必然被拒；
+>    `code-review-adversarial` 的 `(Strategy OOB /codex)` 是括号开头，按 OOB 约定
+>    解析为 **unbound**，派发会直接报错。现改为只指向已批准的 codex / grok。
+
+| Task-type | Default vendor | Effort policy | Model rule | Why |
+|---|---|---|---|---|
+| `spec-write` | codex-builder | codex:xhigh, grok:high | verified-latest | High reasoning; sticky from spec-writing experience in myWriteAssistant |
+| `code-impl` | codex-builder | codex:xhigh, grok:high | verified-latest | 静态默认，无 round-robin / 有状态轮换（codex F1）。原为 kimi-builder，但 kimi 未获批准 ⇒ 必被拒；按行覆盖仍可用 queue.md 的 `Vendor` 列 |
+| `code-review-adversarial` | grok-builder | codex:xhigh, grok:high | verified-latest | 已批准的对抗评审 vendor；原 `(Strategy OOB /codex)` 解析为 unbound |
+| `code-review-acceptance` | codex-builder | codex:xhigh, grok:high | verified-latest | Continuity with sticky Leader pattern |
+| `sidecar-polish` | codex-builder | codex:medium, grok:medium | verified-latest | 卫生检查用低成本档；原 kimi-builder 未获批准 |
+| `spec-blindspot-hunt` | grok-builder | codex:xhigh, grok:high | verified-latest | 未知的未知需要高推理，且应与撰写者异构（host = Claude Code） |
+
+**本机注意（不是配置问题）。** `Model rule: verified-latest` 解析为该 vendor 适配器的
+`knownGood[0]`，codex 是 `gpt-5.6-sol`，**要求 codex CLI ≥ 0.144**。本开发机上
+`codex` 在 PATH 上解析到的第一个是 **0.131.0**（另有 0.146.0 排在后面），
+所以 codex 派发会 400。这是机器的 PATH 问题，不是本表的问题——
+用 `hopper-dispatch --binaries --deep` 看清楚是哪个文件，移除/重指向遮蔽的那个入口。
 
 ---
 
