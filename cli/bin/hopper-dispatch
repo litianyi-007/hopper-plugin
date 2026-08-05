@@ -16,6 +16,8 @@ import { renderRulesMarkdown } from '../src/rules.js';
 import { compatCheckForAdapter } from '../src/vendor-compat.js';
 import { buildVendorReadiness, summarizeReadiness, formatModelDrift, buildRuntimeReport, buildNextSteps, buildTaskTypePolicyReport } from '../src/setup.js';
 import { formatBinaryReport, formatBinarySummary, enumerateVendorBinaries, probeBinaryVersions } from '../src/vendor-binaries.js';
+import { planWorkspaceMigrations, applyWorkspaceMigrations, simpleDiff, currentVersion } from '../src/workspace-drift.js';
+import { detectInstallKind, fetchUpstreamVersion, parseMigrationEntries, buildUpdateReport } from '../src/update-check.js';
 import { modelKeysMatch } from '../src/model-normalize.js';
 import { evaluateModelCheck } from '../src/model-check.js';
 import {
@@ -59,7 +61,7 @@ import { resolve, join, dirname, basename, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
-const VERSION = '0.47.2';
+const VERSION = '0.48.0';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -124,6 +126,8 @@ function printUsage() {
   console.log('  hopper-dispatch --rules                          Print the GENERATED dispatch-rules matrix (> .hopper/DISPATCH.md)');
   console.log('  hopper-dispatch --check [<vendor>]              Show install + auth status (all, or single vendor)');
   console.log('  hopper-dispatch --binaries [<vendor>] [--deep]  Show EVERY PATH entry a vendor name resolves to, which one dispatch spawns, and (--deep) each version. Local diagnostic: prints absolute paths.');
+  console.log('  hopper-dispatch --update-check [--offline]      Compare installed vs upstream version, list BREAKING entries in between, and report .hopper/ config drift. Read-only; never installs anything.');
+  console.log('  hopper-dispatch --migrate-config [--yes] [--only <ids>]  Migrate this project\'s .hopper/ to the running schema. DRY RUN BY DEFAULT (--yes to write). Additive only, backs up to .hopper/.migrations/.');
   console.log('  hopper-dispatch --capabilities <vendor>         Show static model/reasoning/feature support + cached data if probed');
   console.log('  hopper-dispatch --check-model <vendor> <model> [--json]  Assert model availability pre-dispatch (zero-spawn): verified (exit 0) | catalog-only (exit 2) | not-found (exit 1)');
   console.log('  hopper-dispatch --probe [<vendor>]              Run vendor introspection, write cache to ~/.hopper/cache/');
@@ -382,6 +386,100 @@ async function main() {
     } else if (conflicts) {
       console.log(`${conflicts} vendor(s) resolve to several versions. PATH order decides which one dispatch spawns,`);
       console.log('and PATH order differs between shells — remove or repoint the shadowing entry.');
+    }
+    return;
+  }
+
+  // Upgrade reconciliation. Above the workspace gate: "is my plugin current, and
+  // is my .hopper/ shaped for it" is a question you also want answered from a
+  // directory that has no workspace yet. The workspace section simply reports
+  // "not in a workspace" in that case.
+  if (args.includes('--update-check')) {
+    const wsDir = findHopperDir();
+    const running = currentVersion();
+    const install = detectInstallKind();
+    const upstream = args.includes('--offline')
+      ? { version: null, error: '--offline：跳过网络查询' }
+      : await fetchUpstreamVersion();
+    let migrationEntries = [];
+    try {
+      migrationEntries = parseMigrationEntries(readFileSync(join(install.root, 'MIGRATION.md'), 'utf-8'));
+    } catch (_) { /* MIGRATION.md is optional in a partial install */ }
+    const workspacePlan = wsDir ? planWorkspaceMigrations(wsDir, { version: running }) : null;
+    const report = buildUpdateReport({ install, running, upstream, migrationEntries, workspacePlan });
+    console.log(`hopper-dispatch v${running} — update check`);
+    console.log('');
+    for (const line of report.lines) console.log(line);
+    return;
+  }
+
+  // Additive, backed-up, idempotent migration of this project's .hopper/ files.
+  // DRY-RUN IS THE DEFAULT: this rewrites a file that records human approvals, so
+  // nothing is written until the operator passes --yes.
+  if (args.includes('--migrate-config')) {
+    const wsDir = findHopperDir();
+    if (!wsDir) {
+      console.error('Error: 不在 .hopper 工作区内 —— --migrate-config 迁移的是项目配置。');
+      console.error('先 cd 到含 .hopper/ 的目录，或用 `hopper-dispatch --init-tasks` 新建一个。');
+      process.exit(1);
+    }
+    const apply = args.includes('--yes');
+    const onlyIdx = args.indexOf('--only');
+    const only = onlyIdx !== -1 && args[onlyIdx + 1] && !args[onlyIdx + 1].startsWith('-')
+      ? args[onlyIdx + 1].split(',').map((s) => s.trim()).filter(Boolean)
+      : null;
+    const before = {
+      'AGENTS.md': (() => { try { return readFileSync(join(wsDir, 'AGENTS.md'), 'utf-8'); } catch (_) { return null; } })(),
+      'DISPATCH.md': (() => { try { return readFileSync(join(wsDir, 'DISPATCH.md'), 'utf-8'); } catch (_) { return null; } })(),
+    };
+    const res = applyWorkspaceMigrations(wsDir, { dryRun: !apply, only, version: VERSION });
+    console.log(`hopper-dispatch v${VERSION} — migrate config${apply ? '' : ' (dry run)'}`);
+    console.log('');
+    if (res.plan.errors.length) {
+      for (const e of res.plan.errors) console.error(`⚠ ${e}`);
+      console.log('');
+    }
+    if (!res.applied.length && !res.refused.length) {
+      console.log(`.hopper/ 已与 v${VERSION} 一致 —— 无需迁移。`);
+      return;
+    }
+    for (const a of res.applied) {
+      console.log(`${apply ? 'applied ' : 'would apply '}${a.breaking ? '⚠ BREAKING ' : ''}${a.id}  [${a.file}]`);
+      console.log(`  ${a.title}`);
+      console.log(`  原因：${a.reason}`);
+    }
+    console.log('');
+    // ONE diff per FILE, not per migration. Migrations targeting the same file are
+    // chained through a shared buffer, so a per-migration diff would compare the
+    // original against the FINAL state every time and show every other migration's
+    // changes under each entry — the first version of this output did exactly that,
+    // and made `scaffold-stamp` look like it was inserting an Approved Vendors table.
+    if (!apply) {
+      for (const file of [...new Set(res.applied.map((a) => a.file))]) {
+        console.log(`--- ${file} ---`);
+        if (file === 'DISPATCH.md') {
+          console.log('  （100% 由适配器生成，整份重写；无手写内容可丢，故不展示逐行 diff）');
+          console.log('');
+          continue;
+        }
+        const diff = simpleDiff(before[file], res.results[file]);
+        for (const d of diff.slice(0, 60)) console.log(`  ${d}`);
+        if (diff.length > 60) console.log(`  … 其余 ${diff.length - 60} 行省略`);
+        console.log('');
+      }
+    }
+    for (const r of res.refused) {
+      console.log(`REFUSED ${r.id} — ${r.error}`);
+      console.log('  （拒绝而不是猜：结构被手工改过时，猜测会造成破坏。请按 MIGRATION.md 手动处理。）');
+      console.log('');
+    }
+    if (apply) {
+      for (const b of res.backups) console.log(`backup: ${b}`);
+      console.log(`记录已追加到 ${join(wsDir, '.migrations', 'log.md')}`);
+      console.log('');
+      console.log('复核一遍再提交：迁移是只增不改的，但填空的部分（尤其 Approved Vendors）需要你自己决定。');
+    } else {
+      console.log('这是预演，未写入任何文件。确认后执行：hopper-dispatch --migrate-config --yes');
     }
     return;
   }

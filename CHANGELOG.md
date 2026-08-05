@@ -19,6 +19,63 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.48.0] - 2026-08-05
+
+升级对账。0.47.x 修的是「hopper 看不见机器上发生了什么」；这一版修的是
+「hopper 看不见项目配置已经落后于 hopper 自己」。
+
+### Added — `--update-check`：装的是哪一份、上游到哪了、本项目还差什么
+
+三段报告：**Install**（运行版本 + 从哪种安装方式来的，因而知道该给出哪条升级命令
+——本插件跨 6 个宿主有 6 条不同路径）、**Upstream**（最新版本 + 区间内的 BREAKING
+条目，从 MIGRATION.md 解析）、**Workspace**（本项目 `.hopper/` 有哪些地方已不匹配
+当前 schema）。
+
+**它不安装任何东西，也不该安装。** 装代码是宿主的职责：Claude Code 的 marketplace
+拥有安装记录与版本 pin，npm 拥有全局软链，另外四个宿主各有各的路径。一个从硬编码 URL
+自拉并替换**自己正在执行的代码**的插件，会制造第二套真相，还得把 6 条安装路径都实现对
+——而 npm 软链那条恰恰就是静默 exit-0 入口守卫 bug 藏了十个版本的地方。所以这里只
+**报告**，并把宿主自己的升级命令交回给使用者。
+
+网络只有一次只读 GET，且失败即降级为纯本地报告（`--offline` 可显式跳过）。
+一个会因网络抖动而 fail-closed 的升级检查，比没有更糟。
+
+### Added — `--migrate-config`：把项目的 `.hopper/` 迁到当前 schema
+
+**默认是 dry run**，`--yes` 才写。四条迁移：写入 scaffold 版本水印、补 batch-2 的
+`Effort policy` / `Model rule` 两列、补 v0.40.0 的 `## Approved Vendors` 章节
+（唯一 BREAKING）、重新生成 `DISPATCH.md`。
+
+`.hopper/AGENTS.md` 记录的是**谁在什么时候批准了哪个 vendor**——它是治理文件，不是
+配置文件。所以迁移器刻意做得很无聊、可审计：
+
+- **只增不改。** 补列时填 `(bind per project)`，补章节时留空，重生成只针对
+  100% 生成的文件。**从不**修改已绑定的值、删除行、或翻动 `Approved` 单元格。
+- **`approved-vendors-section` 故意留空表。** 批准是人的决定；预填等于制造从未给出
+  的同意，而这是横在一个队列和别人的 CLI 之间唯一那道闸。填好之前派发仍 fail-closed
+  ——这是对的，不是 bug。
+- **写前备份**到 `.hopper/.migrations/`，每次运行向 `log.md` 追加记录。
+- **幂等**；定位不到目标结构就**拒绝**而不是猜——结构被手工改过时，猜测会造成破坏。
+
+### Added — `/hopper:update` 命令 + `hopper-update` skill
+
+薄壳，逻辑在 CLI，所以 6 个宿主共享同一份实现。两者都写明了「不代为安装」和
+「不替用户填 Approved Vendors」的边界。
+
+### Added — scaffold 现在写入版本水印
+
+`--init-tasks` 生成的 `AGENTS.md` 带 `<!-- hopper-scaffold-version: X -->`。
+没有它，漂移检测只能靠猜——这正是 batch 2 的新列在真实项目里静默缺失一个月的原因。
+新建的工作区从第一天起就是零漂移。
+
+### Fixed — vendored 副本的 `skills/` 只更新、不新增
+
+同步脚本只对 `cli/` 强制补齐新文件，`skills/` 只在已存在时更新。于是**新写的 skill
+会静默缺席 codex marketplace 副本**——Claude Code 用户有、codex 用户没有，且没有任何
+东西失败。本次新增 `hopper-update` skill 时撞上。`skills/` 改为与 `cli/` 同样
+completeness-required。（`commands/` 不 vendored 是刻意的：那是 Claude Code 的
+斜杠命令，codex 插件消费的是 skills。）
+
 ## [0.47.2] - 2026-08-05
 
 ### Fixed — `binary_basename` 在二进制找不到时变成 null，破坏了闭合投影契约
