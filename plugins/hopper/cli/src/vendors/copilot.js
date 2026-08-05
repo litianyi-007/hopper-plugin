@@ -158,7 +158,7 @@ export const copilotAdapter = {
     // Auth failure backstop: envPreflight's profile heuristic can't tell a logged-OUT
     // copilot (stale ~/.copilot session-store) from a logged-in one, so catch a real
     // auth failure here and label it (don't bury it in the generic unknown-fail bucket).
-    const authFail = /not (authenticated|logged in|signed in)|unauthorized|401|authentication (failed|required)|please (sign in|log in|authenticate)|run `?copilot`? to (sign in|log in)|invalid (token|credentials)/i;
+    const authFail = /not (authenticated|logged in|signed in)|unauthorized|\bHTTP\s*401\b|\bstatus(?:\s*code)?[:=]?\s*401\b|authentication (failed|required)|please (sign in|log in|authenticate)|run `?copilot`? to (sign in|log in)|invalid (token|credentials)/i;
     if ((raw.exitCode !== 0) && (authFail.test(raw.stderr || '') || authFail.test(raw.stdout || ''))) {
       return {
         text: '',

@@ -29,10 +29,11 @@ Chinese. Historical records are not rewritten here; only this framing is new.
 | [`monitor-cross-session-crosstalk`](#monitor-cross-session-crosstalk) | open | medium-high (UX correctness: a session is woken/notified by  |
 | [`progress-watch-hang`](#progress-watch-hang) | open — pre-existing, NOT introduced by the governance-fusion change (which never touched the `-- | medium (blocks the full-suite `npm test` gate; has a workaro |
 
-### Closed — 10
+### Closed — 11
 
 | Issue | Status | Severity |
 |---|---|---|
+| [`grok-models-succeeds-but-hopper-dispatch-auth-failed`](#grok-models-succeeds-but-hopper-dispatch-auth-failed) | CLOSED 2026-08-05 — root cause confirmed; fixed in 0.50.0 (see Resolution) | 高：两次已完成、已计费的 grok 评审被记为认证失败并丢弃 |
 | [`grok-adapter-protocol-invalid-false-fail`](#grok-adapter-protocol-invalid-false-fail) | CLOSED — root cause confirmed as a line-level parse gap; fixed in this commit (see Resolution) | medium-high — the vendor actually COMPLETES the task (delive |
 | [`grok-claude-buffered-output-idle-falsekill`](#grok-claude-buffered-output-idle-falsekill) | FIXED (mitigation applied below); a proper streaming-based fix is DEFERRED (see below) | high — every grok/claude BACKGROUND dispatch that legitimate |
 | [`grok-model-line-rotation-stale-knownGood`](#grok-model-line-rotation-stale-knownGood) | 已修复（本 issue 记录根因 + 修复 + 一个更深的待办） | 高（`Model rule: verified-latest` 是 grok 派发的默认约定，过期即整条路径全失败，且无 |
@@ -52,6 +53,244 @@ Read the body; the header did not carry a parseable status line.
 |---|---|---|
 | [`codex-callchain-windows`](#codex-callchain-windows) | — | high — codex dispatches return `status=done exit=0` while pr |
 | [`codex-vendor-model-effort`](#codex-vendor-model-effort) | — | — |
+
+---
+
+<a id="grok-models-succeeds-but-hopper-dispatch-auth-failed"></a>
+
+## grok-models-succeeds-but-hopper-dispatch-auth-failed
+
+---
+
+## ISSUE: `grok models` 成功，但 `hopper-dispatch` 真实派发终止为 `adapter-auth-failed`
+
+> 状态：待 Hopper 开发者调查（根因未定）
+>
+> 首次记录：2026-08-05
+> 严重性：高——已完成 OAuth 登录的同一 Grok CLI 可以取得 live model catalog，
+> 但 Hopper 的真实 read-only 派发在执行阶段失败，阻断唯一允许的外部审查路线。
+
+### 影响版本与环境
+
+| 项目 | 已观测值 |
+|---|---|
+| 操作系统 | Windows |
+| App host chain | `pwsh.exe -> codex.exe -> ChatGPT.exe -> explorer.exe` |
+| 用户 / profile | `grok login --oauth`、`grok models` 与 Hopper 均在同一用户、同一 profile 语境中执行 |
+| Hopper | `hopper-dispatch` 0.49.1 |
+| Grok CLI | 0.2.118 |
+| Grok binary | 唯一发现的 binary：`C:\Users\litianyi\.grok\bin\grok.exe` |
+| 请求的 vendor / model / reasoning / sandbox | `grok` / `grok-4.5` / `high` / `read-only` |
+| Windows sandbox 强制性 | `unknown/unverified`；本文不把请求的 `read-only` 误报为已独立验证的实际隔离 |
+
+### 背景与期望
+
+用户已执行 `grok login --oauth`。在上述同一 App host chain 内：
+
+1. `grok models` 以 exit 0 完成。
+2. `hopper-dispatch --setup grok --deep` 显示 `READY`；live catalog 为 1/1，模型为
+   `grok-4.5`，并且它报告的是同一 Grok binary。
+3. OAuth artifact 仅确认**存在**；本记录不读取、复制或输出其内容。
+
+因此，至少应当能够区分「model catalog 可访问」与「真实 prompt 执行的认证 /
+授权 / 协议问题」。如果真实派发失败，诊断应当准确、脱敏且可归因，而不能只让
+已通过 catalog 探测的环境得到无可行动依据的 `adapter-auth-failed`。
+
+补充观察：`HOME` 与 `GROK_HOME` 为空时，CLI 会给出
+`auto worktree gc failed...` warning；但 `grok models` 仍以 exit 0 完成。该 warning
+是待检验的影响因素，不是已确认根因。
+
+### 实际结果
+
+本次新建的独立任务为
+`T-HAWK-VENDOR-POLICY-GROK-ONLY-REVIEW-AUTHED-20260805`。它先 `resolve` 成功，随后以
+下列精确命令派发：
+
+```text
+hopper-dispatch T-HAWK-VENDOR-POLICY-GROK-ONLY-REVIEW-AUTHED-20260805 --background --vendor grok --model grok-4.5 --reasoning high --sandbox read-only
+```
+
+- 运行 PID：51648；启动时间：`2026-08-05T13:29:52.639Z`。
+- progress #1 为 `starting`，#2–#7 为 `running/process_alive`，#8 为终态 `failed`。
+- 诊断为 `adapter-auth-failed`；`recovered=none`。
+- requested / effective model 均为 `grok-4.5`；observed model 为 `none`；resolution 为
+  `unverified`。
+- `--result --full` 没有 parser-designated sidecar，只显示 sanitized 的「no parsed text」。
+
+本记录没有读取 raw log，也没有以其内容推断认证状态。
+
+### 与旧任务的关系
+
+旧任务 `T-HAWK-VENDOR-POLICY-GROK-ONLY-REVIEW-20260805` 同样以
+`failed` / `adapter-auth-failed` / `recovered=none` 结束。新任务是用户明确授权的
+**独立任务**，不是对旧任务的静默 retry、fallback 或 reroute；两者只能作为同一
+故障模式的独立观察点。
+
+### Resolution（2026-08-05，hopper 0.50.0）
+
+**CLOSED — 根因确认。两次派发其实都成功了。**
+
+本记录当时刻意没有读 raw log（取证纪律），而答案恰好全在里面。用真实适配器在真实
+日志上复现，envelope 从 offset 149691 起可以干净解析：`stopReason: "end_turn"`、
+`text` 16854 字符、`num_turns: 5`、`total_cost_usd: 0.318382`。旧任务同样完成
+（7612 output tokens）。两份已付费评审被判为认证失败并丢弃。
+
+**三个缺陷必须同时成立才会产生这个结果**，只修其中任何一个都仍会丢失结果：
+
+1. **流来源被抹掉。** 后台模式下 runner 把一份交错日志（自身通知 + vendor stdout +
+   vendor stderr）**同时**作为 `stdout` 和 `stderr` 交给 `parseResult`，代码注释里
+   还写明了这么做。于是所有写成「扫 stderr 找问题」的分类器实际在扫**助手正文**。
+2. **envelope 提取锚在第一个 `{`。** 0.35.1 加的 framed 候选从首个 `{` 切到末个 `}`，
+   假设前导没有大括号。而 grok 基于 Rust `tracing`，它把结构体内联打印：一条关于
+   `~/.cursor/hooks.json` 格式错误的警告渲染成 `ParseFile { path: ..., detail: ... }`，
+   成了流里第一个 `{`（offset 145948，真 envelope 在 149691）。切片是垃圾，解析失败。
+3. **auth 正则名不副实。** `hasSpecificGrokAuthFailure` 里 `invalid(?:\s+(?:api\s*)?key)?`
+   的限定词是**可选**的，裸 `invalid` 即命中——而上面那条警告正好包含它。
+   `\b(?:HTTP\s*)?(?:401|403)\b` 同理：行号、字节偏移、token 数都能命中。
+
+第 4 个缺陷在修复过程中被异构评审发现：即使修好提取，`grokOutputEvidence` 只认
+精确的 `"EndTurn"`，而真实 envelope 是 `end_turn`，这次运行仍会被标成
+`unknown-completeness`。现有测试全部只用大写拼写，所以从未暴露。
+
+**修复（0.50.0）**
+
+- `cli/src/vendor-signal.js`（新）：`stderr` 不再是转录的谎言副本；分类器必须显式
+  取 `combined` 并处理 `streamsSeparated: false`。定义**窄**的权威终态否决——
+  vendor 自己报告完成时子串启发式不得推翻它，但 timeout / prompt 投递失败 /
+  sandbox 违规等由 harness 确立的失败仍然优先。
+- `cli/src/vendors/grok.js`：framed 候选改为**反向扫描**最后一个可解析的顶层对象；
+  终态原因归一化比较；auth 正则的限定词改为必需。
+- `claude.js` / `kimi.js` / `mimo.js` / `copilot.js`：同族整流子串分类器一并收紧
+  （去掉与 exit 127 并列的 `not found` 子串、401/403 要求 HTTP 上下文、
+  `invalid.*api` 这类跨转录贪婪匹配改为相邻匹配、按非零退出码门控）。
+  `opencode.js` 是反例——它用逐行结构化事件，本来就没有这类分支。
+
+**环境侧（是触发源，但不是原因）**：`~/.cursor/hooks.json` 格式错误、gitnexus 的
+MCP 二进制不是有效 Win32 程序、`hawk-agent`/`stitch` 两个可选 MCP 认证失败。
+grok 带着这些照样跑完 3 分 16 秒——修掉它们能移走今天的触发串，但任何含 `{`、
+`invalid`、`401`、`403` 的 vendor 噪声都能复现，所以修复必须落在解析器一侧。
+
+**仍然开着的相邻项**：grok 会自行加载 `~/.claude/settings.json`、
+`~/.claude/plugins/**`、`~/.cursor/hooks.json`（`grok inspect` 从纯 shell、剥掉
+所有 HOPPER_/CLAUDE_/CODEX_ 变量后仍如此），而 hopper 只给 codex 做了 env 隔离。
+这是独立的确定性加固，不在本事故的因果链上——`GROK_HOME` 单独设置**不足以**隔离
+（实测仍加载 138 条 Claude 权限），需要同时关闭 `[compat.claude]` / `[compat.cursor]`。
+
+**评审**：结论经异构模型（codex gpt-5.6-sol）对抗评审，verdict `PASS_WITH_CHANGES`；
+它推翻了初版分析的因果框架与修复顺序，本条记录的是修正后的版本。
+
+### 证据范围与路径
+
+下列文件为本 issue 的证据索引；只引用已允许的脱敏产物或路径，不复制任何
+credential，也不引用 protected raw log 的内容：
+
+- `F:\workspace\project\hawk-watcher\.hopper\queue.md`
+- `F:\workspace\project\hawk-watcher\.hopper\handoffs\T-HAWK-VENDOR-POLICY-GROK-ONLY-REVIEW-20260805-task.md`
+- `F:\workspace\project\hawk-watcher\.hopper\handoffs\T-HAWK-VENDOR-POLICY-GROK-ONLY-REVIEW-20260805-output.md`（仅 sanitized）
+- `F:\workspace\project\hawk-watcher\.hopper\handoffs\T-HAWK-VENDOR-POLICY-GROK-ONLY-REVIEW-AUTHED-20260805-task.md`
+- `F:\workspace\project\hawk-watcher\.hopper\handoffs\T-HAWK-VENDOR-POLICY-GROK-ONLY-REVIEW-AUTHED-20260805-output.md`（仅 sanitized）
+- `F:\workspace\project\hawk-watcher\.harnessloop\state\current.md`
+
+以下 `.log` 仅作为开发者可在本地按安全流程检查的**受保护原始证据路径**列出，
+本文未读取、未摘录：
+
+- `F:\workspace\project\hawk-watcher\.hopper\handoffs\T-HAWK-VENDOR-POLICY-GROK-ONLY-REVIEW-20260805-progress.log`
+- `F:\workspace\project\hawk-watcher\.hopper\handoffs\T-HAWK-VENDOR-POLICY-GROK-ONLY-REVIEW-20260805-output.log`
+- `F:\workspace\project\hawk-watcher\.hopper\handoffs\T-HAWK-VENDOR-POLICY-GROK-ONLY-REVIEW-AUTHED-20260805-progress.log`
+- `F:\workspace\project\hawk-watcher\.hopper\handoffs\T-HAWK-VENDOR-POLICY-GROK-ONLY-REVIEW-AUTHED-20260805-output.log`
+
+### 可复现步骤
+
+在同一 Windows 用户 / profile / host chain 中进行；不要把 credential 内容贴入终端、
+issue 或日志。
+
+1. 交互式执行 `grok login --oauth`；只确认 OAuth artifact 存在，不读取其内容。
+2. 执行 `grok models`，记录 exit code 与可见模型列表是否包含 `grok-4.5`。
+3. 执行 `hopper-dispatch --setup grok --deep`，记录 `READY`、live catalog 及它解析的
+   binary 路径。
+4. 准备一个符合项目协议的独立 task contract，执行
+   `hopper-dispatch --resolve <task-id> --vendor grok`，确认 resolve 成功。
+5. 使用上文的精确 background dispatch 命令，随后通过 `--progress` 与
+   `--result --full` 记录终态、`recovered`、effective/observed model 与解析产物。
+6. 作为等价的最小 direct 对照，用户待执行：
+
+   ```text
+   grok -p "Reply exactly OK" --output-format json --no-auto-update -m grok-4.5 --cwd "F:\workspace\project\hawk-watcher" --permission-mode bypassPermissions --effort high
+   ```
+
+   该 direct result 目前为 **pending，等待用户补充**；本 issue 不臆造其 exit code、
+   remote message 或输出。
+
+### 根因状态与当前假设（按证据强度排序）
+
+根因尚未确定。当前证据**不支持**把 ChatGPT App host、不同 user/profile 或 PATH
+存在多个 Grok binary 作为首要解释：`grok models` 与 Hopper setup 均在所述同一 host
+链和 profile 中运行，且只发现一个 binary。这不是对所有机器的一般性排除结论。
+
+1. **catalog endpoint 与 prompt endpoint 的 scope/session 差异。** `grok models` 的
+   成功只能证明 catalog 路径可用，不能证明 prompt endpoint 所需 OAuth scope、session
+   或 model entitlement 可用；这是现有观测直接保留的最高优先级假设。
+2. **background runner 与 direct CLI 的环境、stdio 或 cwd 差异。** detached/background
+   spawn 可能没有继承 direct 调用需要的变量、stdin 语境、工作目录或 session 相关状态。
+3. **adapter auth keyword classifier 的 false positive。** 当前 `adapter-auth-failed`
+   没有伴随可归因的 machine-readable remote code / 匹配规则 / 来源 stream；非认证错误
+   或模型正文中的关键词可能被过度归类。
+4. **空 `HOME` / `GROK_HOME` 下的 `auto worktree gc failed...` warning。** 它与
+   `grok models` 成功并存，尚无证据表明它影响 prompt 执行，但应通过 direct/runner
+   环境对比验证。
+
+### 开发调查建议
+
+- 在不泄露 secret 的前提下，为 auth classifier 记录触发它的 machine-readable code、
+  匹配规则标识与来源 stream（stdout / stderr / exit / parser）；将任何远端信息脱敏后
+  写入诊断。
+- 对比 direct 与 runner 的精确 argv、显式/继承环境、cwd、stdin/stdio、是否 detached，
+  并标记每项的观测来源；特别检查 `cli/src/vendors/grok.js` 到 subprocess 的边界。
+- 不要因为模型正文、prompt 回显或泛化的 `auth` 关键词就归类为认证失败；先区分认证、
+  endpoint scope、model entitlement、CLI protocol 与 parser failure。
+- 保持错误诊断无 token、cookie、OAuth artifact 内容或未脱敏的 remote payload。
+- 增加 fixture / tests，至少覆盖：真实 auth code、非 auth remote failure、含 auth 字样的
+  模型文本/回显、background 环境差异，以及无 parser-designated sidecar 的结果。
+
+### 验收标准
+
+1. 若上述 direct `grok -p` 成功，Hopper 使用等价 argv 时也应完成；否则必须给出准确的
+   **非 auth** 诊断和可验证的分类依据。
+2. 若 direct 命令失败，Hopper 必须提供脱敏后的真实远端 code/message，而不是无依据地
+   泛称认证失败。
+3. 任一路径不得输出 raw secret、OAuth artifact 内容或受保护原始日志内容。
+4. 终态、`recovered` 与 requested/effective/observed model metadata 必须与实际运行
+   一致；Windows 上 sandbox enforcement 仍须标为 `unknown/unverified`，除非有独立证据。
+
+### 安全边界与非目标
+
+- 不改变 Grok `read-only` 声明，不把其在 Windows 上的请求语义升级为未经验证的强制隔离。
+- 不绕过权限，不自动重新登录，不自动 retry，也不改派或换 vendor。
+- 本 issue 仅记录和定位诊断问题；不包含 credential、token 或原始日志内容。
+
+### 时间线与未决问题
+
+| 时间 / 顺序 | 事件 | 状态 |
+|---|---|---|
+| 2026-08-05，派发前 | OAuth 已登录；`grok models` exit 0；`--setup grok --deep` 为 `READY`，catalog 1/1 `grok-4.5` | 已观测 |
+| 既有任务 | `T-HAWK-VENDOR-POLICY-GROK-ONLY-REVIEW-20260805` 终态为 `failed` / `adapter-auth-failed` / `recovered=none` | 已观测 |
+| 2026-08-05T13:29:52.639Z | 新的、用户显式授权的独立任务启动；PID 51648 | 已观测 |
+| progress #1 至 #8 | `starting` → #2–#7 `running/process_alive` → #8 `failed` | 已观测 |
+| direct 最小命令 | 用户待执行并补充 exit code、脱敏错误/成功证据 | pending |
+
+未决问题：direct 命令是否成功？若成功，runner 与 direct 的 argv/env/cwd/stdio 哪一项
+不同？若失败，远端返回的脱敏 machine-readable code 是否真为 authentication、scope 或
+model entitlement？当前 `adapter-auth-failed` 是远端 code 的映射，还是关键词 classifier
+的结果？`HOME` / `GROK_HOME` warning 与失败是否存在因果关系？
+
+### 非重复性说明
+
+`docs/archive/ISSUES.md` 已有与 Grok 相邻的历史记录：
+`grok-adapter-protocol-invalid-false-fail`、
+`grok-claude-buffered-output-idle-falsekill` 与
+`grok-model-line-rotation-stale-knownGood`。它们分别涉及结果解析、后台 idle watchdog
+或模型 knownGood 轮换，均不是「同一 binary 的 `grok models` 成功而真实 Hopper 派发
+被诊断为 `adapter-auth-failed`」这一未定根因；本记录因此不是重复 issue。
 
 ---
 

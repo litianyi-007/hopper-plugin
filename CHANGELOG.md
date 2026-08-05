@@ -19,6 +19,101 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.50.0] - 2026-08-05
+
+Two completed, paid grok reviews — `end_turn`, 16854 characters of findings, $0.32
+each — were recorded as `auth-fail` and discarded. Nothing about authentication had
+failed. This closes `grok-models-succeeds-but-hopper-dispatch-auth-failed`, which had
+been open with the root cause undetermined.
+
+**Four defects had to line up.** Fixing any one alone would still have lost the run.
+
+### Fixed — the runner handed one transcript to `parseResult` as BOTH stdout and stderr
+
+In background mode `logPath` is a four-way merge: the parent opens it twice for the
+runner, the runner opens it twice more for the vendor, all with raw fds so the OS
+interleaves them. The runner then passed that same string as `stdout` **and** as
+`stderr`, with a comment saying so.
+
+So every classifier written as "scan stderr for trouble" was in fact scanning the
+assistant's own prose. `stderr` is now empty and the transcript is passed as
+`combined`, flagged `streamsSeparated: false`; adapters must opt in through the new
+`cli/src/vendor-signal.js` and gate on it knowingly.
+
+Physically separating the streams needs an in-process tee, which sits in the same code
+region as the idle-watchdog false-kill issue. Deliberately not bundled with a parser
+fix — this is the "at minimum, never pass a combined transcript as both streams" half.
+
+### Fixed — envelope extraction anchored on the FIRST `{` in the stream
+
+The framed candidate added in 0.35.1 sliced from the first `{` to the last `}`,
+assuming the preamble contains no braces. grok is built on Rust's `tracing`, which
+prints structs inline: a warning about a malformed `~/.cursor/hooks.json` rendered as
+`ParseFile { path: …, detail: … }` and became the first `{`. Measured on the real log:
+first `{` at 145948, actual envelope at 149691. The slice was garbage, extraction
+failed, and the success branch was skipped.
+
+Now scans **backwards** for the last line-initial `{` that yields a parseable object —
+the envelope is the last top-level object in the stream, so no amount of brace-bearing
+preamble can shadow it. Bounded to 40 candidates.
+
+### Fixed — `hasSpecificGrokAuthFailure` was not specific
+
+`invalid(?:\s+(?:api\s*)?key)?` made the qualifier **optional**, so a bare `invalid`
+matched — and that is exactly what the hooks.json warning contained.
+`\b(?:HTTP\s*)?(?:401|403)\b` made the HTTP prefix optional, so a bare 401 or 403
+anywhere matched: a line number, a byte offset, a token count, a port.
+
+Both qualifiers are now required. A miss costs a less specific `unknown-fail`; a false
+positive cost a completed paid review, twice.
+
+### Fixed — `end_turn` was not recognized as a successful terminal reason
+
+Found during the fix, by the adversarial review. `grokOutputEvidence` compared against
+the exact string `'EndTurn'` while grok's real envelopes carry `end_turn`. Even with
+extraction repaired, the run would have been filed `unknown-completeness` on casing and
+an underscore — and every existing fixture used the capitalized spelling, so nothing
+caught it. Terminal reasons now compare normalized.
+
+### Changed — the whole matcher family, audited
+
+Same class in `claude.js`, `kimi.js`, `mimo.js`, `copilot.js`: whole-transcript
+substring classification for conditions that exit codes already prove. All tightened —
+the `not found` substring beside exit 127 removed (exit 127 is proof; the substring
+matched "element not found" in review prose), 401/403 require HTTP context,
+`invalid.*api` in mimo — which spanned the entire transcript, matching any "invalid"
+anywhere followed by any "api" anywhere — now requires adjacency, and the ungated
+matchers are gated on a non-zero exit.
+
+`opencode.js` is the counterexample and needed no change: it classifies from per-line
+structured events and has no whole-stream substring branch.
+
+### Added — a NARROW authoritative-completion veto
+
+`heuristicsAllowed()`: a substring heuristic may not declare a failure the vendor
+already said did not happen (exit 0 + parser-designated answer + recognized successful
+terminal reason). Deliberately not "a parseable envelope can never be overridden" —
+that would be unsafe. Timeout, prompt-delivery failure, sandbox/subject-guard violation
+and exit 127 are established by the harness, checked first, and unaffected. There is a
+test for each weakened condition re-allowing the heuristics.
+
+### Note on how this was found
+
+The original analysis had the mechanism roughly right and the framing, the historical
+precedent and the fix order wrong. It claimed the `not found` matcher had been fixed in
+0.47.0 — that commit touched zero files under `cli/src/vendors/`; the matcher was still
+there, and this release is the first to remove it. It also proposed doing vendor
+isolation first, which would have **masked** the bug by removing today's triggering
+warning while leaving any future `{` / `invalid` / `401` / `403` to reproduce it. Both
+corrections came from a heterogeneous adversarial review (codex gpt-5.6-sol,
+`PASS_WITH_CHANGES`), as did the `end_turn` defect and the finding that `GROK_HOME`
+alone is not a viable isolation lever.
+
+Vendor compatibility isolation — grok loads `~/.claude/settings.json`,
+`~/.claude/plugins/**` and `~/.cursor/hooks.json` on its own, and hopper implements
+`env()` isolation for codex only — remains open as separate hardening. It is not on
+this incident's causal path.
+
 ## [0.49.1] - 2026-08-05
 
 ### Fixed — an integration test hardcoded the task-type count

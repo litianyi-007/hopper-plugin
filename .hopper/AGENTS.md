@@ -49,7 +49,7 @@ Previous schema bound `nickname → role → model`. v2.0 binds **`nickname → 
 
 ## Task-type → vendor default preference
 
-<!-- hopper-scaffold-version: 0.49.1 -->
+<!-- hopper-scaffold-version: 0.50.0 -->
 <!-- 本文件生成于 2026-05-20，已两次落后于插件自身 schema（v0.40.0 的 Approved Vendors、
      batch 2 的 Effort policy / Model rule）。上面这行水印用于让 `--setup` 能比对。
      升级插件后跑 `hopper-dispatch --setup` 看 "Task-type policy" 段。 -->

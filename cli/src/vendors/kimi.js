@@ -24,6 +24,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { applyTaskTypeFloor } from '../subprocess.js';
 import { adapterFailure } from '../adapter-diagnostics.js';
+import { diagnosticSignal } from '../vendor-signal.js';
 
 /** @type {import('../types.js').VendorAdapter} */
 export const kimiAdapter = {
@@ -123,13 +124,19 @@ export const kimiAdapter = {
     if (raw.timedOut) {
       return adapterFailure('timeout', 'adapter-timeout');
     }
-    if (raw.exitCode === 127 || /not found|command not found/i.test(raw.stderr || '')) {
+    // Exit 127 is the shell's own verdict and is proof. The `not found` substring
+    // test that used to sit beside it was not: in background mode the runner hands
+    // over one interleaved transcript, so it matched the assistant's own prose.
+    // A binary that is missing cannot also have produced output.
+    if (raw.exitCode === 127) {
       return adapterFailure('permission-fail', 'adapter-binary-missing');
     }
     // Primary auth-fail (0.x routes auth errors to stderr + sets non-zero exit;
     // 401->AuthenticationError, 403->PermissionDenied, 402 membership).
-    const signal = `${raw.stdout || ''}\n${raw.stderr || ''}`;
-    if (/invalid authentication|api key.*(invalid|expired)|verify your membership|usage limit|unauthoriz|not logged in|\b401\b|\b40[23]\b/i.test(signal)) {
+    const { text: signal } = diagnosticSignal(raw);
+    if (raw.exitCode !== 0
+      && (/invalid authentication|api key\s*(?:is\s*)?(?:invalid|expired)|verify your membership|usage limit|unauthoriz|not logged in/i.test(signal)
+        || /\bHTTP\s*(?:401|402|403)\b|\bstatus(?:\s*code)?[:=]?\s*(?:401|402|403)\b|\berror code:\s*40[123]\b/i.test(signal))) {
       return adapterFailure('auth-fail', 'adapter-auth-failed');
     }
     // Legacy-compat fallback: the Python 1.x client printed HTTP 402 to stdout at

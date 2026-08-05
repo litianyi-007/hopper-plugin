@@ -36,6 +36,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { applyTaskTypeFloor } from '../subprocess.js';
 import { adapterFailure } from '../adapter-diagnostics.js';
+import { diagnosticSignal } from '../vendor-signal.js';
 
 // Versioned adapter metadata is the closed allowlist for result fields that are
 // stable enough to attest an actual runtime model. It deliberately names paths,
@@ -187,7 +188,11 @@ export const claudeAdapter = {
     if (raw.timedOut) {
       return adapterFailure('timeout', 'adapter-timeout');
     }
-    if (raw.exitCode === 127 || /not found|command not found/i.test(raw.stderr || '')) {
+    // Exit 127 is the shell's own verdict and is proof. The `not found` substring
+    // test that used to sit beside it was not: in background mode the runner hands
+    // over one interleaved transcript, so it matched the assistant's own prose.
+    // A binary that is missing cannot also have produced output.
+    if (raw.exitCode === 127) {
       return adapterFailure('permission-fail', 'adapter-binary-missing');
     }
     // A completed result object is the authoritative vendor outcome. The
@@ -198,10 +203,11 @@ export const claudeAdapter = {
     if (raw.exitCode === 0 && parsedResult && !parsedResult.isError && parsedResult.text.trim()) {
       return successfulClaudeOutput(parsedResult);
     }
-    const signal = `${raw.stdout || ''}\n${raw.stderr || ''}`;
+    const { text: signal } = diagnosticSignal(raw);
     // Auth failure (the `error` categories the SDK emits include
     // authentication_failed / oauth_org_not_allowed — code.claude.com/docs/en/headless).
-    if (/authentication_failed|oauth_org_not_allowed|invalid api key|invalid x-api-key|ANTHROPIC_API_KEY|not logged in|please run\b.*login|\b401\b|\b403\b/i.test(signal)) {
+    if (/authentication_failed|oauth_org_not_allowed|invalid api key|invalid x-api-key|ANTHROPIC_API_KEY|not logged in|please run\b.*login/i.test(signal)
+      || /\bHTTP\s*(?:401|403)\b|\bstatus(?:\s*code)?[:=]?\s*(?:401|403)\b/i.test(signal)) {
       return failedClaudeOutput('auth-fail', 'adapter-auth-failed', parsedResult);
     }
     // Billing / credit / usage-limit block. Kept as a distinct branch because the
