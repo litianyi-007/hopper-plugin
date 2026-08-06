@@ -43,6 +43,16 @@
 3. `--result` 对同 ID 多 attempt 明确归并语义（以最后 attempt 为准，或分 attempt 呈现），避免 partial/conflict 混叠
 4. 回归测试：spawn-fail（binary 不存在）× {sync, background} × 簿记三件套断言
 
+## 第二例（成功路径变体，2026-08-06 补录）
+
+AUD-FWD-COD attempt#2（codex，范围收窄+reasoning high）：**vendor 正常完成全部工作**（raw log
+含完整 verdict 与 token 计数 52,020），但 runner 同样未落终局——frontmatter 永 `in-progress/starting`、
+progress.log 停在 seq3 lifecycle、无 watch-events 事件、runner PID 已死、output.md 仅 38 行 stub
+（无 parsed body）。与首例（spawn-fail 路径）合并判断：**丢簿记不限于失败分支，成功收尾路径同样命中**——
+更指向 runner 收尾段的共性崩溃/提前退出（如解析/写盘异常被吞）。产出靠人工从 raw log 抢救。
+修复建议 1 的 try/finally 范围应覆盖「vendor 退出后的全部收尾序列」（parse → output.md 写入 →
+frontmatter 翻转 → progress terminal → 事件发射），任一步异常也要把已知状态落盘。
+
 ## 环境
 
 Windows 11 / Claude Code 宿主 / node v22.14 / HOPPER_DIR 显式指定 / 派发 shell 为 Git Bash（最小 PATH——这也是触发 spawn 失败的环境成因，独立成因但可用于复现）
