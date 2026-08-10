@@ -202,6 +202,10 @@ const VENDOR_ROW_META = {
     invocation: '`mimo run "<input>"`',
     note: 'Xiaomi MiMo.',
   },
+  pi: {
+    invocation: '`pi -p --mode json --model <provider>/<model> --thinking xhigh "<input>"`',
+    note: 'Earendil Works `pi` — a multi-provider router (its reachable catalog is whatever THIS machine is logged into; check `hopper-dispatch --probe pi`). Consumes hopper\'s default `xhigh` effort natively, with no clamping. A read-only request maps to pi\'s tool allowlist (`--tools read,grep,find,ls`), which removes bash/edit/write from the model\'s toolset but is **not** an OS sandbox — pi has none; on macOS pair it with `--subject-root`. `workspace-write` is **refused** (`E_PI_WORKSPACE_WRITE_UNENFORCEABLE`): pi has no per-path permission model, so honoring it would silently mean full host access. Host isolation needs both halves — the `--no-*` flags AND a swapped `PI_CODING_AGENT_DIR`, because pi folds `SYSTEM.md` / `APPEND_SYSTEM.md` from its config dir into the system prompt and no flag disables that (verified 2026-08-10).',
+  },
   claude: {
     invocation: '`claude -p "<input>"`',
     note: 'Anthropic Claude Code headless. The `host != vendor` guard blocks a Claude Code host from dispatching back to itself — note it compares **vendor family**, not literal names (`claude-code` and `claude` are both `anthropic`), so this pair IS caught. Dispatch it FROM another host (codex / grok / etc.).',

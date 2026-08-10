@@ -34,7 +34,7 @@ test('closed vocabulary reserves source none for a genuinely empty parser result
   ]);
   assert.deepEqual(OUTPUT_TERMINAL_MARKERS, [
     'opencode-step-finish', 'opencode-message-completed', 'opencode-result-success',
-    'claude-result-success', 'grok-end-turn', 'none',
+    'claude-result-success', 'grok-end-turn', 'pi-agent-settled', 'none',
   ]);
   assert.equal(validateOutputEvidence('SAFE', {
     completeness: 'unknown-completeness', source: 'none', terminalMarker: 'none',

@@ -14,6 +14,7 @@ Direction: dev (TypeScript/Node CLI + Claude Code plugin + 5 vendor adapters)
 |---|---|---|---|---|
 | `codex` | yes | user | 2026-08-03 | 对抗/验收评审。与 test-harnessloop 的 vendor 角色一致。 |
 | `grok` | yes | user | 2026-08-03 | 对抗/验收评审 + 研究。同上。 |
+| `pi` | yes | user | 2026-08-10 | 本次新增的 vendor（`cli/src/vendors/pi.js`）。多 provider 路由，本机登录的是 `openai-codex`，实跑模型 `gpt-5.6-terra` + `--thinking xhigh`（pi 的 thinking 枚举是 hopper 五档的超集，**不需要 clamp**）。read-only 走 pi 的工具白名单 `--tools read,grep,find,ls`——真能拿掉 bash/edit/write，但**不是 OS 沙箱**（pi 自带沙箱为无），macOS 上需要内核级只读时请叠加 `--subject-root`。`workspace-write` 会被**拒绝**（`E_PI_WORKSPACE_WRITE_UNENFORCEABLE`）：pi 没有按路径的权限模型，认下来就等于静默给了完全主机访问。宿主隔离**两半都要**：`--no-*` flags 之外还必须换掉 `PI_CODING_AGENT_DIR`——pi 会把配置目录里的 `SYSTEM.md` / `APPEND_SYSTEM.md` 折进 system prompt，没有任何 flag 能关（2026-08-10 实测复现并已修）。 |
 
 **为什么这一节在 2026-08-03 才补上。** v0.40.0（2026-07-31）把 `.hopper/AGENTS.md`
 从路由表升级为 **fail-closed 白名单**：缺这一节 ⇒ 拒绝一切 dispatch，`--vendor` 覆盖也拒。
@@ -43,6 +44,7 @@ Previous schema bound `nickname → role → model`. v2.0 binds **`nickname → 
 | `copilot-builder` | `7a1c4d50-3b8e-4f2a-9c11-d4e3f8a9b234` | copilot-cli (Sonnet 4.5 default) | `copilot -p "<input>" --headless` (with `GH_TOKEN` env) | Premium quota meters per call — use sparingly |
 | `agy-builder` | `9e2f1a3d-7b4c-4d8e-a1f6-c3b2d9e4f567` | agy-cli (Antigravity; Google's 2026-06-18 Gemini successor) | `agy -p "<input>" --dangerously-skip-permissions` + `--log-file <path>` | ⚠️ **DISABLED by default (2026-06-26)** — agy 1.0.12 `--print` renders the answer only in its interactive TUI; under a non-TTY stdout (every dispatch) it emits nothing capturable, so hopper REFUSES to dispatch to agy. Override at your own risk with `HOPPER_ENABLE_AGY=1`. A PTY fix is excluded (agy hangs on an open stdin pipe). OAuth-only; run `agy` interactively once to auth. |
 | `grok-builder` | `-` | grok-cli | `grok -p "<input>"` | 2026-08-05 补登记。grok 自 2026-08-03 起在 `## Approved Vendors` 里是 `yes`，却从未有实例行——于是任何指向它的 task-type 都解析不到 vendor。read-only 非 argv 强制（恒 `--permission-mode bypassPermissions`），只读任务事后须 `git status` 核对。 |
+| `pi-builder` | `-` | pi | `pi -p --mode json --model openai-codex/gpt-5.6-terra --thinking xhigh` | 2026-08-10 随适配器一起登记——**先登记再批准**，避免重演第 45 行 grok 那次「Approved=yes 但无实例行 ⇒ 指向它的 task-type 解析不到 vendor」。上面 `## Approved Vendors` 才是执行点。 |
 | `critic-claude-opus` | `b3d5e7f9-1a2c-4e8a-b9c1-d4e6f8a9c123` | claude-opus-xhigh (fresh subagent) | (Strategy invokes /codex separately, OOB; not a queue role) | Adversarial review |
 
 ---

@@ -17,7 +17,7 @@ This command surfaces the per-vendor cached model list — what each vendor adap
 
 ## Argument validation (BEFORE Bash)
 
-`$ARGUMENTS` is either empty OR a single vendor name. If non-empty, validate it matches `^(codex|kimi|opencode|copilot|agy|grok|mimo)$`. Reject anything else. Do NOT splat unvalidated input.
+`$ARGUMENTS` is either empty OR a single vendor name. If non-empty, validate it matches `^(codex|kimi|opencode|copilot|agy|grok|mimo|claude|pi)$`. Reject anything else. Do NOT splat unvalidated input.
 
 ## Invocation
 

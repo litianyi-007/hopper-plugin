@@ -234,9 +234,14 @@ function normalizeObservedModels(observedModels) {
 }
 
 function isStableObservedIdentity(vendor, model) {
+  // `pi` joins the terminal message's `provider` + `model` fields, so its
+  // observed identity is the same strict provider/model pair opencode emits.
+  // A vendor absent from this list that nonetheless reports observedModels
+  // would be classified `runtime-model-metadata-malformed` — so an adapter
+  // gaining modelAttestation must be added here in the same change.
   return vendor === 'claude'
     ? isNonEmptyString(model)
-    : vendor === 'opencode' && parseStrictProviderModel(model) !== null;
+    : (vendor === 'opencode' || vendor === 'pi') && parseStrictProviderModel(model) !== null;
 }
 
 function configOnlySource(sourceKind) {

@@ -420,19 +420,54 @@ export function assertVendorDispatchable(vendor, env = process.env) {
  * background gate; callers must pass opts after resolveAdapterOptsForTask().
  */
 export function assertAdapterSandboxEnforceable(adapter, effectiveAdapterOpts) {
-  const readOnlySandbox = adapter?.capabilities?.features?.permissions?.readOnlySandbox;
-  if (adapter?.name !== 'kimi' || effectiveAdapterOpts?.sandbox !== 'read-only' || readOnlySandbox?.enforceable !== false) return;
-  const failureCode = readOnlySandbox.failureCode;
+  const permissions = adapter?.capabilities?.features?.permissions;
+  const readOnlySandbox = permissions?.readOnlySandbox;
+  const sandbox = effectiveAdapterOpts?.sandbox;
+  if (adapter?.name === 'kimi' && sandbox === 'read-only' && readOnlySandbox?.enforceable === false) {
+    const failureCode = readOnlySandbox.failureCode;
+    const error = new Error(
+      `${failureCode}: Kimi prompt mode has no permission or sandbox flag that can enforce read-only. `
+      + '`--write` is a Hopper-only output-artifact option, not a Kimi launch or permission flag; it does not change vendor permissions or make read-only enforceable. '
+      + 'An explicit non-read-only sandbox would instead run with unverified Kimi prompt-mode permissions and is incompatible with a read-only lane. '
+      + 'Use an enforceable read-only vendor, or only a Hopper-supported proven external process guard. Kimi is rejected before any vendor process or external guard can run.',
+    );
+    error.code = failureCode;
+    error.exitCode = 2;
+    throw error;
+  }
+
+  // Generic, DECLARATION-DRIVEN gate (added 2026-08-10 alongside the pi adapter).
+  // The Kimi branch above is name-keyed and stays byte-identical because its
+  // guidance is bespoke prose; everything else is driven by what the adapter
+  // declares, so a new vendor that cannot express one of hopper's sandbox modes
+  // is refused without another edit here.
+  //
+  // Why refuse rather than approximate: hopper's modes are ordered
+  // read-only < workspace-write < danger-full-access. When an adapter cannot
+  // express the requested mode, the only two options are to grant LESS than
+  // asked (the task cannot do its job) or MORE (the caller believes they are
+  // confined and are not). pi is the live case — it has no per-path permission
+  // model, so `workspace-write` would silently become unrestricted host access.
+  // Refusing makes the operator name the access they actually want.
+  const declaration = permissions?.[SANDBOX_DECLARATION_KEY[sandbox]];
+  if (!declaration || declaration.enforceable !== false) return;
+  const failureCode = declaration.failureCode || 'E_SANDBOX_UNENFORCEABLE';
   const error = new Error(
-    `${failureCode}: Kimi prompt mode has no permission or sandbox flag that can enforce read-only. `
-    + '`--write` is a Hopper-only output-artifact option, not a Kimi launch or permission flag; it does not change vendor permissions or make read-only enforceable. '
-    + 'An explicit non-read-only sandbox would instead run with unverified Kimi prompt-mode permissions and is incompatible with a read-only lane. '
-    + 'Use an enforceable read-only vendor, or only a Hopper-supported proven external process guard. Kimi is rejected before any vendor process or external guard can run.',
+    `${failureCode}: vendor '${adapter?.name}' cannot enforce the requested \`${sandbox}\` sandbox. `
+    + `${declaration.mechanism || ''} `
+    + 'Refused before spawn: a sandbox hopper cannot enforce must not be presented as one that it can.',
   );
   error.code = failureCode;
   error.exitCode = 2;
   throw error;
 }
+
+/** hopper sandbox mode → the adapter capability key that declares its enforceability. */
+const SANDBOX_DECLARATION_KEY = Object.freeze({
+  'read-only': 'readOnlySandbox',
+  'workspace-write': 'workspaceWriteSandbox',
+  'danger-full-access': 'dangerFullAccessSandbox',
+});
 
 /**
  * Execute dispatch end-to-end: resolve + adapter preflight + subprocess spawn + parse.

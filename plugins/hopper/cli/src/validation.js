@@ -311,6 +311,12 @@ export function validateSandbox(sandbox) {
  *   Gemini-labeled (suggesting Google), but the same comment notes Claude/
  *   GPT-OSS labels also appear in the picker (plan-gated) — i.e. agy is ALSO
  *   multi-backend, just Gemini-default. Left unmapped rather than guessed.
+ * - pi: cli/src/vendors/pi.js is explicitly a multi-provider router — its
+ *   `--model` takes `<provider>/<id>` across openai-codex / anthropic / google /
+ *   others, and `pi --list-models` returns whatever THAT machine is logged into.
+ *   No single model company owns it, so no family applies. Consequence: a
+ *   (hypothetical) pi host dispatching to the pi vendor would not be blocked by
+ *   this guard — same known gap as copilot, and for the same reason.
  * - cursor: hosts/cursor-cli sets HOPPER_HOST_VENDOR=cursor, but there is no
  *   registered `cursor` vendor adapter at all (cli/src/vendors/index.js) —
  *   nothing to map on the vendor side, so this host can never self-match.

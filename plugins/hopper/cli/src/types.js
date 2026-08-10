@@ -98,7 +98,7 @@
  * @typedef {object} OutputEvidence
  * @property {'verified-complete'|'unknown-completeness'|'no-text'} completeness
  * @property {'structured-envelope'|'event-stream'|'vendor-result-field'|'none'} source
- * @property {'opencode-step-finish'|'opencode-message-completed'|'opencode-result-success'|'claude-result-success'|'grok-end-turn'|'none'} terminalMarker
+ * @property {'opencode-step-finish'|'opencode-message-completed'|'opencode-result-success'|'claude-result-success'|'grok-end-turn'|'pi-agent-settled'|'none'} terminalMarker
  */
 
 /**

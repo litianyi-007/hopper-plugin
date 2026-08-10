@@ -21,7 +21,7 @@ const SAFE_CATALOG_FIELDS = Object.freeze([
   'catalog_source_kind', 'catalog_source_label', 'catalog_observed_at',
   'catalog_freshness', 'binary_availability', 'binary_basename',
 ]);
-const PUBLIC_VENDORS = new Set(['agy', 'claude', 'codex', 'copilot', 'grok', 'kimi', 'mimo', 'opencode']);
+const PUBLIC_VENDORS = new Set(['agy', 'claude', 'codex', 'copilot', 'grok', 'kimi', 'mimo', 'opencode', 'pi']);
 const PUBLIC_PHASES = new Set(['starting', 'running', 'done', 'failed', 'cancelled', 'orphaned', 'timeout', 'unknown']);
 const PUBLIC_EVENT_KINDS = new Set(['finding', 'progress', 'terminal', 'process_alive', 'status', 'unknown']);
 const PUBLIC_RESOLUTION_DETAILS = new Set([

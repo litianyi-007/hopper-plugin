@@ -450,9 +450,10 @@ Spawns the vendor CLI to query model catalog. Costs subprocesses; this is the **
 | kimi     | `partial` / `config-only` | 2 subprocesses when installed; config fallback is 0 | Kimi 0.14+ reads `--version` + `provider list --json`; fallback reads `~/.kimi-code/config.toml` (or `$KIMI_CODE_HOME`; legacy `~/.kimi/config.{toml,json}`) `[models.NAME]` blocks |
 | agy      | `none`                  | 0 subprocesses      | Static (`gemini-3.5-flash` baked into agy itself)   |
 | grok     | `full` / `partial`      | 1 subprocess        | `grok models` (live parse of its "Available models:" list); falls back to static knownGood (`partial`) on spawn/parse failure — see ISSUE-grok-model-line-rotation-stale-knownGood.md |
+| pi       | `full` / `partial`      | 2 + 1-per-provider (capped at 4) | `--version` + `--list-models` (whitespace table → `provider/model`) + one `pi auth check --provider <p> --json` per provider found. `pi --list-models` is ACCOUNT-SCOPED — it lists only providers this install is authenticated for — so the probe result is the source of truth for what pi can actually dispatch to, and the adapter's `knownGood` is only an offline baseline. |
 
 ```bash
-hopper-dispatch --probe                    # probe all vendors (~12 subprocesses total when Kimi and MiMo are installed: codex 2 + kimi 2 + opencode 3 + copilot 1 + mimo 3 + grok 1; agy 0)
+hopper-dispatch --probe                    # probe all vendors (~15 subprocesses total when Kimi, MiMo and pi are installed: codex 2 + kimi 2 + opencode 3 + copilot 1 + mimo 3 + grok 1 + pi 3; agy 0)
 hopper-dispatch --probe codex              # probe one vendor only
 ```
 

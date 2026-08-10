@@ -78,3 +78,25 @@ test('scaffold AGENTS.md carries the constitution pointer AND still parses', () 
     /No vendor binding for task-type 'code-impl'\. Bind a vendor in \.hopper\/AGENTS\.md/,
   );
 });
+
+test('the full-access perms column never presents a project-trust flag as a permission control', () => {
+  // `pi --no-approve` contains "approve" and so matched the substring heuristic,
+  // which rendered it as pi's full-access PERMISSION argv. It is not one: it
+  // governs which project-local settings/extensions load, hopper passes it in
+  // BOTH sandbox modes as host isolation, and pi has no permission flags at all.
+  // Stating otherwise in the one table an operator reads to audit sandboxing is
+  // the same class of false security claim tests/unit/vendor-security-claims.js
+  // exists to prevent.
+  const md = renderRulesMarkdown({ version: '9.9.9' });
+  const piRow = md.split('\n').find((l) => /^\|\s*pi\s*\|/.test(l));
+  assert.ok(piRow, 'matrix must have a pi row');
+  const cells = piRow.split('|').map((c) => c.trim());
+  const perms = cells[5];
+  assert.equal(perms, 'not argv-enforced',
+    `pi has no argv permission control; got "${perms}". If pi ever gains a real one, update this pin AND the vendor tables in README*.md in the same change.`);
+  // The denylist must stay surgical — vendors with REAL permission flags keep them.
+  const grokRow = md.split('\n').find((l) => /^\|\s*grok\s*\|/.test(l));
+  assert.match(grokRow, /--always-approve/, 'grok\'s genuine --always-approve must still be reported');
+  const copilotRow = md.split('\n').find((l) => /^\|\s*copilot\s*\|/.test(l));
+  assert.match(copilotRow, /--allow-all-tools/, 'copilot\'s genuine --allow-all-tools must still be reported');
+});

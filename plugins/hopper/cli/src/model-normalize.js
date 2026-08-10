@@ -10,8 +10,13 @@
 
 /** Vendors whose --model is a BARE slug (no provider prefix) — strip a `provider/` prefix. */
 const BARE_SLUG_VENDORS = new Set(['codex', 'grok', 'claude', 'copilot']);
-/** Vendors whose --model REQUIRES `provider/model` — do NOT strip the prefix. */
-const PROVIDER_PREFIXED_VENDORS = new Set(['mimo', 'opencode']);
+/** Vendors whose --model REQUIRES `provider/model` — do NOT strip the prefix.
+ *  `pi` ACCEPTS a bare id too, but resolves it against whichever provider is
+ *  active (`--provider`, else settings.json `defaultProvider`) — so the same bare
+ *  id can name different models on two machines. Treating pi as prefixed keeps a
+ *  selector unambiguous, and the tail-match below still resolves a bare id to the
+ *  single provider that supplies it. */
+const PROVIDER_PREFIXED_VENDORS = new Set(['mimo', 'opencode', 'pi']);
 /** Vendors where the value is a CONFIG ALIAS KEY — a wrong fuzzy guess is a hard error,
  *  so only case/whitespace-normalize against the configured aliases; never rewrite. */
 const ALIAS_KEY_VENDORS = new Set(['kimi']);
@@ -139,7 +144,12 @@ export function compareRuntimeIdentity(vendor, expectedIdentity, observedModel) 
     return observed === expectedIdentity.id.trim() ? 'match' : 'non-match';
   }
 
-  if (vendor === 'opencode') {
+  // `pi` shares opencode's runtime identity shape: its terminal assistant
+  // message reports `provider` and `model` as separate fields, which the adapter
+  // joins into exactly one `provider/model` pair (cli/src/vendors/pi.js
+  // extractPiModelAttestation). Same strict comparison — no namespace stripping,
+  // no tail-matching, no alias expansion.
+  if (vendor === 'opencode' || vendor === 'pi') {
     if (expectedIdentity.identity_kind !== 'provider-model'
       || typeof expectedIdentity.provider !== 'string' || !expectedIdentity.provider.trim()
       || typeof expectedIdentity.model !== 'string' || !expectedIdentity.model.trim()) {

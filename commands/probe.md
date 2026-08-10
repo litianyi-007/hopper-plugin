@@ -9,7 +9,7 @@ This command runs the Phase 6b probe — actually invokes each vendor's CLI to e
 ## What this command does
 
 1. Invokes `hopper-dispatch --probe [<vendor>]`.
-   - No argument: probes all 7 vendors (~11 subprocesses total when Kimi and MiMo are installed: codex 2 + kimi 2 + opencode 3 + copilot 1 + mimo 3; agy and grok are zero-spawn).
+   - No argument: probes every registered vendor (~14 subprocesses total when Kimi, MiMo and pi are installed: codex 2 + kimi 2 + opencode 3 + copilot 1 + mimo 3 + pi 3 (`--version`, `--list-models`, one `auth check` per authenticated provider, capped at 4); agy and grok are zero-spawn).
    - One argument: probes a single vendor.
 2. Updates `~/.hopper/cache/vendor-capabilities.json` (atomic write + O_EXCL lock per Phase 6b F2).
 3. Surfaces the per-vendor result line (introspection level · model count · duration).
@@ -20,7 +20,7 @@ Probe is the **only** discovery surface that spawns vendor subprocesses. Per spe
 
 ## Argument validation (BEFORE Bash)
 
-`$ARGUMENTS` is either empty OR a single vendor name. Validate against `^(codex|kimi|opencode|copilot|agy|grok|mimo)$` if non-empty. Reject anything else.
+`$ARGUMENTS` is either empty OR a single vendor name. Validate against `^(codex|kimi|opencode|copilot|agy|grok|mimo|claude|pi)$` if non-empty. Reject anything else.
 
 ## Invocation
 

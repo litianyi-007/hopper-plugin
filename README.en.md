@@ -232,6 +232,7 @@ Not every CLI exposes both knobs. What each vendor honors:
 |---|---|---|---|
 | codex | `-m` | ✓ | **bare names only**: `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex-spark`. Provider-prefixed ids (`openai-codex/…`) are rejected on ChatGPT accounts. |
 | grok | `-m` | ✓ | enum low/med/high; `xhigh` clamps to `high`. |
+| pi | `--model <provider/model>` | ✓ | `--thinking` enum is off/minimal/low/medium/high/xhigh/max — a **superset** of hopper's five levels, so `xhigh` is **never clamped**; pi is the only vendor that receives it verbatim. Multi-provider router: which models are reachable depends on what **this machine** is logged into (`--probe pi` reads the live `pi --list-models` catalog). With no `--model`, pi falls back to `defaultProvider`/`defaultModel` in `~/.pi/agent/settings.json`. |
 | mimo | `--model` | ✓ | `xhigh` → `--variant max`. **Not supported** (product decision, 2026-07-31) — see below. |
 | copilot | `--model` | ✓ | enum low/med/high; `xhigh` clamps to `high`. Raw override: `HOPPER_COPILOT_EFFORT`. **Not supported** (product decision, 2026-07-31) — see below. |
 | opencode | `--model <provider/model>` | explicit only | a caller-supplied `--reasoning high` becomes `--variant high`; Hopper omits policy/default `xhigh` for provider compatibility. `HOPPER_OPENCODE_VARIANT=<v>` overrides it verbatim. **Not supported** (product decision, 2026-07-31) — see below. |
@@ -345,16 +346,17 @@ true on your machine.
 **7 host classes** can initiate dispatch: Claude Code, Codex CLI, OpenCode,
 Copilot CLI, Grok Build, Cursor CLI, and a standalone shell.
 
-**8 vendor adapters** are registered, but only 4 of them are actually
+**9 vendor adapters** are registered, but only 5 of them are actually
 product-recommended:
 
-> **Product-supported vendor set (2026-07-31 decision): `codex` / `grok` /
-> `claude` / `kimi`.** `agy` / `copilot` / `mimo` / `opencode` are **not
+> **Product-supported vendor set: `codex` / `grok` / `claude` / `kimi`
+> (2026-07-31 decision) plus `pi` (added 2026-08-10).** `agy` / `copilot` /
+> `mimo` / `opencode` are **not
 > supported** — a product decision to narrow the actively-supported set, not
 > a code-level restriction. Their adapter files are NOT deleted (deleting
 > them would break existing tests and history); they remain registered,
-> `--vendors` still lists all 8, and nothing in the code hardcodes "only
-> these 4" (that would duplicate, and could conflict with, the actual
+> `--vendors` still lists all 9, and nothing in the code hardcodes "only
+> these 5" (that would duplicate, and could conflict with, the actual
 > enforcement point). The enforcement point for what a given **project** may
 > dispatch to is that project's `.hopper/AGENTS.md` **`Approved Vendors`**
 > table — fail-closed: a missing section, or a vendor absent/not-`yes`

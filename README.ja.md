@@ -223,6 +223,7 @@ hopper-dispatch --result   T-PROG-AUDIT
 |---|---|---|---|
 | codex | `-m` | ✓ | **裸の名前のみ受け付ける**:`gpt-5.5`、`gpt-5.4-mini`、`gpt-5.3-codex-spark`。provider プレフィックス付きの id(`openai-codex/…`)は ChatGPT アカウントでは拒否される。 |
 | grok | `-m` | ✓ | low/med/high の列挙値;`xhigh` は `high` に clamp される。 |
+| pi | `--model <provider/model>` | ✓ | `--thinking` の列挙値は off/minimal/low/medium/high/xhigh/max——hopper の5段階の**上位集合**なので、`xhigh` は **clamp されない**;そのまま透過される唯一の vendor である。マルチ provider ルーター:使えるモデルは**このマシン**がどこにログインしているかで決まる(`--probe pi` が `pi --list-models` のライブカタログを読む)。`--model` を渡さない場合は `~/.pi/agent/settings.json` の `defaultProvider`/`defaultModel` にフォールバックする。 |
 | mimo | `--model` | ✓ | `xhigh` → `--variant max`。**製品サポート範囲外**(2026-07-31 決定)——後述。 |
 | copilot | `--model` | ✓ | low/med/high の列挙値;`xhigh` は `high` に clamp される。生の上書き値:`HOPPER_COPILOT_EFFORT`。**製品サポート範囲外**(2026-07-31 決定)——後述。 |
 | opencode | `--model <provider/model>` | 明示的に渡した場合のみ有効 | 呼び出し側が渡した `--reasoning high` は `--variant high` に変換される;Hopper は provider 互換性を保つため、意図的に OpenCode へデフォルトの `xhigh` を送らない。`HOPPER_OPENCODE_VARIANT=<v>` でそのまま上書きできる。**製品サポート範囲外**(2026-07-31 決定)——後述。 |
@@ -335,16 +336,16 @@ prompt frame が携える1つの指示にすぎない。それが本当に強制
 **7種のホスト**すべてが dispatch を開始できる:Claude Code、Codex CLI、OpenCode、
 Copilot CLI、Grok Build、Cursor CLI、そして standalone shell。
 
-**8個の vendor adapter** が登録されているが、製品として実際に推奨されているのは
-そのうち4個だけである:
+**9個の vendor adapter** が登録されているが、製品として実際に推奨されているのは
+そのうち5個だけである:
 
-> **製品としてサポートされている vendor の集合(2026-07-31 決定):`codex` / `grok` /
-> `claude` / `kimi`。**
+> **製品としてサポートされている vendor の集合:`codex` / `grok` / `claude` / `kimi`
+> (2026-07-31 決定)に加えて `pi`(2026-08-10 追加)。**
 > `agy` / `copilot` / `mimo` / `opencode` は**サポート範囲に含まれない**——これは
 > 積極的にメンテナンスする利用範囲を絞り込む製品判断であり、コードレベルの制限では
 > ない。それらの adapter ファイルは**削除されていない**(削除すると既存のテストや
-> 履歴記録が壊れる);依然として登録されたままであり、`--vendors` は今も8社すべてを
-> 列挙し、コード中のどこにも「この4社しか認めない」というハードコードは存在しない
+> 履歴記録が壊れる);依然として登録されたままであり、`--vendors` は今も9社すべてを
+> 列挙し、コード中のどこにも「この5社しか認めない」というハードコードは存在しない
 > (そうしてしまうと本当の実行判定ポイントと重複し、食い違いを起こしかねない)。
 > ある**具体的なプロジェクト**が誰に派遣できるかの実行判定ポイントは、そのプロジェクトの
 > `.hopper/AGENTS.md` にある **`Approved Vendors`** 表である——fail-closed:この

@@ -91,6 +91,28 @@ test('setup/check: Grok renders a local auth context as unverified, not remote a
   }
 });
 
+test('setup/check: ANY adapter declaring an authContext renders it — not just grok', () => {
+  // Regression guard. renderReadinessAuth() in cli/bin/hopper-dispatch keyed on
+  // `vendor === 'grok'`, so when `pi` became the second adapter to declare an
+  // authContext its declaration was silently DROPPED: the line printed
+  // `auth=advisory`, i.e. it claimed more than a zero-spawn check can know,
+  // which is exactly what the grok branch existed to prevent. The renderer now
+  // keys on the DECLARATION, so this holds for whichever adapter declares one.
+  const declaring = listAdapters().filter((v) => getAdapter(v).envPreflight().authContext !== undefined);
+  assert.ok(declaring.length >= 2,
+    `this guard is only meaningful with 2+ declaring adapters; got [${declaring.join(', ')}]`);
+  for (const vendor of declaring) {
+    const result = spawnSync(process.execPath, [DISPATCH_BIN, '--check', vendor], { encoding: 'utf8' });
+    assert.equal(result.status, 0, `--check ${vendor} should be a zero-spawn diagnostic`);
+    const output = `${result.stdout}\n${result.stderr}`;
+    assert.match(output, new RegExp(`${vendor}: status=\\S+ auth=unverified auth_context=\\S+`),
+      `${vendor} declares an authContext from envPreflight(), so --check must render it as unverified ` +
+      'context rather than collapsing it to advisory/verified.');
+    assert.doesNotMatch(output, new RegExp(`${vendor}: status=\\S+ auth=(?:advisory|verified)`),
+      `${vendor}'s declared local credential context must never be presented as remote authentication proof`);
+  }
+});
+
 test('buildRuntimeReport: flags Node below the supported minimum', () => {
   assert.equal(buildRuntimeReport({ nodeVersion: 'v22.5.0' }).nodeOk, true);
   const old = buildRuntimeReport({ nodeVersion: 'v16.20.0' });

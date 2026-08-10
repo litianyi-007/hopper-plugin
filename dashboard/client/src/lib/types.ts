@@ -53,9 +53,9 @@ export interface TaskProgressResponse {
 }
 
 export type VendorBinaryAvailability = 'present' | 'missing' | 'unknown';
-export type VendorBinaryBasename = 'agy' | 'claude' | 'codex' | 'copilot' | 'grok' | 'kimi' | 'mimo' | 'opencode' | 'unknown' | null;
+export type VendorBinaryBasename = 'agy' | 'claude' | 'codex' | 'copilot' | 'grok' | 'kimi' | 'mimo' | 'opencode' | 'pi' | 'unknown' | null;
 export type VendorSourceKind = 'static' | 'unavailable' | 'adapter-aliases' | 'cli-catalog' | 'config' | 'unknown';
-export type VendorSourceLabel = 'adapter-static-selectors' | 'unavailable' | 'claude-selector-metadata' | 'opencode-cli-catalog' | 'kimi-configured-aliases' | 'unknown';
+export type VendorSourceLabel = 'adapter-static-selectors' | 'unavailable' | 'claude-selector-metadata' | 'opencode-cli-catalog' | 'pi-cli-catalog' | 'kimi-configured-aliases' | 'unknown';
 export type VendorDiagnosticCode =
   | 'none'
   | 'metadata-envelope-malformed'
@@ -101,10 +101,11 @@ export interface VendorsResponse {
 }
 
 const VISIBLE_BINARY_AVAILABILITY = new Set(['present', 'missing']);
-const VISIBLE_BINARY_BASENAMES = new Set(['agy', 'claude', 'codex', 'copilot', 'grok', 'kimi', 'mimo', 'opencode']);
+const VISIBLE_BINARY_BASENAMES = new Set(['agy', 'claude', 'codex', 'copilot', 'grok', 'kimi', 'mimo', 'opencode', 'pi']);
 const VISIBLE_SOURCE_KINDS = new Set(['static', 'unavailable', 'adapter-aliases', 'cli-catalog', 'config']);
 const VISIBLE_SOURCE_LABELS = new Set([
-  'adapter-static-selectors', 'unavailable', 'claude-selector-metadata', 'opencode-cli-catalog', 'kimi-configured-aliases',
+  'adapter-static-selectors', 'unavailable', 'claude-selector-metadata', 'opencode-cli-catalog',
+  'pi-cli-catalog', 'kimi-configured-aliases',
 ]);
 const VISIBLE_DIAGNOSTIC_CODES = new Set([
   'none', 'metadata-envelope-malformed', 'selector-metadata-cache-schema-unsupported',

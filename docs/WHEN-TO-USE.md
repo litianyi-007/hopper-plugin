@@ -111,6 +111,12 @@ that honestly; grok runs `--permission-mode bypassPermissions` on every platform
 *displaying* `read-only`. So: **after any read-only dispatch to codex or grok, check
 `git status`.** `hopper-dispatch --setup` shows the real per-vendor Sandbox column.
 
+`pi` sits in between and is worth understanding rather than trusting: a read-only request
+really does change its argv (`--tools read,grep,find,ls`), which removes `bash`, `edit`
+and `write` from the model's toolset — a model cannot call a tool it was not given. But pi
+ships **no sandbox of its own**, so this is a capability restriction inside pi, not an OS
+boundary. On macOS, `--subject-root` adds the kernel-enforced half.
+
 **Batch, don't fan out.** N sub-questions should be ONE brief, not N dispatches. Each
 dispatch pays full fixed cost and shares no context with the others, so fanning out is
 N× the price for a *worse* answer. (`--swarm` is the deliberate exception: N vendors on

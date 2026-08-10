@@ -61,7 +61,7 @@ import { resolve, join, dirname, basename, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
-const VERSION = '0.50.0';
+const VERSION = '0.51.0';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -138,10 +138,10 @@ function printUsage() {
   console.log('  hopper-dispatch --version                       Print version');
   console.log('');
   console.log('Adapter opts (forwarded to vendor adapter; ignored if adapter does not honor):');
-  console.log('  --model <name>       Examples: gpt-5.5, claude-opus-4-7, deepseek/v4-flash, kimi-code/kimi-for-coding, xiaomi/mimo-v2.5-pro');
-  console.log('                       Honored by: codex, kimi, opencode, copilot, grok, mimo, claude, agy (loose names are normalized to each vendor\'s canonical form)');
+  console.log('  --model <name>       Examples: gpt-5.5, claude-opus-4-7, deepseek/v4-flash, kimi-code/kimi-for-coding, xiaomi/mimo-v2.5-pro, openai-codex/gpt-5.6-terra');
+  console.log('                       Honored by: codex, kimi, opencode, copilot, grok, mimo, claude, agy, pi (loose names are normalized to each vendor\'s canonical form)');
   console.log('  --reasoning <level>  minimal | low | medium | high | xhigh');
-  console.log('                       Honored by: codex (model_reasoning_effort); grok + copilot (--effort, clamped); mimo (--variant, xhigh->max); opencode only when explicitly supplied (--variant; provider validates)');
+  console.log('                       Honored by: codex (model_reasoning_effort); pi (--thinking, UNCLAMPED — its enum is a superset of these five); grok + copilot (--effort, clamped); mimo (--variant, xhigh->max); opencode only when explicitly supplied (--variant; provider validates)');
   console.log('  --sandbox <mode>     read-only | workspace-write | danger-full-access');
   console.log('                       Default: danger-full-access; auto read-only for review/research task-types or read-only task text; global override HOPPER_DEFAULT_SANDBOX');
   console.log('  --subject-root <path> On macOS, deny vendor process file writes to this existing absolute project tree. Requires the effective sandbox to be read-only; reads, network/IPC, and writes outside the tree remain possible.');
@@ -1904,7 +1904,7 @@ async function runWatch(hopperDir, taskId) {
 
 // ─── Discovery commands (Phase 6a) ────────────────────────────────────
 
-const GROK_AUTH_CONTEXTS = new Set([
+const LOCAL_AUTH_CONTEXTS = new Set([
   'key-present-unverified',
   'credential-artifact-present-unverified',
   'not-detected',
@@ -1913,16 +1913,29 @@ const GROK_AUTH_CONTEXTS = new Set([
 
 /**
  * Render only the auth state that the install check can actually establish.
- * Grok's local env/file check deliberately has no remote-auth proof, so it
- * must never be promoted to `verified` merely because an artifact exists.
+ *
+ * An adapter that returns an `authContext` from envPreflight() is making a
+ * specific, narrow claim: it observed (or failed to observe) a LOCAL credential
+ * artifact, and it cannot prove remote authentication either way. That must
+ * never be promoted to `verified` just because a file exists — so any vendor
+ * that declares a context renders `unverified` plus the context, and only
+ * vendors making no such declaration fall through to the verified/advisory
+ * summary.
+ *
+ * KEYED ON THE DECLARATION, NOT ON A VENDOR NAME. This read `if (vendor ===
+ * 'grok')` until `pi` became the second adapter to declare a context — and the
+ * hardcoded name silently DROPPED it: pi returned
+ * `credential-artifact-present-unverified` and this line still printed
+ * `auth=advisory`, i.e. claimed more than the check knows, which is precisely
+ * what the grok branch existed to prevent. Reading the declaration means the
+ * next adapter to make one is covered with no second edit here.
+ *
+ * @param {{authContext?: string, authOk?: boolean, authSoftWarn?: boolean}} row
  */
-function renderReadinessAuth(vendor, row) {
-  if (vendor === 'grok') {
-    const authState = row?.authState === 'unverified' ? row.authState : 'unverified';
-    const authContext = GROK_AUTH_CONTEXTS.has(row?.authContext)
-      ? row.authContext
-      : 'unknown';
-    return `auth=${authState} auth_context=${authContext}`;
+function renderReadinessAuth(row) {
+  if (row?.authContext !== undefined && row?.authContext !== null) {
+    const authContext = LOCAL_AUTH_CONTEXTS.has(row.authContext) ? row.authContext : 'unknown';
+    return `auth=unverified auth_context=${authContext}`;
   }
   const auth = row?.authOk ? (row.authSoftWarn ? 'advisory' : 'verified') : 'unverified';
   return `auth=${auth}`;
@@ -1931,7 +1944,7 @@ function renderReadinessAuth(vendor, row) {
 function renderGrokAuthContextBoundary(rows) {
   const grok = rows.find((row) => row.name === 'grok');
   if (!grok) return;
-  const authContext = GROK_AUTH_CONTEXTS.has(grok.authContext) ? grok.authContext : 'unknown';
+  const authContext = LOCAL_AUTH_CONTEXTS.has(grok.authContext) ? grok.authContext : 'unknown';
   console.log(`Grok auth_context=${authContext} is a zero-spawn launcher-context check; it does not validate the credential remotely.`);
   console.log('Grok status=READY means binary-dispatch readiness, not authenticated proof. Interactive/browser state in another session may not be inherited by the Hopper Node parent.');
 }
@@ -2066,7 +2079,7 @@ async function runSetup({ only = null, deep = false } = {}) {
   // remote authentication proof, and the table's `warn` cell does not say that.
   console.log('\nVendor provenance (closed projection)');
   for (const r of rows) {
-    console.log(`  ${r.name}: status=${r.status} ${renderReadinessAuth(r.name, r)} ${renderSafeInventory(r.inventory)}`);
+    console.log(`  ${r.name}: status=${r.status} ${renderReadinessAuth(r)} ${renderSafeInventory(r.inventory)}`);
   }
 
   const notes = rows.filter((r) => r.installed && r.authNotes && r.authNotes.length);
@@ -2185,7 +2198,7 @@ async function runCheck(target, { compat = false } = {}) {
     const status = r && ['READY', 'AUTH_NEEDED', 'NOT_INSTALLED', 'UNKNOWN'].includes(r.overallStatus)
       ? r.overallStatus
       : 'UNKNOWN';
-    const auth = renderReadinessAuth(vendor, r);
+    const auth = renderReadinessAuth(r);
     const compatSummary = compat ? ` compatibility=${compatibility.get(vendor)}` : '';
     console.log(`${vendor}: status=${status} ${auth}${compatSummary} ${renderSafeInventory(inventory)}`);
   }

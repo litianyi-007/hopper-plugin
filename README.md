@@ -177,6 +177,7 @@ hopper-dispatch --result   T-PROG-AUDIT
 |---|---|---|---|
 | codex | `-m` | ✓ | **只认裸名字**:`gpt-5.5`、`gpt-5.4-mini`、`gpt-5.3-codex-spark`。带 provider 前缀的 id(`openai-codex/…`)在 ChatGPT 账号下会被拒绝。 |
 | grok | `-m` | ✓ | 枚举 low/med/high;`xhigh` 会被 clamp 到 `high`。 |
+| pi | `--model <provider/model>` | ✓ | `--thinking` 枚举是 off/minimal/low/medium/high/xhigh/max——hopper 五档的**超集**,所以 `xhigh` **不会被 clamp**,是唯一原样透传的 vendor。多 provider 路由:能用哪些模型取决于**这台机器**登录了谁(`--probe pi` 读 `pi --list-models` 的实时目录)。不传 `--model` 时回落到 `~/.pi/agent/settings.json` 的 `defaultProvider`/`defaultModel`。 |
 | mimo | `--model` | ✓ | `xhigh` → `--variant max`。**不在产品支持范围**(2026-07-31 决策)——见下文。 |
 | copilot | `--model` | ✓ | 枚举 low/med/high;`xhigh` 会被 clamp 到 `high`。原始覆盖值:`HOPPER_COPILOT_EFFORT`。**不在产品支持范围**(2026-07-31 决策)——见下文。 |
 | opencode | `--model <provider/model>` | 仅显式传入才生效 | 调用方传的 `--reasoning high` 会变成 `--variant high`;Hopper 故意不给 OpenCode 发默认的 `xhigh`,以保持 provider 兼容。`HOPPER_OPENCODE_VARIANT=<v>` 可以原样覆盖它。**不在产品支持范围**(2026-07-31 决策)——见下文。 |
@@ -280,13 +281,14 @@ hopper-opencode T-PROG-REVIEW --background
 **7 类宿主**都能发起 dispatch:Claude Code、Codex CLI、OpenCode、Copilot CLI、Grok Build、
 Cursor CLI,以及一个 standalone shell。
 
-**8 个 vendor adapter** 已注册,但产品实际建议使用的只有其中 4 个:
+**9 个 vendor adapter** 已注册,但产品实际建议使用的只有其中 5 个:
 
-> **产品支持的 vendor 集合(2026-07-31 决策):`codex` / `grok` / `claude` / `kimi`。**
+> **产品支持的 vendor 集合:`codex` / `grok` / `claude` / `kimi`(2026-07-31 决策)
+> \+ `pi`(2026-08-10 新增)。**
 > `agy` / `copilot` / `mimo` / `opencode` **不在支持范围内**——这是一次产品决策,收窄
 > 主动维护的使用范围,不是代码层面的限制。它们的 adapter 文件**没有被删除**(删掉会破坏
-> 现有测试与历史记录);它们仍然注册着,`--vendors` 仍会列出全部 8 家,代码里也没有任何地方
-> 硬编码"只认这 4 家"(那样会和真正的执行点重复,甚至可能打架)。对某个**具体项目**能派发给
+> 现有测试与历史记录);它们仍然注册着,`--vendors` 仍会列出全部 9 家,代码里也没有任何地方
+> 硬编码"只认这 5 家"(那样会和真正的执行点重复,甚至可能打架)。对某个**具体项目**能派发给
 > 谁的执行点,是那个项目 `.hopper/AGENTS.md` 里的 **`Approved Vendors`** 表——fail-closed:
 > 这一节缺失,或者某个 vendor 不在表里 / 不是 `yes`,一律拒绝派发,**包括显式的 `--vendor`
 > 覆盖**。
