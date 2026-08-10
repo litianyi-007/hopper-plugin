@@ -1,6 +1,6 @@
 {
   "name": "hopper-plugin",
-  "version": "0.52.0",
+  "version": "0.53.0",
   "description": "Reference implementation of llm-hopper protocol as a thin plugin layer. No harness reaction core; vendor CLIs bring their own runtime.",
   "type": "module",
   "bin": {

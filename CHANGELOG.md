@@ -19,6 +19,52 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.53.0] - 2026-08-10
+
+一次 12 分钟的 pi 后台评审,`progress_seq` 只有 **2**——「已排队」和「已完成」。中间那 744 秒里
+实际跑了 25 个 turn、176 次工具调用、202 条消息,一条都没进进度通道。操作者的应对是自己写了个
+轮询循环:`--jobs | grep -c yes` 判活、`wc -c` 量原始日志大小当进度条、每 180 秒一轮,中间还
+`tail -c 8000 | cut -c1-130` 手动偷看 NDJSON。这三段 shell 就是「hopper 该给但没给」的补丁。
+
+**根因是一张手抄的词表。** `findLatestVendorProgressEvent` 里内联着
+`new Set(['step_start','step_finish','session_start','session_started','result'])`——opencode 的
+`step_*` 加 claude 的 `result`。pi 发的是 `turn_start` / `tool_execution_*` / `agent_*` /
+`compaction_*`,一个都不在里面。poll 每 ~5 秒读一次新增字节、交给它、然后原样丢掉。
+
+统计了那个项目的 **194 个后台任务、616 条进度事件**:`source: "vendor-stream"` 出现 **0 次**,
+对**所有** vendor 都是。唯一存在的中间信号是 `runner / process_alive`(227 条)——grok 那 19 条
+「进度」全是这个,内容为空的「Vendor process is still running.」。也就是说富信息通道一直是死的,
+而 pi 是唯一连空心跳都没有的(因为它正确地没声明 `bufferedOutput`——它确实是流式的)。
+
+现在词表提成了具名冻结常量并补上 pi 的生命周期 token。同一份真实日志:识别率从 **0/15 chunk
+升到 10/15**,`turn_start` / `tool_execution_end` / `agent_settled` 都能认出来。实跑一次 13.5 秒
+的后台派发,进度日志里首次出现 `source: vendor-stream` 的心跳。
+
+**安全性没有放宽,反而收紧了。** 只有 `type` 和 `reason` 会被镜像进进度记录,两者都过
+`protocolToken()`;`text` / `thinking` / `message_update` / `toolcall_delta` 这些**内容**事件
+刻意不收——它们既会泄露又太吵。特别地,`tool_execution_end` 带着 `result`(真实文件内容),把它
+**显式列入**词表反而是加固:否则递归会钻进它的 `result` 字段去找嵌套生命周期事件,而那正是工具
+输出所在。`compaction_*` 的 `reason` 是干净的协议词 `overflow`,留着——「vendor 因为溢出正在压缩
+上下文」正是一段 12 分钟静默最该说出口的话。
+
+**同时接上了 `vendor_session_id`。** 这个字段在 v1 的后台 frontmatter 里就声明了,然后对所有
+vendor 硬编码 `null`(注释写着 reserved for v1.2),而 pi 在流的**第一行**就把 session id 递了
+过来——适配器早就把它解析出来了,只是没返回。现在:
+
+- pi 的 `parseResult` 在**成功、超时、认证失败**路径上都带回 sessionId。超时那条是重点:一次
+  12 分钟评审被 ceiling 收割时,正是续跑最值钱的时刻,把 id 丢掉等于强制重跑重付。
+- 写入前**校验而非转义**:session id 是 vendor 控制的文本,要进 YAML-ish 的 frontmatter。id 是
+  个不透明句柄(pi 用 UUID),所以带换行、引号、冒号或超长的东西不是「需要抢救的畸形 id」,而是
+  根本不该出现在这个字段里的东西——直接拒绝。
+- 实跑验证:记录下来的 id 与 pi 流头里的 id 逐字一致,且**真能续跑**。
+
+⚠ **续跑有个必须知道的前提**:0.51.0 的宿主隔离把 pi 指向了 `$HOPPER_PI_HOME`
+(默认 `~/.hopper/pi-isolated`),所以 session 落在**那里**,不在 `~/.pi/agent/sessions`。实测:
+在自己的 shell 里裸跑 `pi --session <记录的 id>` 会得到 `No session found matching '<id>'`,而
+`PI_CODING_AGENT_DIR=~/.hopper/pi-isolated pi --session <id> …` 能正确续上并回忆起之前的轮次。
+这条写进了 pi 的 `sessionResume` 说明(现在 `--capabilities pi` 会渲染出来),并有测试钉住——
+否则读到 `vendor_session_id` 的人会粘进 pi、得到 "No session found"、然后判定这个字段是坏的。
+
 ## [0.52.0] - 2026-08-10
 
 `--capabilities <vendor>` 名字承诺的是「这个 vendor 能干什么」,实际只打印**四行固定内容**:

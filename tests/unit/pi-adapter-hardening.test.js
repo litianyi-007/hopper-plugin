@@ -278,3 +278,57 @@ test('the pi probe resolves through knownInstallPaths, not a bare PATH walk', ()
   assert.doesNotMatch(src, /\bresolveCommandOnPath\(/,
     'the PATH-only resolver must not creep back in');
 });
+
+// ── vendor session id: recoverable resume handle ────────────────────────
+
+test('pi reports its session id on success AND on a timeout — resume matters most when it failed', () => {
+  // `vendor_session_id` sat hardcoded `null` in the background frontmatter for
+  // every vendor while pi handed its id over on the FIRST line of its stream.
+  // Attaching it to the timeout path is the point: a ceiling reap on a
+  // 12-minute review is exactly when re-running instead of resuming costs real
+  // money.
+  const id = '019fea74-c6c9-7dc3-b538-db5c6c014279';
+  const stream = [
+    ev({ type: 'session', version: 3, id, cwd: '/repo' }),
+    ev({
+      type: 'turn_end',
+      message: {
+        role: 'assistant', content: [{ type: 'text', text: 'ANSWER' }],
+        provider: 'openai-codex', model: 'gpt-5.6-terra', stopReason: 'stop',
+      },
+      toolResults: [],
+    }),
+    ev({ type: 'agent_settled' }),
+  ].join('\n');
+
+  assert.equal(pi.parseResult(ok(stream)).sessionId, id, 'success must carry the id');
+
+  const reaped = pi.parseResult({ exitCode: -1, stdout: stream, stderr: '', timedOut: true, durationMs: 900000 });
+  assert.equal(reaped.status, 'timeout');
+  assert.equal(reaped.sessionId, id, 'a reaped run must still surrender its resume handle');
+  assert.equal(reaped.text, '', 'but a timeout still promotes no answer text');
+
+  // Even a stream that never produced an answer keeps the id (auth failure at
+  // the provider, say) — the session header lands before the first token.
+  const headerOnly = pi.parseResult({
+    exitCode: 1, stdout: ev({ type: 'session', version: 3, id, cwd: '/repo' }),
+    stderr: 'No API key found for anthropic.', timedOut: false, durationMs: 90,
+  });
+  assert.equal(headerOnly.status, 'auth-fail');
+  assert.equal(headerOnly.sessionId, id);
+
+  // Nothing ran → nothing to resume.
+  assert.equal(pi.parseResult({ exitCode: 127, stdout: '', stderr: '', timedOut: false, durationMs: 5 }).sessionId, undefined);
+});
+
+test('the sessionResume note carries the isolated-config-dir caveat', () => {
+  // V-verified 2026-08-10: a bare `pi --session <recorded-id>` from the operator's
+  // own shell answers "No session found matching '<id>'", because host isolation
+  // put the session under $HOPPER_PI_HOME instead of ~/.pi/agent. Without this
+  // written down, a reader takes vendor_session_id, pastes it into pi, gets
+  // nothing, and concludes the field is broken. `--capabilities pi` renders it.
+  const note = pi.capabilities.features.sessionResume.mechanism;
+  assert.match(note, /vendor_session_id/, 'must say where hopper records the id');
+  assert.match(note, /HOPPER_PI_HOME|pi-isolated/, 'must name the isolated location');
+  assert.match(note, /No session found/, 'must carry the verified failure a naive resume produces');
+});

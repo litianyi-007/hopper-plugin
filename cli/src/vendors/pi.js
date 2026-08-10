@@ -428,7 +428,7 @@ export const piAdapter = {
       sourceNote: 'pi `--thinking <level>` accepts off|minimal|low|medium|high|xhigh|max (CONFIRMED `pi --help` 0.84.1 + pi.dev/docs/latest/models "thinkingLevelMap"). This is a SUPERSET of hopper\'s canonical minimal|low|medium|high|xhigh scale, so pi is one of the few adapters that consumes hopper\'s default `xhigh` with NO clamping — V-verified 2026-08-10 against openai-codex/gpt-5.6-terra (a real thinking block came back). Per-model, a level may be unsupported (docs: a model can expose `high` and `max` without `xhigh`); pi maps such a level down itself instead of failing. HOPPER_PI_THINKING overrides the level and an EMPTY value omits the flag (falls back to settings.json defaultThinkingLevel).',
     },
     features: {
-      sessionResume: { supported: true, mechanism: '`pi --session <path|id>` (also `--continue`/`-c` for the most recent, `--resume`/`-r` to pick interactively, `--fork` to branch). The adapter forwards `--session <id>` only when opts.conversationId is set; the id to reuse is the `id` field of the `session` header event on the NDJSON stream. Sessions live under ~/.pi/agent/sessions (override: PI_CODING_AGENT_SESSION_DIR or --session-dir).' },
+      sessionResume: { supported: true, mechanism: '`pi --session <path|id>` (also `--continue`/`-c` for the most recent, `--resume`/`-r` to pick interactively, `--fork` to branch). The adapter forwards `--session <id>` only when opts.conversationId is set. Since v0.52.x hopper RECORDS the id for you: a background dispatch writes `vendor_session_id` into its handoff frontmatter, taken from the `session` header event on the NDJSON stream, and it is recorded for FAILED and timed-out runs too — a ceiling reap on a long review is when resuming is worth the most. ⚠ THE SESSION LIVES IN HOPPER\'S ISOLATED CONFIG DIR, NOT YOURS. Host isolation points pi at `$HOPPER_PI_HOME` (default ~/.hopper/pi-isolated), so its sessions land under THAT dir, not ~/.pi/agent/sessions. V-verified 2026-08-10: a bare `pi --session <recorded-id>` from your own shell answers "No session found matching \'<id>\'", while `PI_CODING_AGENT_DIR=~/.hopper/pi-isolated pi --session <id> …` resumes and recalls the earlier turns correctly. So: resume through hopper (which sets the env itself), or export PI_CODING_AGENT_DIR to the isolated home first. `HOPPER_PI_ISOLATE=0` puts sessions back in ~/.pi/agent at the cost of the isolation.' },
       fileOutput: { supported: false, mechanism: 'stdout only. `--export <in> [out]` renders a SAVED session file to HTML after the fact; it is not a live answer sink. Redirect `--mode json` at the shell layer if a file is needed.' },
       streaming: { supported: true, mechanism: '`--mode json` IS the streaming mode: newline-delimited events, with `message_update` carrying text deltas as they arrive (pi.dev/docs/latest/json). `--mode rpc` is the bidirectional variant. There is no separate non-streaming JSON mode, so the adapter reconstructs the final text from the terminal message rather than from the deltas.' },
       permissions: {
@@ -568,16 +568,24 @@ export const piAdapter = {
   },
 
   parseResult(raw) {
-    // ── Harness-established failures first. These are decided by the runner,
-    // not by reading vendor prose, so they are never subject to the veto below.
-    if (raw.timedOut) {
-      return adapterFailure('timeout', 'adapter-timeout');
-    }
+    // Exit 127 is the shell's own "command not found": no process ran, so there
+    // is no stream to read and nothing to recover. Answered before any parsing.
     if (raw.exitCode === 127) {
       return adapterFailure('permission-fail', 'adapter-binary-missing');
     }
 
     const outcome = extractPiOutcome(raw.stdout);
+    // pi's session id rides on the FIRST line of the stream, so it survives runs
+    // that produced no answer at all. Attach it to failures too — a ceiling
+    // timeout on a 12-minute review is exactly when `--session <id>` is worth
+    // the most, and discarding the id there would force a full, re-paid re-run.
+    const withSession = (result) => (outcome.sessionId ? { ...result, sessionId: outcome.sessionId } : result);
+
+    // ── Harness-established failure. Decided by the runner, not by reading
+    // vendor prose, so it is never subject to the heuristic veto below.
+    if (raw.timedOut) {
+      return withSession(adapterFailure('timeout', 'adapter-timeout'));
+    }
     const outputEvidence = piOutputEvidence(outcome);
     const hasAnswer = Boolean(outcome.terminal && outcome.text.trim());
     const terminalSuccess = isSuccessfulTerminalReason(outcome.stopReason);
@@ -603,7 +611,7 @@ export const piAdapter = {
         : { text: outcome.text, status: 'success', diagnosticCode: 'none' };
       const withEvidence = outputEvidence ? { ...result, outputEvidence } : result;
       const modelAttestation = extractPiModelAttestation(outcome);
-      return modelAttestation ? { ...withEvidence, modelAttestation } : withEvidence;
+      return withSession(modelAttestation ? { ...withEvidence, modelAttestation } : withEvidence);
     }
 
     // ── Text heuristics, and only from here down (cli/src/vendor-signal.js).
@@ -620,7 +628,7 @@ export const piAdapter = {
     const diagnostic = authFailed
       ? 'adapter-auth-failed'
       : (raw.exitCode === 0 ? 'adapter-protocol-invalid' : 'adapter-unknown-failed');
-    return failedPiOutput(status, diagnostic, outcome, outputEvidence);
+    return withSession(failedPiOutput(status, diagnostic, outcome, outputEvidence));
   },
 };
 
