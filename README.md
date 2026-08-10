@@ -177,7 +177,7 @@ hopper-dispatch --result   T-PROG-AUDIT
 |---|---|---|---|
 | codex | `-m` | ✓ | **只认裸名字**:`gpt-5.5`、`gpt-5.4-mini`、`gpt-5.3-codex-spark`。带 provider 前缀的 id(`openai-codex/…`)在 ChatGPT 账号下会被拒绝。 |
 | grok | `-m` | ✓ | 枚举 low/med/high;`xhigh` 会被 clamp 到 `high`。 |
-| pi | `--model <provider/model>` | ✓ | `--thinking` 枚举是 off/minimal/low/medium/high/xhigh/max——hopper 五档的**超集**,所以 `xhigh` **不会被 clamp**,是唯一原样透传的 vendor。多 provider 路由:能用哪些模型取决于**这台机器**登录了谁(`--probe pi` 读 `pi --list-models` 的实时目录)。不传 `--model` 时回落到 `~/.pi/agent/settings.json` 的 `defaultProvider`/`defaultModel`。 |
+| pi | `--model <model>` 或 `<provider>/<model>` | ✓ | `--thinking` 枚举是 off/minimal/low/medium/high/xhigh/max——hopper 五档的**超集**,所以 `xhigh` **不会被 clamp**,是唯一原样透传的 vendor。多 provider 路由:能用哪些模型取决于**这台机器**登录了谁(`--probe pi` 读 `pi --list-models` 的实时目录)。不传 `--model` 时回落到 `~/.pi/agent/settings.json` 的 `defaultProvider`/`defaultModel`。**⚠ `openai` 与 `openai-codex` 是两个不同的 provider**,gpt-5.6 系列在 `openai-codex`(ChatGPT 订阅 OAuth)下,不在 `openai`(API key)下——写错前缀会直接 `No API key found`。详见下方「pi 的模型怎么写」。 |
 | mimo | `--model` | ✓ | `xhigh` → `--variant max`。**不在产品支持范围**(2026-07-31 决策)——见下文。 |
 | copilot | `--model` | ✓ | 枚举 low/med/high;`xhigh` 会被 clamp 到 `high`。原始覆盖值:`HOPPER_COPILOT_EFFORT`。**不在产品支持范围**(2026-07-31 决策)——见下文。 |
 | opencode | `--model <provider/model>` | 仅显式传入才生效 | 调用方传的 `--reasoning high` 会变成 `--variant high`;Hopper 故意不给 OpenCode 发默认的 `xhigh`,以保持 provider 兼容。`HOPPER_OPENCODE_VARIANT=<v>` 可以原样覆盖它。**不在产品支持范围**(2026-07-31 决策)——见下文。 |
@@ -194,6 +194,45 @@ hopper-dispatch --capabilities codex    # 单个 vendor 的 model/effort/perms �
 hopper-dispatch --probe codex           # 你这个账号的实时 model 目录
 hopper-dispatch --check-model codex gpt-5.5   # 派发前断言一个模型:verified(0) | catalog-only(2) | not-found(1)
 ```
+
+### pi 的模型怎么写
+
+pi 是多 provider 路由,`--model` 有三种写法:裸名字、`provider/id`、`id:<thinking>`。
+**pi 官方文档没有写它的解析算法**,所以下面是 2026-08-10 在 pi 0.84.1 上实测的行为。
+
+先记住这一条,它是唯一真会咬人的地方:
+
+> **`openai` 和 `openai-codex` 是两个不同的 provider。** `openai` 走 API key(`OPENAI_API_KEY`),
+> `openai-codex` 走 ChatGPT 订阅的 OAuth。**gpt-5.6 系列(terra / sol / luna)挂在
+> `openai-codex` 下**。在一台 `openai-codex` 已登录的机器上,`--model openai/gpt-5.6-terra`
+> 会直接 `exit 1` 并报 `No API key found for openai.`——前缀一旦写出来就**钉死** provider,
+> 不会再回退去找别的 provider。
+
+hopper 会替你兜住其中一部分。对**已在 `knownGood` 里**的模型,三种写法都会被规范化到同一个值:
+
+| 你写的 | hopper 实际发给 pi |
+|---|---|
+| `gpt-5.6-terra`(裸) | `openai-codex/gpt-5.6-terra` |
+| `openai-codex/gpt-5.6-terra` | 原样 |
+| `openai/gpt-5.6-terra`(前缀写错) | `openai-codex/gpt-5.6-terra` ← **自动纠正** |
+| `GPT 5.6 Terra`(松散拼写) | `openai-codex/gpt-5.6-terra` |
+
+**但对不在 `knownGood` 里的模型(比如刚发布的新模型),hopper 原样透传**——这时
+`openai/gpt-5.7-xxx` 就会带着错前缀直达 pi 并硬失败。这个不对称是唯一的坑,派发前用
+`--check-model` 挡一下即可:
+
+```bash
+# 想知道 hopper 到底会发什么给 pi:看 --json 的 normalized 字段
+hopper-dispatch --check-model pi "openai/gpt-5.6-terra" --json
+#   {"model":"openai/gpt-5.6-terra","normalized":"openai-codex/gpt-5.6-terra","verdict":"verified",...}
+
+hopper-dispatch --check-model pi openai/gpt-5.7-xxx   # → not-found,exit 1
+hopper-dispatch --probe pi                            # 看这台机器实际登录了哪些 provider
+pi auth check --provider openai-codex --json          # 单独确认某个 provider 的登录状态
+```
+
+不传 `--model` 时,pi 回落到 `~/.pi/agent/settings.json` 里的 `defaultProvider` /
+`defaultModel`(不是 `pi --help` 写的 `google`——那只在完全没有配置时才生效)。
 
 用环境变量调优:
 

@@ -223,7 +223,7 @@ hopper-dispatch --result   T-PROG-AUDIT
 |---|---|---|---|
 | codex | `-m` | ✓ | **裸の名前のみ受け付ける**:`gpt-5.5`、`gpt-5.4-mini`、`gpt-5.3-codex-spark`。provider プレフィックス付きの id(`openai-codex/…`)は ChatGPT アカウントでは拒否される。 |
 | grok | `-m` | ✓ | low/med/high の列挙値;`xhigh` は `high` に clamp される。 |
-| pi | `--model <provider/model>` | ✓ | `--thinking` の列挙値は off/minimal/low/medium/high/xhigh/max——hopper の5段階の**上位集合**なので、`xhigh` は **clamp されない**;そのまま透過される唯一の vendor である。マルチ provider ルーター:使えるモデルは**このマシン**がどこにログインしているかで決まる(`--probe pi` が `pi --list-models` のライブカタログを読む)。`--model` を渡さない場合は `~/.pi/agent/settings.json` の `defaultProvider`/`defaultModel` にフォールバックする。 |
+| pi | `--model <model>` または `<provider>/<model>` | ✓ | `--thinking` の列挙値は off/minimal/low/medium/high/xhigh/max——hopper の5段階の**上位集合**なので、`xhigh` は **clamp されない**;そのまま透過される唯一の vendor である。マルチ provider ルーター:使えるモデルは**このマシン**がどこにログインしているかで決まる(`--probe pi` が `pi --list-models` のライブカタログを読む)。`--model` を渡さない場合は `~/.pi/agent/settings.json` の `defaultProvider`/`defaultModel` にフォールバックする。**⚠ `openai` と `openai-codex` は別の provider** であり、gpt-5.6 系は `openai`(API キー)ではなく `openai-codex`(ChatGPT の OAuth)の下にある;prefix を間違えると `No API key found` で即失敗する。下の「pi のモデル指定」を参照。 |
 | mimo | `--model` | ✓ | `xhigh` → `--variant max`。**製品サポート範囲外**(2026-07-31 決定)——後述。 |
 | copilot | `--model` | ✓ | low/med/high の列挙値;`xhigh` は `high` に clamp される。生の上書き値:`HOPPER_COPILOT_EFFORT`。**製品サポート範囲外**(2026-07-31 決定)——後述。 |
 | opencode | `--model <provider/model>` | 明示的に渡した場合のみ有効 | 呼び出し側が渡した `--reasoning high` は `--variant high` に変換される;Hopper は provider 互換性を保つため、意図的に OpenCode へデフォルトの `xhigh` を送らない。`HOPPER_OPENCODE_VARIANT=<v>` でそのまま上書きできる。**製品サポート範囲外**(2026-07-31 決定)——後述。 |
@@ -241,6 +241,49 @@ hopper-dispatch --capabilities codex    # 単一 vendor の model/effort/perms �
 hopper-dispatch --probe codex           # このアカウントのリアルタイムの model カタログ
 hopper-dispatch --check-model codex gpt-5.5   # 派遣前にモデルをアサート:verified(0) | catalog-only(2) | not-found(1)
 ```
+
+### pi のモデル指定
+
+pi はマルチ provider ルーターであり、`--model` には3つの書き方がある:裸の id、
+`provider/id`、`id:<thinking>`。**pi 公式ドキュメントは解決アルゴリズムを規定していない**
+ため、以下は 2026-08-10 に pi 0.84.1 上で実測した挙動である。
+
+実際に刺さるのはこの1点:
+
+> **`openai` と `openai-codex` は別の provider である。** `openai` は API キー
+> (`OPENAI_API_KEY`)、`openai-codex` は ChatGPT サブスクリプションの OAuth 経路。
+> **gpt-5.6 系(terra / sol / luna)は `openai-codex` の下にある。** `openai-codex` が
+> ログイン済みのマシンでも `--model openai/gpt-5.6-terra` は
+> `No API key found for openai.` で exit 1 になる——prefix を書いた時点で provider が
+> **固定**され、別の provider へのフォールバックは起きない。
+
+hopper はその一部を吸収する。すでに `knownGood` にあるモデルなら、3つの書き方はすべて
+同じ値に正規化される:
+
+| 書いた値 | hopper が pi に渡す値 |
+|---|---|
+| `gpt-5.6-terra`(裸) | `openai-codex/gpt-5.6-terra` |
+| `openai-codex/gpt-5.6-terra` | そのまま |
+| `openai/gpt-5.6-terra`(prefix 誤り) | `openai-codex/gpt-5.6-terra` ← **自動訂正** |
+| `GPT 5.6 Terra`(緩い表記) | `openai-codex/gpt-5.6-terra` |
+
+**しかし `knownGood` に無いモデル(新しく出たもの)はそのまま透過される**——つまり
+`openai/gpt-5.7-xxx` は誤った prefix のまま pi に届き、そのまま失敗する。この非対称性が
+唯一の落とし穴なので、派遣前に確認する:
+
+```bash
+# hopper が実際に pi へ何を渡すかは --json の normalized フィールドで確認できる:
+hopper-dispatch --check-model pi "openai/gpt-5.6-terra" --json
+#   {"model":"openai/gpt-5.6-terra","normalized":"openai-codex/gpt-5.6-terra","verdict":"verified",...}
+
+hopper-dispatch --check-model pi openai/gpt-5.7-xxx   # → not-found、exit 1
+hopper-dispatch --probe pi                            # このマシンがログイン済みの provider
+pi auth check --provider openai-codex --json          # 個別 provider のログイン状態
+```
+
+`--model` を渡さない場合、pi は `~/.pi/agent/settings.json` の `defaultProvider` /
+`defaultModel` にフォールバックする(`pi --help` が表示する `google` ではない——あれは
+設定が一切無いときだけ効く)。
 
 環境変数によるチューニング:
 

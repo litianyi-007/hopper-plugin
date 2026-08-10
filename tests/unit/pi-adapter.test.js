@@ -437,6 +437,50 @@ test('parsePiAuthStatus() maps `pi auth check --json` onto a closed vocabulary',
 
 // ── preflight ─────────────────────────────────────────────────────────────
 
+// ── model spelling: `openai` is NOT `openai-codex` ───────────────────────
+
+test('pi model normalization absorbs bare, loose, and WRONG-PREFIX spellings of a known model', async () => {
+  // The real trap (V-verified 2026-08-10 on pi 0.84.1): pi ships BOTH an
+  // `openai` provider (API key) and an `openai-codex` provider (ChatGPT OAuth),
+  // and the gpt-5.6 family lives under `openai-codex`. Writing a prefix PINS the
+  // provider — `--model openai/gpt-5.6-terra` exits 1 with "No API key found for
+  // openai." even on a machine where openai-codex is logged in and that exact
+  // model works. hopper absorbs it for anything in knownGood.
+  const { normalizeModel } = await import('../../cli/src/model-normalize.js');
+  const knownGood = pi.capabilities.modelArg.knownGood;
+  const canonical = 'openai-codex/gpt-5.6-terra';
+  for (const spelling of ['gpt-5.6-terra', canonical, 'openai/gpt-5.6-terra', 'GPT 5.6 Terra']) {
+    assert.equal(normalizeModel('pi', spelling, knownGood), canonical,
+      `"${spelling}" must normalize to the canonical provider-qualified id`);
+  }
+});
+
+test('pi model normalization passes an UNKNOWN model through verbatim — the documented footgun', () => {
+  // The asymmetry that makes --check-model worth running: a model absent from
+  // knownGood (a newly released one) is NOT rewritten, so a wrong prefix reaches
+  // pi intact and hard-fails there. Pinned so nobody "fixes" it into a silent
+  // guess — inventing a provider for an unknown model would be worse.
+  const knownGood = pi.capabilities.modelArg.knownGood;
+  return import('../../cli/src/model-normalize.js').then(({ normalizeModel }) => {
+    assert.equal(normalizeModel('pi', 'openai/gpt-5.7-future', knownGood), 'openai/gpt-5.7-future');
+    assert.equal(normalizeModel('pi', 'gpt-5.7-future', knownGood), 'gpt-5.7-future');
+  });
+});
+
+test('the pi sourceNote actually documents the openai vs openai-codex distinction', () => {
+  // NOTE ON WHERE THIS IS VISIBLE: `sourceNote` is in-code documentation only —
+  // no CLI surface renders it (checked 2026-08-10: `--capabilities <vendor>`
+  // prints four fixed lines and never the note, for every vendor). The
+  // operator-facing answer to "what will hopper actually send?" is
+  // `--check-model <vendor> <model> --json`, whose `normalized` field shows the
+  // rewritten selector. This test guards the in-code knowledge, which is the
+  // only written record of behavior pi's own docs do not specify.
+  const note = pi.capabilities.modelArg.sourceNote;
+  assert.match(note, /openai-codex/, 'must name the OAuth provider');
+  assert.match(note, /No API key found for openai/, 'must carry the verified wrong-prefix failure');
+  assert.match(note, /check-model/, 'must point at the pre-dispatch guard');
+});
+
 test('pi envPreflight() soft-warns and never hard-fails (auth is per provider, and remote)', () => {
   const r = pi.envPreflight();
   assert.equal(r.ok, true, 'a zero-spawn check can never disprove a remote login → never a hard fail');

@@ -14,7 +14,7 @@ import { writeOutput } from '../src/output.js';
 import { scaffoldHopper, scaffoldGovernance } from '../src/scaffold.js';
 import { renderRulesMarkdown } from '../src/rules.js';
 import { compatCheckForAdapter } from '../src/vendor-compat.js';
-import { buildVendorReadiness, summarizeReadiness, formatModelDrift, buildRuntimeReport, buildNextSteps, buildTaskTypePolicyReport } from '../src/setup.js';
+import { buildVendorReadiness, summarizeReadiness, formatModelDrift, buildRuntimeReport, buildNextSteps, buildTaskTypePolicyReport, buildCapabilityReport } from '../src/setup.js';
 import { formatBinaryReport, formatBinarySummary, enumerateVendorBinaries, probeBinaryVersions } from '../src/vendor-binaries.js';
 import { planWorkspaceMigrations, applyWorkspaceMigrations, simpleDiff, currentVersion, missingTaskFrames } from '../src/workspace-drift.js';
 import { detectInstallKind, fetchUpstreamVersion, parseMigrationEntries, buildUpdateReport } from '../src/update-check.js';
@@ -61,7 +61,7 @@ import { resolve, join, dirname, basename, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
-const VERSION = '0.51.0';
+const VERSION = '0.52.0';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -128,7 +128,9 @@ function printUsage() {
   console.log('  hopper-dispatch --binaries [<vendor>] [--deep]  Show EVERY PATH entry a vendor name resolves to, which one dispatch spawns, and (--deep) each version. Local diagnostic: prints absolute paths.');
   console.log('  hopper-dispatch --update-check [--offline]      Compare installed vs upstream version, list BREAKING entries in between, and report .hopper/ config drift. Read-only; never installs anything.');
   console.log('  hopper-dispatch --migrate-config [--yes] [--only <ids>]  Migrate this project\'s .hopper/ to the running schema. DRY RUN BY DEFAULT (--yes to write). Additive only, backs up to .hopper/.migrations/.');
-  console.log('  hopper-dispatch --capabilities <vendor>         Show static model/reasoning/feature support + cached data if probed');
+  console.log('  hopper-dispatch --capabilities <vendor>         Show the adapter contract: known-good models, reasoning enum + whether');
+  console.log('                                                  the default effort clamps, sandbox control, features, provenance notes.');
+  console.log('                                                  Zero-spawn, static; the per-account catalog is `--probe` + `--models`.');
   console.log('  hopper-dispatch --check-model <vendor> <model> [--json]  Assert model availability pre-dispatch (zero-spawn): verified (exit 0) | catalog-only (exit 2) | not-found (exit 1)');
   console.log('  hopper-dispatch --probe [<vendor>]              Run vendor introspection, write cache to ~/.hopper/cache/');
   console.log('  hopper-dispatch --probe <vendor> --recover-cache  Explicitly replace the cache before writing this probe result');
@@ -2327,9 +2329,13 @@ function runCapabilities(vendor) {
     provenance: { source_kind: 'static', binary_availability: 'unknown', binary_basename: null },
   }, cacheOutcome.outcome);
   console.log(`hopper-dispatch v${VERSION} — capabilities for ${vendor}`);
+  // Cache-backed state, confined to the closed projection (see the privacy note
+  // on buildCapabilityReport: everything BELOW this line is static adapter data).
   console.log(`Inventory: ${renderSafeInventory(inventory)}`);
-  console.log('Selector metadata: declared');
+  for (const line of buildCapabilityReport(vendor)) console.log(line);
+  console.log('');
   console.log('No vendor subprocess is spawned for this lookup (static data only).');
+  console.log('Live per-account model catalog: `hopper-dispatch --probe ' + vendor + '` then `--models ' + vendor + '`.');
 }
 
 /**

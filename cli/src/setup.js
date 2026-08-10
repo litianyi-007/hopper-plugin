@@ -27,7 +27,7 @@ import { compareVersionDesc } from './version.js';
 import { reconcileModels } from './model-normalize.js';
 import { parseAgentsFile } from './agents.js';
 import { listTaskTypes } from './tasks.js';
-import { parseEffortPolicyCell, parseModelRuleCell, isOobCell, MODEL_SENTINELS } from './policy.js';
+import { parseEffortPolicyCell, parseModelRuleCell, isOobCell, MODEL_SENTINELS, resolveVerifiedLatest, computeEffortClamp } from './policy.js';
 import { join } from 'node:path';
 
 // Permission/approval flags that grant UNCONDITIONAL write access no matter what `sandbox`
@@ -462,4 +462,140 @@ export async function buildTaskTypePolicyReport(hopperDir) {
   }
 
   return { applicable: true, rows, warnings };
+}
+
+// ─── `--capabilities <vendor>` report ─────────────────────────────────────
+//
+// WHY THIS EXISTS (2026-08-10). `--capabilities <vendor>` printed four fixed
+// lines — a version banner, the closed inventory projection, a HARDCODED
+// "Selector metadata: declared", and the no-spawn footer. It never showed the
+// models, the reasoning enum, the feature matrix, or the sourceNotes, i.e. none
+// of the "capabilities" its name promises. The adapters carry all of it; nothing
+// rendered it. `Selector metadata: declared` was additionally a plain untruth
+// for every adapter that declares none (which today is all of them).
+//
+// PRIVACY BOUNDARY (tests/unit/model-attestation-contract.test.js). This report
+// reads ONLY the adapter's static, repo-authored capability object. It must
+// never render probe-cache content: that test plants a poisoned cache whose
+// `sourceNote`, `models_source`, `binary_path` and `stderr` fields carry private
+// paths and secrets, and asserts none of it reaches these discovery surfaces.
+// Cache-derived state stays confined to the closed `renderSafeInventory()`
+// projection the caller prints separately, and the cached model catalog remains
+// `--models`' job. Keep it that way: read the ADAPTER here, never the cache.
+
+/**
+ * Wrap prose to `width`, indenting continuation lines, for terminal notes.
+ * ` || ` in a sourceNote is a paragraph break (these notes are long enough that
+ * one unbroken block is unreadable) and becomes a blank line.
+ */
+function wrapNote(text, width = 96, indent = '    ') {
+  const out = [];
+  const paragraphs = String(text ?? '').split(/\s*\|\|\s*/).filter((p) => p.trim());
+  paragraphs.forEach((paragraph, i) => {
+    if (i > 0) out.push('');
+    const words = paragraph.split(/\s+/).filter(Boolean);
+    let line = '';
+    for (const w of words) {
+      if (line && (line.length + 1 + w.length) > width) { out.push(indent + line); line = w; }
+      else line = line ? `${line} ${w}` : w;
+    }
+    if (line) out.push(indent + line);
+  });
+  return out;
+}
+
+/** `yes`/`no` for a declared boolean, `?` when the adapter says nothing. */
+function triState(value) {
+  return value === true ? 'yes' : value === false ? 'no' : '?';
+}
+
+/**
+ * Full static capability report for one vendor, as terminal lines.
+ *
+ * Pure: no I/O, no spawn, no cache read — so it is unit-testable and cannot
+ * leak machine state. The caller renders the cache-backed inventory line.
+ *
+ * @param {string} vendor
+ * @param {{ defaultReasoning?: string }} [o] `defaultReasoning` is the effort a
+ *   dispatch would resolve to when nothing overrides it; used to show whether
+ *   this vendor clamps it. Injectable so the report is deterministic in tests.
+ * @returns {string[]}
+ */
+export function buildCapabilityReport(vendor, { defaultReasoning = process.env.HOPPER_DEFAULT_REASONING || 'xhigh' } = {}) {
+  const adapter = getAdapter(vendor);          // throws on unknown vendor
+  const caps = capabilitiesForAdapter(vendor);
+  const out = [];
+  if (!caps) return ['(this adapter declares no static capabilities)'];
+
+  // Selector metadata: DERIVED, not asserted. This is the line that used to lie.
+  out.push(`Selector metadata: ${adapter.selectorMetadata ? 'declared' : 'not declared (selector classification will report `unknown`)'}`);
+  out.push(`Sandbox control:   ${sandboxControl(adapter)}   (argv = hopper can force read-only; full = always full-access; native = vendor policy only)`);
+  out.push(`Web search:        ${webSearchSupport(adapter)}`);
+
+  const delivery = [
+    `stdin-prompt=${adapter.promptStdin === 'supported' ? (adapter.promptStdinDefault === false ? 'opt-in' : 'default-on') : 'no'}`,
+    `buffered-output=${adapter.bufferedOutput === true ? 'yes' : 'no'}`,
+  ];
+  out.push(`Delivery hints:    ${delivery.join('  ')}`);
+
+  // ── model selector ──
+  const modelArg = caps.modelArg || {};
+  const knownGood = Array.isArray(modelArg.knownGood) ? modelArg.knownGood : [];
+  out.push('', `Model selector (--model): ${modelArg.accepted || '?'}`);
+  if (knownGood.length) {
+    out.push(...wrapNote(`known-good: ${knownGood.join(', ')}`, 96, '  '));
+    const latest = resolveVerifiedLatest(knownGood);
+    out.push(`  verified-latest -> ${latest || '(unresolvable — knownGood[0] is a placeholder; --model is omitted)'}`);
+  } else {
+    out.push('  known-good: (none declared — the vendor account default is used)');
+  }
+  if (Array.isArray(modelArg.driftExpected) && modelArg.driftExpected.length) {
+    out.push(...wrapNote(`drift-expected (not flagged STALE/NEW by --probe): ${modelArg.driftExpected.join(', ')}`, 96, '  '));
+  }
+
+  // ── reasoning ──
+  const reasoningArg = caps.reasoningArg || {};
+  const reasoningKg = Array.isArray(reasoningArg.knownGood) ? reasoningArg.knownGood : [];
+  out.push('', `Reasoning (--reasoning): ${reasoningArg.accepted || '?'}`);
+  if (reasoningKg.length) {
+    out.push(`  known-good: ${reasoningKg.join(' | ')}`);
+    const clamp = computeEffortClamp(vendor, defaultReasoning, reasoningKg);
+    out.push(clamp.clamped
+      ? `  default '${defaultReasoning}' -> CLAMPED to '${clamp.clamped}'`
+      : `  default '${defaultReasoning}' -> forwarded unclamped`);
+  } else {
+    out.push('  known-good: (none — this adapter forwards no reasoning flag; effort is config/model driven)');
+  }
+
+  // ── features ──
+  const features = caps.features || {};
+  const featureKeys = Object.keys(features);
+  if (featureKeys.length) {
+    out.push('', 'Features:');
+    for (const key of featureKeys) {
+      const f = features[key] || {};
+      out.push(`  ${key}: ${triState(f.supported)}`);
+      if (f.mechanism) out.push(...wrapNote(f.mechanism, 92, '      '));
+    }
+  }
+
+  // ── provenance notes ──
+  // Static, repo-authored prose (NOT the probe cache — see the privacy note
+  // above). For several adapters this is the only written record of behavior the
+  // vendor's own documentation does not specify.
+  const notes = [
+    ['model', modelArg.sourceNote],
+    ['reasoning', reasoningArg.sourceNote],
+    ['web-search', caps.webSearch && caps.webSearch.how],
+  ].filter(([, v]) => typeof v === 'string' && v.trim());
+  if (notes.length) {
+    out.push('', 'Capability notes (static adapter metadata; not from the probe cache):');
+    for (const [label, text] of notes) {
+      out.push(`  ${label}:`);
+      out.push(...wrapNote(text, 92, '    '));
+    }
+  }
+
+  if (caps.staleAfter) out.push('', `Static hints stale after ${caps.staleAfter} — re-verify against the vendor CLI past that date.`);
+  return out;
 }

@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { buildVendorReadiness, summarizeReadiness, sandboxControl, webSearchSupport, formatModelDrift, buildRuntimeReport, buildNextSteps, MIN_NODE_MAJOR } from '../../cli/src/setup.js';
+import { buildVendorReadiness, summarizeReadiness, sandboxControl, webSearchSupport, formatModelDrift, buildRuntimeReport, buildNextSteps, buildCapabilityReport, MIN_NODE_MAJOR } from '../../cli/src/setup.js';
 import { reconcileModels } from '../../cli/src/model-normalize.js';
 import { listAdapters, getAdapter } from '../../cli/src/vendors/index.js';
 import { getVendorCache, setVendorCache } from '../../cli/src/cache.js';
@@ -361,4 +361,71 @@ test('V3 deep: a non-live (partial) probe never clobbers an existing cache entry
     if (oldEnv === undefined) delete process.env.HOPPER_CACHE_DIR; else process.env.HOPPER_CACHE_DIR = oldEnv;
     rmSync(tmp, { recursive: true, force: true });
   }
+});
+
+// ── buildCapabilityReport: `--capabilities <vendor>` actually reports capabilities ──
+//
+// Before 2026-08-10 that command printed four fixed lines and none of the
+// adapter's model/reasoning/feature metadata, plus a HARDCODED
+// "Selector metadata: declared" that was untrue for every adapter.
+
+test('buildCapabilityReport renders the real sections for every registered adapter', () => {
+  for (const vendor of listAdapters()) {
+    const lines = buildCapabilityReport(vendor);
+    const text = lines.join('\n');
+    assert.ok(lines.length > 4, `${vendor}: report must be more than the old four fixed lines`);
+    for (const section of ['Selector metadata:', 'Sandbox control:', 'Web search:', 'Model selector (--model):', 'Reasoning (--reasoning):']) {
+      assert.ok(text.includes(section), `${vendor}: report is missing the "${section}" section`);
+    }
+  }
+});
+
+test('buildCapabilityReport DERIVES the selector-metadata line instead of asserting it', () => {
+  // The exact regression: the line read "Selector metadata: declared" for all
+  // vendors regardless of whether the adapter declared any. Keyed on the adapter
+  // now, so it stays true for whichever adapter declares one first.
+  for (const vendor of listAdapters()) {
+    const line = buildCapabilityReport(vendor).find((l) => l.startsWith('Selector metadata:'));
+    assert.ok(line, `${vendor}: no selector-metadata line`);
+    const declares = Boolean(getAdapter(vendor).selectorMetadata);
+    assert.equal(/not declared/.test(line), !declares,
+      `${vendor}: selector-metadata line disagrees with the adapter (declares=${declares}): "${line}"`);
+  }
+});
+
+test('buildCapabilityReport surfaces whether the default effort survives or is clamped', () => {
+  // This is the fact a caller most needs before choosing a vendor for a
+  // high-reasoning task, and it was previously invisible on every surface.
+  const grok = buildCapabilityReport('grok', { defaultReasoning: 'xhigh' }).join('\n');
+  assert.match(grok, /default 'xhigh' -> CLAMPED to 'high'/, 'grok clamps xhigh and must say so');
+  for (const vendor of ['pi', 'codex']) {
+    const text = buildCapabilityReport(vendor, { defaultReasoning: 'xhigh' }).join('\n');
+    assert.match(text, /default 'xhigh' -> forwarded unclamped/, `${vendor} accepts xhigh natively`);
+  }
+  // An adapter with no reasoning enum must not claim a clamp verdict at all.
+  const kimi = buildCapabilityReport('kimi').join('\n');
+  assert.doesNotMatch(kimi, /CLAMPED|forwarded unclamped/, 'kimi forwards no reasoning flag; no clamp verdict applies');
+});
+
+test('buildCapabilityReport is pure static adapter data — it never names the probe cache fields', () => {
+  // Privacy boundary (tests/unit/model-attestation-contract.test.js plants a
+  // poisoned cache and asserts these discovery surfaces leak none of it). This
+  // builder takes only a vendor name and reads the adapter, so cache content
+  // cannot reach it — pinned here so a future edit does not start reading it.
+  for (const vendor of listAdapters()) {
+    const text = buildCapabilityReport(vendor).join('\n');
+    for (const forbidden of ['sourceNote', 'models_source', 'modelsSource', 'cacheError', 'binary_path']) {
+      assert.ok(!text.includes(forbidden), `${vendor}: report must not name the cache field "${forbidden}"`);
+    }
+  }
+});
+
+test('--capabilities prints the model known-good list a caller needs to pick a selector', () => {
+  const result = spawnSync(process.execPath, [DISPATCH_BIN, '--capabilities', 'pi'], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  const out = `${result.stdout}\n${result.stderr}`;
+  assert.match(out, /openai-codex\/gpt-5\.6-terra/, 'must list the vendor\'s known-good models');
+  assert.match(out, /verified-latest -> /, 'must resolve the verified-latest sentinel');
+  assert.match(out, /Capability notes/, 'must surface the static provenance notes');
+  assert.match(out, /static data only/, 'must keep the no-spawn assurance');
 });

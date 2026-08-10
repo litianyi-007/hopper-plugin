@@ -19,6 +19,43 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.52.0] - 2026-08-10
+
+`--capabilities <vendor>` 名字承诺的是「这个 vendor 能干什么」,实际只打印**四行固定内容**:
+版本横幅、封闭的 inventory 投影、一行**硬编码**的 `Selector metadata: declared`,以及
+「不 spawn 子进程」的脚注。model 列表、reasoning 枚举、feature 矩阵、provenance 说明——
+适配器里全都有,**没有任何界面渲染过它们**。`--help` 里那句
+「Show static model/reasoning/feature support」是一张挂了很久的空头支票。
+
+顺带,那行 `Selector metadata: declared` 是**假话**:今天没有任何一个适配器声明
+`selectorMetadata`,它对九家都照说 "declared"。
+
+**触发点**是排查 pi 的 model 指定方式时想找地方看 `sourceNote`——发现它**从未被渲染过**。
+每个适配器的 `sourceNote` 都是几百到几千字、带 V-verified 取证的一手知识
+(pi 那条尤其关键:pi 官网**没有**文档化 `--model` 的解析算法,那段实测记录是唯一的书面来源),
+而它们只存在于源码注释里。
+
+现在 `--capabilities <vendor>` 会输出:
+
+- `Selector metadata:` —— **从适配器派生**,没声明就说 not declared(并说明后果:selector
+  分类会报 `unknown`)。
+- `Sandbox control:` / `Web search:` / `Delivery hints:`(stdin-prompt、buffered-output)。
+- **Model selector**:accepted 类型、known-good 列表、`verified-latest` 解析到哪个、
+  `drift-expected`。
+- **Reasoning**:枚举 + **默认档位会不会被 clamp**——`grok` 现在会明说
+  `default 'xhigh' -> CLAMPED to 'high'`,`pi`/`codex` 说 `forwarded unclamped`。
+  这是选 vendor 跑高推理任务时最该知道的一件事,此前在所有界面上都不可见。
+- **Features**:每项 supported + mechanism。
+- **Capability notes**:三段 sourceNote(model / reasoning / web-search),按 ` || ` 分段折行。
+
+**隐私边界没有放宽。** `buildCapabilityReport()` 只读适配器的静态、仓库内作者写的能力对象,
+**不读 probe 缓存**——`model-attestation-contract` 那个测试会种一份带毒缓存(其
+`sourceNote` / `models_source` / `binary_path` / `stderr` 字段塞满私有路径和密钥)并断言这些
+discovery 界面一个字都不能漏。缓存态仍然只经由封闭的 `renderSafeInventory()` 投影输出,
+按账号的实时模型目录仍然是 `--probe` + `--models` 的职责。该测试保持绿。
+
+`--help` 里那行也改写成实话,并指明缓存目录归 `--probe`/`--models`。
+
 ## [0.51.0] - 2026-08-10
 
 新增第 9 个 vendor adapter：**`pi`**（Earendil Works 的 `pi` coding agent，npm

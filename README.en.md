@@ -232,7 +232,7 @@ Not every CLI exposes both knobs. What each vendor honors:
 |---|---|---|---|
 | codex | `-m` | ✓ | **bare names only**: `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex-spark`. Provider-prefixed ids (`openai-codex/…`) are rejected on ChatGPT accounts. |
 | grok | `-m` | ✓ | enum low/med/high; `xhigh` clamps to `high`. |
-| pi | `--model <provider/model>` | ✓ | `--thinking` enum is off/minimal/low/medium/high/xhigh/max — a **superset** of hopper's five levels, so `xhigh` is **never clamped**; pi is the only vendor that receives it verbatim. Multi-provider router: which models are reachable depends on what **this machine** is logged into (`--probe pi` reads the live `pi --list-models` catalog). With no `--model`, pi falls back to `defaultProvider`/`defaultModel` in `~/.pi/agent/settings.json`. |
+| pi | `--model <model>` or `<provider>/<model>` | ✓ | `--thinking` enum is off/minimal/low/medium/high/xhigh/max — a **superset** of hopper's five levels, so `xhigh` is **never clamped**; pi is the only vendor that receives it verbatim. Multi-provider router: which models are reachable depends on what **this machine** is logged into (`--probe pi` reads the live `pi --list-models` catalog). With no `--model`, pi falls back to `defaultProvider`/`defaultModel` in `~/.pi/agent/settings.json`. **⚠ `openai` and `openai-codex` are different providers** — the gpt-5.6 family lives under `openai-codex` (ChatGPT OAuth), not `openai` (API key); a wrong prefix fails outright with `No API key found`. See "Spelling a pi model" below. |
 | mimo | `--model` | ✓ | `xhigh` → `--variant max`. **Not supported** (product decision, 2026-07-31) — see below. |
 | copilot | `--model` | ✓ | enum low/med/high; `xhigh` clamps to `high`. Raw override: `HOPPER_COPILOT_EFFORT`. **Not supported** (product decision, 2026-07-31) — see below. |
 | opencode | `--model <provider/model>` | explicit only | a caller-supplied `--reasoning high` becomes `--variant high`; Hopper omits policy/default `xhigh` for provider compatibility. `HOPPER_OPENCODE_VARIANT=<v>` overrides it verbatim. **Not supported** (product decision, 2026-07-31) — see below. |
@@ -250,6 +250,49 @@ hopper-dispatch --capabilities codex    # one vendor's model/effort/perms contra
 hopper-dispatch --probe codex           # your account's live model catalog
 hopper-dispatch --check-model codex gpt-5.5   # assert one model before dispatch: verified (0) | catalog-only (2) | not-found (1)
 ```
+
+### Spelling a pi model
+
+pi is a multi-provider router. `--model` takes three forms: a bare id, `provider/id`,
+or `id:<thinking>`. **pi's own docs do not specify its resolution algorithm**, so the
+below is behavior verified against pi 0.84.1 on 2026-08-10.
+
+One thing actually bites:
+
+> **`openai` and `openai-codex` are different providers.** `openai` uses an API key
+> (`OPENAI_API_KEY`); `openai-codex` is the ChatGPT-subscription OAuth path. **The
+> gpt-5.6 family (terra / sol / luna) lives under `openai-codex`.** On a machine where
+> `openai-codex` is logged in, `--model openai/gpt-5.6-terra` exits 1 with
+> `No API key found for openai.` — writing a prefix **pins** the provider, and pi does
+> not fall back to another one.
+
+hopper absorbs part of that. For any model already in `knownGood`, all three spellings
+normalize to the same value:
+
+| You write | What hopper sends pi |
+|---|---|
+| `gpt-5.6-terra` (bare) | `openai-codex/gpt-5.6-terra` |
+| `openai-codex/gpt-5.6-terra` | unchanged |
+| `openai/gpt-5.6-terra` (wrong prefix) | `openai-codex/gpt-5.6-terra` ← **auto-corrected** |
+| `GPT 5.6 Terra` (loose) | `openai-codex/gpt-5.6-terra` |
+
+**But a model NOT in `knownGood` (a newly released one) passes through verbatim** — so
+`openai/gpt-5.7-xxx` reaches pi with the wrong prefix and fails outright. That asymmetry
+is the only real footgun; check before dispatch:
+
+```bash
+# To see what hopper will actually send pi, read the --json `normalized` field:
+hopper-dispatch --check-model pi "openai/gpt-5.6-terra" --json
+#   {"model":"openai/gpt-5.6-terra","normalized":"openai-codex/gpt-5.6-terra","verdict":"verified",...}
+
+hopper-dispatch --check-model pi openai/gpt-5.7-xxx   # → not-found, exit 1
+hopper-dispatch --probe pi                            # which providers this machine is logged into
+pi auth check --provider openai-codex --json          # confirm one provider's login state
+```
+
+With no `--model`, pi falls back to `defaultProvider` / `defaultModel` in
+`~/.pi/agent/settings.json` — not the `google` shown in `pi --help`, which only applies
+when nothing is configured.
 
 Tuning via environment variables:
 
