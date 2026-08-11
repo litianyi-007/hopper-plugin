@@ -261,6 +261,13 @@ export const codexAdapter = {
   capabilities: {
     modelArg: {
       accepted: 'freeform',
+      // The model hopper prefers for hopper-shaped work (adversarial review,
+      // acceptance review, high-reasoning judgment). Same value the sentinel
+      // already inferred from knownGood[0]; declaring it explicitly means the
+      // ORDERING CONVENTION documented below is no longer load-bearing — a
+      // reordering of the catalog can no longer silently change what
+      // `verified-latest` dispatches to.
+      hopperDefault: 'gpt-5.6-sol',
       // ISSUE-codex-vendor-model-effort (2026-06): adapter now forwards opts.model
       // as `-m <MODEL>`. ChatGPT-account auth accepts BARE names only — provider-
       // prefixed ids (openai-codex/gpt-5.1-codex) are rejected (openai/codex#12295).

@@ -6,6 +6,7 @@
 // NO round-robin. NO load-balance state. Deterministic static lookup ONLY.
 
 import { readFile } from 'node:fs/promises';
+import { isOobCell } from './policy.js';
 
 /**
  * Parse a .hopper/AGENTS.md file.
@@ -163,6 +164,15 @@ function mapColumns(cells, section) {
       approvedByIdx: indexOfAny(lower, ['approved by']),
       dateIdx: indexOfAny(lower, ['date']),
       notesIdx: indexOfAny(lower, ['scope / notes', 'scope/notes', 'notes', 'scope']),
+      // 2026-08-11: per-vendor model override. Lives HERE and not in the
+      // task-type table because that table is deliberately vendor-NEUTRAL (its
+      // Model rule column takes a sentinel, never a literal id, so a project
+      // never hand-writes "gpt-5.5" into a vendor-agnostic policy row). A
+      // literal model belongs in the per-vendor table — which this already is.
+      // It exists so a project can (a) express a preference and (b) close the
+      // gap when a vendor ships a newer model before hopper's preset catches up,
+      // without waiting for a hopper release.
+      defaultModelIdx: indexOfAny(lower, ['default model', 'model']),
     };
     if (map.vendorIdx == null || map.approvedIdx == null) return null;
     return map;
@@ -231,7 +241,32 @@ function extractApprovedVendorRow(cells, map) {
   const approvedBy = map.approvedByIdx != null ? stripBackticks(cells[map.approvedByIdx]) : '';
   const date = map.dateIdx != null ? stripBackticks(cells[map.dateIdx]) : '';
   const notes = map.notesIdx != null ? (cells[map.notesIdx] || '').trim() : '';
-  return { vendor, approved, approvedBy, date, notes };
+  // An empty cell, a dash, or an out-of-band marker like `(bind per project)`
+  // all mean "no project override" — fall through to the adapter's hopper
+  // default. Both markers are already conventions elsewhere in this file's
+  // tables, so a project filling the column in by hand cannot accidentally
+  // pin the literal string "-" as a model.
+  const rawDefaultModel = map.defaultModelIdx != null ? stripBackticks(cells[map.defaultModelIdx]).trim() : '';
+  const defaultModel = rawDefaultModel && !isOobCell(rawDefaultModel) && !/^[-—–]+$/.test(rawDefaultModel)
+    ? rawDefaultModel
+    : null;
+  return { vendor, approved, approvedBy, date, notes, defaultModel };
+}
+
+/**
+ * The project's per-vendor `Default model` override from `## Approved Vendors`,
+ * or null when the table has no such column / no value for this vendor.
+ * @param {object} agentsData parsed AGENTS.md
+ * @param {string} vendor
+ * @returns {string|null}
+ */
+export function vendorDefaultModel(agentsData, vendor) {
+  const list = agentsData?.approvedVendors?.list;
+  if (!Array.isArray(list) || typeof vendor !== 'string') return null;
+  const row = list.find((r) => r && r.vendor === vendor.toLowerCase());
+  return row && typeof row.defaultModel === 'string' && row.defaultModel.trim()
+    ? row.defaultModel.trim()
+    : null;
 }
 
 /**

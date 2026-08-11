@@ -87,6 +87,13 @@ export const grokAdapter = {
   capabilities: {
     modelArg: {
       accepted: 'freeform',
+      // The model hopper prefers for hopper-shaped work. Same value as
+      // DEFAULT_MODEL above (which args() passes when no model is requested), so
+      // a grok dispatch is now pinned to the SAME model whether it arrives via
+      // the sentinel or via the adapter fallback — and the sentinel path RECORDS
+      // it, which the fallback path never did (a swarm panelist showed
+      // `observed_models_json: []` while really running grok-4.5).
+      hopperDefault: DEFAULT_MODEL,
       // knownGood[0] is the `verified-latest` sentinel target (cli/src/dispatch.js
       // resolveAdapterOptsForTask + cli/src/policy.js). The grok model LINE is
       // version-coupled and rotates without notice — xAI retires slugs and this

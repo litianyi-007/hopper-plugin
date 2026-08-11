@@ -40,7 +40,24 @@ export async function loadTaskFrame(hopperDir, taskType) {
     content = await readFile(framePath, 'utf-8');
   } catch (err) {
     if (err.code === 'ENOENT') {
-      throw new Error(`Task-type frame not found: ${framePath}. Available frames: see .hopper/tasks/`);
+      // Name what IS available and, crucially, the ONE command that fixes it.
+      // "see .hopper/tasks/" sent the operator to go look: a live swarm asking
+      // for `decision-review` died 2/2 on this error and the host downgraded the
+      // task to a different review type rather than run one migration. hopper
+      // already knew the answer — missingTaskFrames() returns exactly the frames
+      // this workspace is short, and --migrate-config writes them.
+      let available = [];
+      try {
+        available = (await readdir(tasksDir)).filter((f) => f.endsWith('.md')).map((f) => f.replace(/\.md$/, ''));
+      } catch (_) { /* unreadable tasks/ — fall back to the bare message */ }
+      const have = available.length ? `Available here: ${available.sort().join(', ')}.` : 'No frames found in .hopper/tasks/.';
+      throw new Error(
+        `Task-type frame not found: ${framePath}\n`
+        + `  ${have}\n`
+        + `  If '${taskType}' is a task-type hopper ships, this workspace predates it — install the missing frames with:\n`
+        + '      hopper-dispatch --migrate-config          (dry run; shows what would be written)\n'
+        + '      hopper-dispatch --migrate-config --yes    (writes them; additive, backs up to .hopper/.migrations/)',
+      );
     }
     throw err;
   }

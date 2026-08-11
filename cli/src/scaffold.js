@@ -319,8 +319,16 @@ project). Enforcement is fail-closed: if this section is missing entirely,
 add a row and set \`Approved\` to \`yes\` for each vendor you actually want
 this project to use.
 
-| Vendor | Approved | Approved by | Date | Scope / Notes |
-|---|---|---|---|---|
+**\`Default model\` (optional).** The model an *unpinned* dispatch to that vendor
+should use in this project. Leave it empty (or \`-\`) to take hopper's shipped
+preference for that vendor — see \`hopper-dispatch --capabilities <vendor>\`, which
+prints the effective default and where it came from. Fill it in to (a) express a
+project preference, or (b) use a model the vendor has shipped but hopper's preset
+has not caught up to yet, without waiting for a hopper release. Resolution order:
+\`--model <id>\` > \`HOPPER_<VENDOR>_MODEL\` > this column > the adapter preset.
+
+| Vendor | Approved | Approved by | Date | Default model | Scope / Notes |
+|---|---|---|---|---|---|
 
 ---
 

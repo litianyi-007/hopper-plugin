@@ -45,6 +45,12 @@ export const agyAdapter = {
   capabilities: {
     modelArg: {
       accepted: 'freeform',
+      // Same value the sentinel already inferred from knownGood[0] — declared
+      // explicitly so the intent survives a future reordering of the catalog.
+      // NOTE the format: agy's `--model` takes the full DISPLAY LABEL with tier,
+      // not a slug (see sourceNote), so this string looks like a UI label and is
+      // nevertheless the correct selector.
+      hopperDefault: 'Gemini 3.5 Flash (High)',
       // V1 verification (2026-06): agy NOW exposes `--model` + a `models` subcommand (added
       // since the 2026-05 research). The flag takes the FULL DISPLAY LABEL with the reasoning
       // tier in parens — bare slugs (gemini-3.5-flash) are rejected and silently fall back to

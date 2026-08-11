@@ -57,7 +57,10 @@ test('reasoning chain: unbound Effort policy (OOB / vendor not named) falls thro
   withEnv('HOPPER_DEFAULT_REASONING', 'medium', () => {
     const oob = resolveAdapterOptsForTask(resolvedWith('codex', 'code-impl', { effortPolicy: '(bind per project)', modelRule: '' }), {});
     assert.equal(oob.reasoning, 'medium');
-    assert.equal(oob.policyNotices.length, 0, 'OOB is silent — not an error, no notice');
+    // OOB is silent on the EFFORT axis — not an error, no effort notice. (The
+    // model axis independently emits a hopper-default notice since 2026-08-11,
+    // so this asserts the absence of an effort notice, not of all notices.)
+    assert.equal(oob.policyNotices.filter((n) => /effort/i.test(n)).length, 0, 'OOB effort is silent — not an error');
 
     const notNamed = resolveAdapterOptsForTask(resolvedWith('kimi', 'code-review-adversarial', { effortPolicy: 'codex:xhigh, grok:high', modelRule: '' }), {});
     assert.equal(notNamed.reasoning, 'medium', 'kimi not in the per-vendor table -> falls through');
@@ -107,11 +110,28 @@ test('model chain: explicit --model flag wins; still goes through V4 normalizati
   assert.ok(!out.policyNotices.some((n) => n.includes('Model rule')));
 });
 
-test('model chain: Model rule verified-latest resolves to the vendor knownGood[0] REAL name', () => {
+test('model chain: Model rule verified-latest resolves to the vendor DECLARED hopper default', () => {
+  // 2026-08-11: the sentinel now reads `capabilities.modelArg.hopperDefault`
+  // instead of inferring knownGood[0] — see resolveVerifiedLatest in
+  // cli/src/policy.js. codex's declared default equals what index 0 used to be,
+  // so the resolved model is unchanged; only the provenance is now explicit.
   const out = resolveAdapterOptsForTask(resolvedWith('codex', 'code-impl', { effortPolicy: '', modelRule: 'verified-latest' }), {});
-  assert.equal(out.model, 'gpt-5.6-sol', 'codex knownGood[0] after the batch-2 reorder');
+  assert.equal(out.model, 'gpt-5.6-sol', "codex's declared hopperDefault");
   assert.ok(out.policyNotices.some((n) => n.includes("Model rule (task-type 'code-impl'): verified-latest")));
-  assert.ok(out.policyNotices.some((n) => n.includes("model sentinel 'verified-latest' → gpt-5.6-sol (codex knownGood[0])")));
+  assert.ok(out.policyNotices.some((n) => n.includes("model sentinel 'verified-latest' → gpt-5.6-sol (codex hopper default)")));
+});
+
+test('model chain: an adapter declaring NO hopper default omits --model instead of pinning an alias', () => {
+  // opencode declares `hopperDefault: null` — which models exist depends
+  // entirely on the user's opencode auth config, so hopper has no basis for a
+  // preference. (The related defect: claude's knownGood is an UNORDERED alias
+  // set, so inferring index 0 pinned every `verified-latest` review to `sonnet`
+  // and silently downgraded an opus-entitled account. claude now declares its
+  // preference explicitly — see tests/unit/vendor-model-default.test.js.)
+  const out = resolveAdapterOptsForTask(resolvedWith('opencode', 'code-impl', { effortPolicy: '', modelRule: 'verified-latest' }), {});
+  assert.equal(out.model, undefined, 'must NOT invent a model for a vendor with no declared preference');
+  assert.ok(out.policyNotices.some((n) => /declares no hopper default/.test(n)),
+    `expected a no-hopper-default notice; got ${JSON.stringify(out.policyNotices)}`);
 });
 
 test('model chain: sentinel resolution is vendor-scoped (grok gets its own knownGood[0])', () => {
@@ -122,23 +142,35 @@ test('model chain: sentinel resolution is vendor-scoped (grok gets its own known
   assert.equal(out.model, 'grok-4.5');
 });
 
-test('model chain: unbound Model rule (OOB) falls through silently to vendor CLI default (--model omitted)', () => {
+test('model chain: unbound Model rule (OOB) falls through to the vendor hopper default, not to nothing', () => {
+  // 2026-08-11: an unpinned dispatch no longer inherits whatever the vendor CLI
+  // felt like. It lands on the adapter's declared hopper default and SAYS SO —
+  // the silence was how a swarm panelist ran pi on gpt-5.5 while recording
+  // `requested_selector: null`.
   const out = resolveAdapterOptsForTask(resolvedWith('codex', 'code-impl', { effortPolicy: '', modelRule: '(bind per project)' }), {});
-  assert.equal(out.model, undefined);
-  assert.equal(out.policyNotices.length, 0);
+  assert.equal(out.model, 'gpt-5.6-sol');
+  assert.ok(out.policyNotices.some((n) => /hopper default/.test(n)), 'the resolution must be visible');
+  // A vendor that declares no preference still falls through to nothing.
+  const unpinnable = resolveAdapterOptsForTask(resolvedWith('opencode', 'code-impl', { effortPolicy: '', modelRule: '(bind per project)' }), {});
+  assert.equal(unpinnable.model, undefined);
 });
 
 test('model chain: unparseable Model rule (unknown sentinel) falls through WITH a notice, never forwarded as a literal --model', () => {
   const out = resolveAdapterOptsForTask(resolvedWith('codex', 'code-impl', { effortPolicy: '', modelRule: 'not-a-real-sentinel' }), {});
-  assert.equal(out.model, undefined, 'must NOT forward the garbage string as a literal --model value');
+  assert.notEqual(out.model, 'not-a-real-sentinel', 'must NOT forward the garbage string as a literal --model value');
+  assert.equal(out.model, 'gpt-5.6-sol', 'falls through to the vendor hopper default (2026-08-11)');
   assert.ok(out.policyNotices.some((n) => n.includes('unrecognized sentinel')));
 });
 
-test('model chain: sentinel with no usable knownGood[0] (placeholder) omits --model with a notice, never forwards the placeholder', () => {
-  // opencode's knownGood[0] is the documentation placeholder '<provider>/<model>'.
+test('model chain: a vendor with no pinnable default omits --model with a notice, never forwards a placeholder', () => {
+  // opencode declares `hopperDefault: null` for the same reason its knownGood is
+  // the documentation placeholder '<provider>/<model>': the reachable catalog
+  // depends entirely on the user's opencode auth config, so hopper has no basis
+  // for a preference. The placeholder must never reach argv as a real model.
   const out = resolveAdapterOptsForTask(resolvedWith('opencode', 'code-impl', { effortPolicy: '', modelRule: 'verified-latest' }), {});
   assert.equal(out.model, undefined);
-  assert.ok(out.policyNotices.some((n) => n.includes('no resolvable knownGood[0]')));
+  assert.ok(out.policyNotices.some((n) => /declares no hopper default/.test(n)),
+    `expected a no-hopper-default notice; got ${JSON.stringify(out.policyNotices)}`);
 });
 
 test('model+reasoning chain: no resolved/vendor object at all never throws (back-compat with pre-batch-2 callers)', () => {

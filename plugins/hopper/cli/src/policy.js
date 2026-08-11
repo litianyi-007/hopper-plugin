@@ -106,21 +106,65 @@ export function parseModelRuleCell(raw) {
 }
 
 /**
- * Resolve the `verified-latest` sentinel for a vendor: convention is that
- * `capabilities.modelArg.knownGood[0]` (index 0) is the CURRENT preferred/
- * verified model for that vendor — see the ordering comment on codex.js's
- * knownGood array, which this sentinel depends on staying accurate.
- * Returns null when there is nothing usable to resolve to (empty knownGood,
- * or a documentation placeholder like opencode's `<provider>/<model>`), so
- * callers can omit --model (vendor CLI default) rather than forward a
- * placeholder string as a real argv value.
- * @param {string[]} knownGood
+ * Resolve the `verified-latest` sentinel for a vendor to the model hopper
+ * prefers for hopper-shaped work.
+ *
+ * READS `capabilities.modelArg.hopperDefault` — an EXPLICIT declaration, not an
+ * inference from array order.
+ *
+ * WHY THE FIELD EXISTS (2026-08-11). This used to return `knownGood[0]`, which
+ * silently conflated two different things: `knownGood` is "models known to
+ * work" (a catalog, used for normalization and drift reconciliation), while the
+ * sentinel needs "the model hopper wants" (an intent). codex's knownGood
+ * documents an ordering convention that makes index 0 meaningful; `claude`'s
+ * does not — its knownGood is an UNORDERED alias set (`sonnet, opus, haiku,
+ * fable, …`) and its own sourceNote says the adapter deliberately omits
+ * `--model` because reachable tiers depend on the account's entitlements. So
+ * `verified-latest` resolved to `sonnet` for claude and would silently DOWNGRADE
+ * an opus account — on the scaffold's own default task-type table, which writes
+ * `Model rule: verified-latest` for every review type.
+ *
+ * Hopper's preference deliberately need NOT match the vendor agent's own
+ * default: work dispatched through hopper is adversarial review, blindspot
+ * hunting and high-reasoning judgment, which can justify a different (usually
+ * stronger) model than the vendor picks for interactive use.
+ *
+ * Returns null when there is nothing usable to pin — an explicit
+ * `hopperDefault: null`, an empty catalog, or a documentation placeholder like
+ * opencode's `<provider>/<model>` — so callers OMIT `--model` and let the vendor
+ * choose, rather than forwarding a placeholder as a real argv value.
+ *
+ * @param {{hopperDefault?: string|null, knownGood?: string[]}|string[]} modelArg
+ *   the adapter's `capabilities.modelArg` (a bare knownGood array is accepted
+ *   as a legacy form)
  * @returns {string|null}
  */
-export function resolveVerifiedLatest(knownGood) {
-  const first = Array.isArray(knownGood) ? knownGood[0] : null;
-  if (!first || typeof first !== 'string' || /^<.*>$/.test(first.trim())) return null;
-  return first;
+export function resolveVerifiedLatest(modelArg) {
+  const caps = modelArg && typeof modelArg === 'object' && !Array.isArray(modelArg) ? modelArg : null;
+
+  // An adapter that DECLARES hopperDefault has answered the question, including
+  // when it answers `null`. `null` is a statement ("hopper has no preference for
+  // this vendor — let the account/CLI decide"), which is materially different
+  // from not having been asked yet, so it is honored rather than falling through.
+  if (caps && Object.hasOwn(caps, 'hopperDefault')) {
+    const declared = caps.hopperDefault;
+    if (declared === null) return null;
+    return isUsableSelector(declared) ? declared.trim() : null;
+  }
+
+  // Legacy fallback for an adapter that predates the field: infer from
+  // knownGood[0]. This is exactly the inference that made `claude` resolve to
+  // `sonnet` — see the field's jsdoc — so it stays only as a floor for an
+  // adapter that has not yet stated its intent.
+  const list = Array.isArray(modelArg) ? modelArg : (caps ? caps.knownGood : null);
+  const first = Array.isArray(list) ? list[0] : null;
+  return isUsableSelector(first) ? first : null;
+}
+
+/** A selector hopper may actually pass to a vendor: a non-empty, non-placeholder string. */
+function isUsableSelector(value) {
+  // `<provider>/<model>` (opencode) is documentation of a FORMAT, not a model.
+  return typeof value === 'string' && value.trim() !== '' && !/^<.*>$/.test(value.trim());
 }
 
 /**

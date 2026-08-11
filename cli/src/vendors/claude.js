@@ -82,6 +82,28 @@ export const claudeAdapter = {
   capabilities: {
     modelArg: {
       accepted: 'freeform',
+      // Operator choice (2026-08-11): pin the TOP tier, because work dispatched
+      // through hopper is adversarial review / blindspot hunting / judgment,
+      // where the strongest available model is worth its cost — hopper's
+      // preference deliberately need not match what Claude Code picks for
+      // interactive use.
+      //
+      // NOTE THE DIRECTION. This field exists because the sentinel used to infer
+      // knownGood[0], and knownGood below is an UNORDERED ALIAS SET — `sonnet` is
+      // first because it is the most common alias, NOT because it is the best
+      // model. That inference silently DOWNGRADED an opus-entitled account on
+      // every task-type carrying `Model rule: verified-latest`, which the
+      // scaffold writes for every review type. Pinning `opus` here is the
+      // opposite: a deliberate, stated choice rather than an accident of array
+      // order — which is exactly what declaring the field is for.
+      //
+      // ⚠ ACCOUNT-DEPENDENT. Reachable tiers are a subscription entitlement (see
+      // sourceNote below), so on an account without opus this pin will FAIL
+      // rather than fall back. Override per project with the `Default model`
+      // column in AGENTS.md `## Approved Vendors`, or per machine with
+      // HOPPER_CLAUDE_MODEL; `default` and `best` are in knownGood for exactly
+      // that case (`best` lets the account pick its strongest).
+      hopperDefault: 'opus',
       knownGood: ['sonnet', 'opus', 'haiku', 'fable', 'opusplan', 'best', 'default', 'sonnet[1m]', 'opus[1m]'],
       sourceNote: '`claude --model <NAME>` accepts a latest-model alias (sonnet|opus|haiku|fable) OR a full model id (e.g. claude-sonnet-4-6) — CONFIRMED code.claude.com/docs/en/cli-reference 2026-06-16. The exact ids/tiers an account can reach depend on its subscription/entitlements, so this adapter does NOT hardcode a default: it omits --model unless opts.model is set and lets the CLI pick the account default (mirrors codex, which also leaves the model to the account).',
     },

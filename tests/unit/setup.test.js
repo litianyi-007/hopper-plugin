@@ -425,7 +425,15 @@ test('--capabilities prints the model known-good list a caller needs to pick a s
   assert.equal(result.status, 0, result.stderr);
   const out = `${result.stdout}\n${result.stderr}`;
   assert.match(out, /openai-codex\/gpt-5\.6-terra/, 'must list the vendor\'s known-good models');
-  assert.match(out, /verified-latest -> /, 'must resolve the verified-latest sentinel');
+  assert.match(out, /effective default: \(none\)/, 'pi is a platform router — hopper ships no preference for it');
+  assert.match(out, /Override order:/, 'must show how to change it');
+  // A platform router must print the provider ids, because they are NOT
+  // guessable ("Kimi" is `kimi-coding`; the ChatGPT plan is `openai-codex`, not
+  // `openai`). Without them a caller cannot answer "which model?" at all.
+  assert.match(out, /multi-provider platform/, 'must say it is a platform router');
+  assert.match(out, /openai-codex/, 'must list the ChatGPT-subscription provider id');
+  assert.match(out, /kimi-coding/, 'must list the Kimi provider id');
+  assert.match(out, /guessing does NOT work/, 'must warn that the intuitive names are rejected');
   assert.match(out, /Capability notes/, 'must surface the static provenance notes');
   assert.match(out, /static data only/, 'must keep the no-spawn assurance');
 });

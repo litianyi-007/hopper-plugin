@@ -11,7 +11,7 @@
 
 import { parseQueue, findEligibleTask, summarizeQueue } from './queue.js';
 import { loadTaskFrame, composePrompt } from './tasks.js';
-import { parseAgentsFile, resolveVendor, assertVendorApproved } from './agents.js';
+import { parseAgentsFile, resolveVendor, assertVendorApproved, vendorDefaultModel } from './agents.js';
 import { resolveGovernance } from './governance.js';
 import { getAdapter } from './vendors/index.js';
 import { codexSandboxBypassActive } from './vendors/codex.js';
@@ -32,6 +32,39 @@ import { join } from 'node:path';
 
 const READ_ONLY_TASK_RE = /\b(?:read[-_\s]?only|readonly)\b|只读/i;
 const NEGATED_READ_ONLY_RE = /\b(?:not|non|is\s+not|isn't)\s+(?:read[-_\s]?only|readonly)\b|(?:不是|非)\s*只读/i;
+
+/**
+ * Announce that a PLATFORM ROUTER is about to run unpinned, with the provider
+ * ids needed to fix it. No-op for any vendor that does not declare itself one.
+ *
+ * A platform router (pi) serves users on gpt / claude / kimi / qwen / glm…, so
+ * hopper must not guess a model for it — but running unannounced is how a swarm
+ * panelist ran on `gpt-5.5` out of ~/.pi/agent/settings.json while every other
+ * dispatch in that project used the 5.6 line, with `requested_selector: null`
+ * and nothing to show it. Warn rather than refuse (operator decision
+ * 2026-08-11): a refusal would break every existing unpinned dispatch, and the
+ * run is still attested after the fact by `observed_models`.
+ *
+ * The ids are load-bearing, not decoration: pi rejects every intuitive name
+ * (`kimi`, `qwen`, `gemini`, `claude`, `grok` → `provider_not_found`), so a
+ * caller told only "pin a model" cannot act on it.
+ *
+ * @param {string[]} notices  collected policyNotices, appended in place
+ * @param {string} vendor
+ */
+function pushUnpinnedPlatformNotice(notices, vendor) {
+  let providers;
+  try { providers = getAdapter(vendor)?.capabilities?.modelArg?.platformProviders; } catch (_) { return; }
+  if (!Array.isArray(providers) || providers.length === 0) return;
+  notices.push(
+    `NOT PINNED: '${vendor}' is a multi-provider platform and hopper does not guess a model for it — `
+    + `this dispatch runs on whatever ${vendor} picks itself, and only the recorded observed_models will `
+    + 'say which. Settle it once in .hopper/AGENTS.md `## Approved Vendors` → `Default model` '
+    + `(or HOPPER_${String(vendor).toUpperCase()}_MODEL), as \`<provider>/<model>\`. Provider ids: `
+    + `${providers.map((p) => p.id).join(', ')} — \`hopper-dispatch --capabilities ${vendor}\` maps each `
+    + 'to its vendor and auth method (the intuitive names are rejected).',
+  );
+}
 
 /** Raw Effort policy / Model rule cells for a task-type, or the unbound-shaped default. */
 function policyForTaskType(agentsData, taskType) {
@@ -88,7 +121,7 @@ export async function resolveDispatch({ hopperDir, taskId, vendorOverride = null
   // resolveAdapterOptsForTask's --reasoning / --model fallback chains below.
   const policy = policyForTaskType(agentsData, task.taskType);
 
-  return { task, frame, vendor, composedPrompt, taskSpec, policy };
+  return { task, frame, vendor, composedPrompt, taskSpec, policy, vendorDefaultModel: vendorDefaultModel(agentsData, vendor) };
 }
 
 /**
@@ -130,7 +163,7 @@ export async function resolveAdhocDispatch({ hopperDir, taskType, brief, id, ven
   const governance = await resolveGovernance({ hopperDir, vendor, task });
   const composedPrompt = composePrompt(frame, taskSpec, { governance });
   const policy = policyForTaskType(agentsData, taskType);
-  return { task, frame, vendor, composedPrompt, taskSpec, policy };
+  return { task, frame, vendor, composedPrompt, taskSpec, policy, vendorDefaultModel: vendorDefaultModel(agentsData, vendor) };
 }
 
 /**
@@ -279,21 +312,81 @@ export function resolveAdapterOptsForTask(resolved, adapterOpts = {}) {
     // status 'unbound' (empty / OOB `(bind per project)`) is silent — same convention
     // as an unbound Default-vendor cell; falls through to the vendor's own default.
   }
+  // ── per-vendor default (2026-08-11) ──
+  // Reached only when nothing more specific pinned a model. Two more levels
+  // before giving up and letting the vendor choose:
+  //
+  //   1. the project's `Default model` cell in AGENTS.md `## Approved Vendors`
+  //      — a per-vendor literal. This is the level that closes the staleness
+  //      gap: when a vendor ships a newer model than hopper's shipped preset,
+  //      a project pins it here instead of waiting for a hopper release.
+  //   2. the adapter's declared `hopperDefault` — hopper's own preference for
+  //      hopper-shaped work, which need NOT equal the vendor agent's default
+  //      (review/judgment tasks can justify a stronger model than the vendor
+  //      picks for interactive use).
+  //
+  // Without these, an unpinned dispatch silently inherited whatever the vendor
+  // CLI felt like: a `--swarm` panelist ran pi on gpt-5.5 out of
+  // ~/.pi/agent/settings.json while every other pi dispatch used the 5.6 line,
+  // and the handoff recorded `requested_selector: null` so nothing said so.
+  if (!out.model && !carriesEffectiveSelector && resolved?.vendor) {
+    // Machine-level override, above the project file because it describes THIS
+    // machine (a provider that is not logged in here, a model this account
+    // cannot reach) — but below an explicit --model or task-type Model rule,
+    // which are per-dispatch intent. Same naming as HOPPER_PI_THINKING /
+    // HOPPER_GROK_EFFORT.
+    const envKey = `HOPPER_${String(resolved.vendor).toUpperCase()}_MODEL`;
+    const envDefault = typeof process.env[envKey] === 'string' && process.env[envKey].trim()
+      ? process.env[envKey].trim()
+      : null;
+    const projectDefault = envDefault || (typeof resolved.vendorDefaultModel === 'string' && resolved.vendorDefaultModel.trim()
+      ? resolved.vendorDefaultModel.trim()
+      : null);
+    if (envDefault) {
+      out.model = envDefault;
+      modelResolvedByPolicy = true;
+      notices.push(`model resolved from ${envKey}: ${envDefault}`);
+    } else if (projectDefault) {
+      out.model = projectDefault;
+      modelResolvedByPolicy = true;
+      notices.push(`model resolved from AGENTS.md Approved Vendors 'Default model' for '${resolved.vendor}': ${projectDefault}`);
+    } else {
+      try {
+        const declared = resolveVerifiedLatest(getAdapter(resolved.vendor)?.capabilities?.modelArg);
+        if (declared) {
+          out.model = declared;
+          modelResolvedByPolicy = true;
+          notices.push(`model resolved from the '${resolved.vendor}' adapter's hopper default: ${declared} (override per project in AGENTS.md 'Approved Vendors' → 'Default model')`);
+        }
+        if (!declared) pushUnpinnedPlatformNotice(notices, resolved.vendor);
+      } catch (_) { /* unknown vendor is handled by the dispatcher; leave unpinned */ }
+    }
+  }
   if (out.model && resolved?.vendor) {
     try {
-      const kg = getAdapter(resolved.vendor)?.capabilities?.modelArg?.knownGood || [];
+      const modelArg = getAdapter(resolved.vendor)?.capabilities?.modelArg || {};
+      const kg = modelArg.knownGood || [];
       if (MODEL_SENTINELS.includes(out.model)) {
-        // req #3: `verified-latest` (the only sentinel today) resolves to knownGood[0] —
-        // convention documented on codex.js's knownGood array. The RESOLVED REAL NAME
-        // (not the sentinel literal) is what reaches argv + output.md frontmatter, because
-        // out.model is overwritten here, upstream of every consumer of this opts object.
-        const resolvedName = resolveVerifiedLatest(kg);
+        // `verified-latest` (the only sentinel today) resolves to the adapter's
+        // DECLARED `hopperDefault` — see resolveVerifiedLatest in cli/src/policy.js
+        // for why that replaced the old knownGood[0] inference. The RESOLVED REAL
+        // NAME (not the sentinel literal) is what reaches argv + output.md
+        // frontmatter, because out.model is overwritten here, upstream of every
+        // consumer of this opts object.
+        const resolvedName = resolveVerifiedLatest(modelArg);
         if (resolvedName) {
-          notices.push(`model sentinel '${out.model}' → ${resolvedName} (${resolved.vendor} knownGood[0])`);
+          notices.push(`model sentinel '${out.model}' → ${resolvedName} (${resolved.vendor} hopper default)`);
           out.model = resolvedName;
         } else {
-          notices.push(`model sentinel '${out.model}' has no resolvable knownGood[0] for vendor '${resolved.vendor}' — omitting --model (vendor CLI default).`);
+          notices.push(`model sentinel '${out.model}': vendor '${resolved.vendor}' declares no hopper default — omitting --model so the vendor/account picks.`);
           out.model = undefined;
+          // The sentinel path ALSO ends unpinned, and it is the path most
+          // dispatches actually take: the scaffold writes `Model rule:
+          // verified-latest` for every review task-type, which sets out.model
+          // above and therefore skips the per-vendor block entirely. Without
+          // this call the platform warning would almost never fire — verified
+          // live, the first version of it never printed once.
+          pushUnpinnedPlatformNotice(notices, resolved.vendor);
         }
       } else {
         out.model = normalizeModel(resolved.vendor, out.model, kg);

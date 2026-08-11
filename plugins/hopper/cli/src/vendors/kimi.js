@@ -35,6 +35,9 @@ export const kimiAdapter = {
   capabilities: {
     modelArg: {
       accepted: 'freeform',
+      // Same value the sentinel already inferred from knownGood[0] — declared
+      // explicitly so the intent survives a future reordering of the catalog.
+      hopperDefault: 'kimi-code/kimi-for-coding',
       knownGood: ['kimi-code/kimi-for-coding'],
       sourceNote: 'Kimi Code 0.x `-m, --model <ALIAS>` takes the configured ALIAS KEY, NOT a raw upstream Moonshot model id. `kimi provider list --json` (0.14+) reports configured providers/models; older installs fall back to `[models."NAME"]` blocks in ~/.kimi-code/config.toml. Default alias when -m omitted is controlled by Kimi config; on the managed Kimi Code setup it is typically `kimi-code/kimi-for-coding` (provider managed:kimi-code, upstream id kimi-for-coding, 262144 ctx). Do NOT hardcode upstream ids.',
     },

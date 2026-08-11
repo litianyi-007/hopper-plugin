@@ -19,6 +19,7 @@ import { formatBinaryReport, formatBinarySummary, enumerateVendorBinaries, probe
 import { planWorkspaceMigrations, applyWorkspaceMigrations, simpleDiff, currentVersion, missingTaskFrames } from '../src/workspace-drift.js';
 import { detectInstallKind, fetchUpstreamVersion, parseMigrationEntries, buildUpdateReport } from '../src/update-check.js';
 import { modelKeysMatch } from '../src/model-normalize.js';
+import { parseAgentsFile, vendorDefaultModel } from '../src/agents.js';
 import { evaluateModelCheck } from '../src/model-check.js';
 import {
   validateTaskId,
@@ -61,7 +62,7 @@ import { resolve, join, dirname, basename, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
-const VERSION = '0.53.0';
+const VERSION = '0.54.0';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -274,7 +275,7 @@ async function main() {
       console.error(`Available: ${listAdapters().join(', ')}`);
       process.exit(1);
     }
-    runCapabilities(target);
+    await runCapabilities(target);
     return;
   }
   const checkModelIdx = args.indexOf('--check-model');
@@ -608,8 +609,26 @@ async function main() {
     try {
       if (args.includes('--web-search')) adapterOpts.webSearch = true;
       const reasoning = valueAfter('--reasoning'); if (reasoning) { validateReasoning(reasoning); adapterOpts.reasoning = reasoning; }
-      // NOTE: no shared --model — a single model id is meaningless across diverse vendors;
-      // per-vendor model is a host concern (the swarm command uses N --adhoc for that).
+      // Still no shared --model: one model id genuinely IS meaningless across
+      // diverse vendors. But that objection is now ANSWERED rather than left to
+      // the caller — each panelist resolves its OWN model through the normal
+      // per-vendor chain (AGENTS.md `Approved Vendors` → `Default model`, else
+      // the adapter's declared hopper default; see resolveAdapterOptsForTask).
+      //
+      // Until 2026-08-11 nothing filled that gap, so every panelist inherited
+      // whatever its vendor CLI felt like and the handoff recorded
+      // `requested_selector: null`: a live panel ran pi on gpt-5.5 out of
+      // ~/.pi/agent/settings.json while every other pi dispatch used the 5.6
+      // line, and grok recorded `observed_models_json: []`. Reject an explicit
+      // --model here so the per-vendor resolution is not overridden by a single
+      // id that can only be right for one panelist.
+      if (valueAfter('--model')) {
+        console.error('Error: --swarm takes no --model — one model id cannot be right for diverse vendors.');
+        console.error('Each panelist resolves its own model: `.hopper/AGENTS.md` → `## Approved Vendors` → `Default model`,');
+        console.error('else that adapter\'s hopper default (see `hopper-dispatch --capabilities <vendor>`).');
+        console.error('For a one-off per-vendor model, dispatch that vendor with `--adhoc --vendor <v> --model <m>`.');
+        process.exit(2);
+      }
     } catch (err) {
       console.error(`Error: ${err.message}`);
       process.exit(2);
@@ -631,6 +650,12 @@ async function main() {
     console.log('');
     if (launched.length) {
       console.log('SWARM_IDS: ' + launched.join(' '));
+      // Watching a PANEL used to have no affordance at all — the closing lines
+      // said only how to COLLECT — so hosts hand-rolled pollers out of `wc -c`
+      // on the raw log and `ps -p <pid>` (which cannot even see a Windows PID).
+      // Name the real surfaces; a panel is watched one panelist at a time.
+      console.log('Watch a panelist:  hopper-dispatch --progress <id>   (or --watch <id> to follow until it exits)');
+      console.log('Panel at a glance: hopper-dispatch --jobs            (ALIVE column; do not poll the raw log by hand)');
       console.log('Collect each panelist with: hopper-dispatch --result <id> --full');
     }
     if (failed.length) {
@@ -2306,7 +2331,7 @@ async function runCheck(target, { compat = false } = {}) {
   }
 }
 
-function runCapabilities(vendor) {
+async function runCapabilities(vendor) {
   if (!listAdapters().includes(vendor)) {
     console.error(`Error: unknown vendor '${vendor}'. Known: ${listAdapters().join(', ')}`);
     process.exit(1);
@@ -2332,7 +2357,15 @@ function runCapabilities(vendor) {
   // Cache-backed state, confined to the closed projection (see the privacy note
   // on buildCapabilityReport: everything BELOW this line is static adapter data).
   console.log(`Inventory: ${renderSafeInventory(inventory)}`);
-  for (const line of buildCapabilityReport(vendor)) console.log(line);
+  // Project-level override, read best-effort: --capabilities must still work
+  // outside a workspace (and on an unreadable AGENTS.md), it just cannot show a
+  // project default there.
+  let projectDefault = null;
+  try {
+    const wsDir = findHopperDir();
+    if (wsDir) projectDefault = vendorDefaultModel(await parseAgentsFile(join(wsDir, 'AGENTS.md')), vendor);
+  } catch (_) { projectDefault = null; }
+  for (const line of buildCapabilityReport(vendor, { projectDefault })) console.log(line);
   console.log('');
   console.log('No vendor subprocess is spawned for this lookup (static data only).');
   console.log('Live per-account model catalog: `hopper-dispatch --probe ' + vendor + '` then `--models ' + vendor + '`.');

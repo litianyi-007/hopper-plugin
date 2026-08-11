@@ -41,6 +41,11 @@ export const copilotAdapter = {
   capabilities: {
     modelArg: {
       accepted: 'freeform',
+      // Same value the sentinel already inferred from knownGood[0] — declared
+      // explicitly so the intent survives a future reordering of the catalog.
+      // `auto` asks Copilot to route; the reachable set is subscription-tiered,
+      // so naming a specific model here would break lower tiers.
+      hopperDefault: 'auto',
       knownGood: ['auto', 'claude-sonnet-4.6', 'claude-opus-4.8', 'claude-haiku-4.5', 'claude-fable-5', 'gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.3-codex', 'gemini-3.1-pro-preview', 'gemini-3.5-flash'],  // advisory; tier-dependent — `copilot help config` is authoritative
       sourceNote: 'copilot --model <name>. Available models depend on YOUR Copilot subscription tier (premium-request meter applies; Business/Enterprise tiers see different models). Not hardcoded in this adapter.',
     },

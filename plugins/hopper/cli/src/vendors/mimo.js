@@ -41,6 +41,9 @@ export const mimoAdapter = {
   capabilities: {
     modelArg: {
       accepted: 'freeform',
+      // Same value the sentinel already inferred from knownGood[0] — declared
+      // explicitly so the intent survives a future reordering of the catalog.
+      hopperDefault: 'mimo/mimo-auto',
       knownGood: ['mimo/mimo-auto', 'xiaomi/mimo-v2.5-pro', 'xiaomi/mimo-v2.5-pro-ultraspeed'],
       sourceNote: 'MiMoCode `mimo run -m, --model <provider/model>` accepts provider/model identifiers. Run `mimo models` for the account-local catalog.',
     },

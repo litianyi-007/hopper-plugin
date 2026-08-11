@@ -98,6 +98,50 @@ const PI_RUNTIME_MODEL_METADATA = Object.freeze({
 export const PI_READ_ONLY_TOOLS = 'read,grep,find,ls';
 
 /**
+ * The provider ids pi actually accepts, for the vendors people usually mean.
+ *
+ * WHY HOPPER SHIPS THIS TABLE. pi is a PLATFORM ROUTER: `--model` takes
+ * `<provider>/<id>`, and a user who wants "Kimi" or "Qwen" has to know pi's
+ * internal id for it. Guessing does not work — every intuitive name below is
+ * rejected outright (`pi auth check` → `provider_not_found`, verified
+ * 2026-08-11 on pi 0.84.1):
+ *
+ *     kimi ✗   moonshot ✗   qwen ✗   dashscope ✗   gemini ✗
+ *     claude ✗   grok ✗   copilot ✗   glm ✗
+ *
+ * And there is an ASYMMETRY that catches people: the Claude subscription reuses
+ * the `anthropic` id (you choose subscription-vs-key at `/login`), but the
+ * ChatGPT subscription does NOT reuse `openai` — it is a separate provider,
+ * `openai-codex`. Sending `openai/gpt-5.6-…` to a machine logged into the
+ * ChatGPT plan fails with "No API key found for openai."
+ *
+ * SOURCE. Enumerated empirically with `pi auth check --provider <id> --json`,
+ * which distinguishes `provider_not_found` from `credentials_not_configured`,
+ * then cross-checked against the provider table in pi's own bundled
+ * `docs/providers.md`. The empirical pass is the authoritative one: that doc's
+ * table lists only API-KEY providers, so it omits `openai-codex` and
+ * `github-copilot` entirely — the two most commonly used, both OAuth-only.
+ *
+ * Curated to the common set (operator decision 2026-08-11) rather than all ~34;
+ * the full list is `pi auth check --provider <id>` away, and pi's bundled
+ * docs/providers.md carries it.
+ */
+export const PI_COMMON_PROVIDERS = Object.freeze([
+  Object.freeze({ id: 'openai-codex', label: 'ChatGPT Plus/Pro (Codex)', auth: '`/login` → OpenAI Codex (subscription OAuth)' }),
+  Object.freeze({ id: 'openai', label: 'OpenAI API', auth: 'OPENAI_API_KEY' }),
+  Object.freeze({ id: 'anthropic', label: 'Claude Pro/Max, or Anthropic API', auth: '`/login` → Claude Pro/Max, or ANTHROPIC_API_KEY' }),
+  Object.freeze({ id: 'github-copilot', label: 'GitHub Copilot', auth: '`/login` (OAuth only)' }),
+  Object.freeze({ id: 'xai', label: 'xAI Grok', auth: '`/login xai`, or XAI_API_KEY' }),
+  Object.freeze({ id: 'kimi-coding', label: 'Kimi', auth: 'KIMI_API_KEY' }),
+  Object.freeze({ id: 'qwen-token-plan', label: 'Qwen', auth: 'QWEN_TOKEN_PLAN_API_KEY (also -individual / -cn)' }),
+  Object.freeze({ id: 'google', label: 'Google Gemini', auth: 'GEMINI_API_KEY' }),
+  Object.freeze({ id: 'deepseek', label: 'DeepSeek', auth: 'DEEPSEEK_API_KEY' }),
+  Object.freeze({ id: 'zai', label: 'GLM / Z.ai', auth: 'ZAI_API_KEY (China: `zai-coding-cn`)' }),
+  Object.freeze({ id: 'minimax', label: 'MiniMax', auth: 'MINIMAX_API_KEY (China: `minimax-cn`)' }),
+  Object.freeze({ id: 'openrouter', label: 'OpenRouter', auth: '`/login openrouter`, or OPENROUTER_API_KEY' }),
+]);
+
+/**
  * Deterministic install locations to try when `pi` is not on PATH, per platform.
  *
  * WHY PER-PLATFORM (macOS/Linux parity, 2026-08-10): pi ships as a global npm
@@ -399,10 +443,42 @@ export const piAdapter = {
   capabilities: {
     modelArg: {
       accepted: 'freeform',
-      // ORDERING CONVENTION (see codex.js): index 0 is the current preferred,
-      // live-verified model — cli/src/policy.js resolveVerifiedLatest() reads
-      // knownGood[0] for the AGENTS.md `Model rule: verified-latest` sentinel.
-      // gpt-5.6-terra leads because it is the one V-verified end-to-end here.
+      // The model hopper prefers for hopper-shaped work. This is the field that
+      // fixes the swarm case: a `--swarm` panelist used to receive NO model at
+      // all, so pi fell back to `defaultModel` in ~/.pi/agent/settings.json and
+      // silently ran gpt-5.5 while every other pi dispatch used the 5.6 line
+      // (observed live 2026-08-10: `observed_models_json: ["openai-codex/gpt-5.5"]`).
+      //
+      // DELIBERATELY null (operator decision 2026-08-11), for a different reason
+      // than the other null-declaring adapters: pi is a PLATFORM ROUTER. Its
+      // users are on gpt, claude, kimi, qwen, glm… and a shipped preference for
+      // one of those families would be wrong for everyone else — and wrong in
+      // the expensive direction, since a model from a provider you are not
+      // logged into fails outright rather than falling back.
+      //
+      // Instead of guessing, hopper WARNS on an unpinned pi dispatch and hands
+      // the caller the provider table below so the choice can be made once and
+      // recorded (AGENTS.md `## Approved Vendors` → `Default model`). Warn, not
+      // refuse: a refusal would break every existing unpinned pi dispatch, and
+      // the run is still fully attested after the fact — `observed_models_json`
+      // records what pi actually chose.
+      hopperDefault: null,
+      // Fed to that warning and to `--capabilities pi`, so a host can ask "which
+      // model?" with real, correct choices rather than making the user guess an
+      // id that pi would reject.
+      platformProviders: PI_COMMON_PROVIDERS,
+      // ORDER IS NOT MEANINGFUL HERE, and this is NOT a preference. `hopperDefault`
+      // above is `null` on purpose — pi is a platform router — so this array is
+      // only the catalog used for normalization and `--probe` drift
+      // reconciliation. (Until 2026-08-11 the sentinel read knownGood[0], so
+      // index 0 was load-bearing — gpt-5.6-terra led because it was the one
+      // V-verified end-to-end. It stays first for that provenance, but nothing
+      // depends on the position any more.)
+      //
+      // MACHINE-SPECIFIC BY NATURE: these are the openai-codex models reachable
+      // from the authoring machine. On an account logged into anthropic / kimi /
+      // qwen instead, `--probe pi` reports every entry here as STALE and shows
+      // that account's real catalog — expected for a router, not a defect.
       //
       // Provider-PREFIXED on purpose: pi accepts `--model <id>`, `--model
       // <provider>/<id>`, and `--model <id>:<thinking>` (CONFIRMED `pi --help`).

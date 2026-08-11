@@ -19,6 +19,85 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.54.0] - 2026-08-11
+
+排查 hawk 项目最近一次 `--swarm` 派发时发现：两个 panelist 都是 `model: (vendor default)`、
+`requested_selector: null`、`resolution_status: unverified`。pi 实际跑的是
+`observed_models_json: ["openai-codex/gpt-5.5"]`——**不是**该项目其他地方一直在用的 5.6 线；
+grok 记的是 `[]`。也就是说一次对抗评审面板跑在了没人指定、也没人知道的模型上。
+
+swarm 代码里是**故意**不接 `--model` 的，理由写在注释里：「单个 model id 对异构 vendor 无
+意义」。这个反对成立，但后果没兜住——每个 panelist 落到各自 vendor 的默认，事前无从得知，
+事后只能从运行时证据反推。
+
+**更根本的混淆：`verified-latest` 解析为 `knownGood[0]`。** 这把两件不同的事挤在同一个数组里：
+`knownGood` 是「已知能用的模型清单」（用于规范化与漂移比对），而 sentinel 需要的是「hopper 想
+用哪个」（意图）。codex 的 knownGood 注释明确写了「index 0 是当前首选」的排序约定；**claude 的
+没有**——它是 `["sonnet","opus","haiku",…]` 这样一个**无序 alias 集合**，其 sourceNote 甚至
+明说「账号能触达的 tier 取决于订阅，所以本适配器不硬编码默认」。于是 `verified-latest` 对
+claude 解析成 `sonnet`，**把 opus 账号静默降级**——而 scaffold 生成的 task-type 表默认给每一种
+评审类型都写了 `Model rule: verified-latest`。这是独立于 swarm 的既有缺陷。
+
+**按「hopper 倾向的默认模型」这条线重做（用户判断）：** 经 hopper 派发的任务性质更特殊
+（对抗评审、盲点狩猎、高推理裁决），hopper 的偏好不必与 vendor 自身 agent 的默认对齐；同时
+用户要能自己设，以覆盖偏好、并填上「vendor 发了新模型但 hopper 预设没跟上」的 gap。
+
+- **适配器显式声明 `capabilities.modelArg.hopperDefault`**，与 `knownGood` 的顺序**解耦**。
+  九个适配器全部声明。`resolveVerifiedLatest()` 改读它；**显式 `null` 是一个回答**（「hopper
+  无偏好，交给账号挑」），与「尚未声明」区分处理。opencode 声明 `null`（可用目录完全取决于
+  用户的认证配置）——它本就因占位符解析为 null，现在是**有意为之**而非碰巧。**claude 声明
+  `opus`**：修的是「从无序 alias 集合**推断**出 `sonnet`」这种意外降级，不是反对刻意上调——
+  经 hopper 派发的是对抗评审与裁决，顶档值这个成本。⚠ 可达 tier 是账号权限，没有 opus 的账号
+  会直接失败而非回落，用 `Default model` 列或 `HOPPER_CLAUDE_MODEL` 覆盖（`best` 也在
+  knownGood 里，可让账号自己挑最强的）。其余 vendor 声明的值与今天 `knownGood[0]` 相同，
+  行为不变，但意图从「靠数组顺序推断」变成「写下来」。
+- **`pi` 声明 `null`，并被标记为平台型 router。** 它和 opencode 的 `null` 理由又不同：pi 的
+  用户跑的是 gpt / claude / kimi / qwen / glm，替其中任何一家预设都会对其余所有人是错的——而且
+  错在昂贵的方向（用一个没登录的 provider 的模型会直接失败，不会回落）。所以 hopper **不猜**，
+  但也**不沉默**：未钉模型的 pi 派发打印 `NOT PINNED` 警告并给出可用 provider id 清单，让调用方
+  一次性定下来记进 `Default model`。警告而非拒绝（决策 2026-08-11）——拒绝会打断所有现存的未钉
+  派发，且事后 `observed_models` 本来就能证实实际跑了什么。**这个警告差点是死的**：第一版守在
+  `!out.model` 上，而 scaffold 给每种评审 task-type 都写了 `Model rule: verified-latest`，那会
+  先把 `out.model` 置成 sentinel 从而跳过守卫——实跑一次才发现它一次都没打印过；现在 sentinel
+  解析为空的那条路径同样会警告，并有回归测试钉住。
+- **内置 pi 的 provider id 表（常见 12 家）。** 因为**猜是猜不中的**：`kimi` / `moonshot` /
+  `qwen` / `dashscope` / `gemini` / `claude` / `grok` / `copilot` / `glm` 全部被 pi 拒为
+  `provider_not_found`（用 `pi auth check --provider <id> --json` 实测枚举，它能区分
+  `provider_not_found` 与 `credentials_not_configured`）。正确的是 `openai-codex` / `openai` /
+  `anthropic` / `github-copilot` / `xai` / `kimi-coding` / `qwen-token-plan` / `google` /
+  `deepseek` / `zai` / `minimax` / `openrouter`，`--capabilities pi` 连同各自认证方式一起打印。
+  另有一个**不对称陷阱**：Claude 订阅复用 `anthropic`（登录时选订阅还是 key），但 ChatGPT 订阅
+  **不**复用 `openai`——它是独立的 `openai-codex`。**pi 官方文档不足以回答这个问题**：其
+  providers.md 的表只列 API-key 类 provider，`openai-codex` 与 `github-copilot` 这两个最常用的
+  （纯 OAuth）根本不在表里，所以实测枚举才是权威来源。
+- **`.hopper/AGENTS.md` 的 `## Approved Vendors` 表新增可选 `Default model` 列。** 放这里而不是
+  task-type 表，是因为后者被刻意设计成 vendor 中立（那一列只收 sentinel，不收字面 id）；per-vendor
+  的字面模型属于 per-vendor 的表。沿用该表已有的「可选列、最小 2 列合法」成例，**旧 AGENTS.md
+  一律不破**（这张表是 fail-closed 的派发闸门，解析破了等于拒绝一切派发）。
+- **解析优先级**：`--model <id>` > `HOPPER_<VENDOR>_MODEL`（本机） > `Default model`（本项目）
+  > 适配器预设 > 省略（vendor 自己挑）。每一级都往既有的 `policyNotices` 里写一条来源说明。
+- **swarm 因此自动修好**——它走的就是同一条链。仍然拒绝共享的 `--model`（理由不变），但现在
+  会给出出路：每个 panelist 各自解析。实跑对照（同样的 grok+pi 面板）：pi 的
+  grok 从 `observed_models_json: []` 变成钉住并记录 `grok-4.5`，codex 类同；pi 作为平台
+  router 仍不钉（见上条），但从静默变成明确的 `NOT PINNED` 警告 + provider 清单。
+- **闭上过时的环**：`--capabilities <vendor>` 现在打印**当前生效的默认及其来源**（env / 项目 /
+  适配器）与完整覆盖顺序；`--setup --deep` 的模型漂移一旦是 DRIFT，直接给出可粘贴进
+  `Approved Vendors` 的那一行。
+
+**同一次排查的另外两个问题：**
+
+- **缺 task-type frame 的报错不给出路。** 那次 swarm 第一次执行用的是 `--task-type
+  decision-review`，**2/2 失败**：`Task-type frame not found: …decision-review.md. Available
+  frames: see .hopper/tasks/`。34 秒后宿主改用 `code-review-adversarial` 重发——**任务语义被迫
+  降级**（本来要的是「对已框定的分叉做裁决」，变成了「对抗式找缺陷」）。而 hopper 早就知道答案：
+  `missingTaskFrames()` 直接返回 `["decision-review","tech-research"]`，`--migrate-config` 就会
+  写入。现在报错会**列出实际可用的 frame 并点名 `--migrate-config`**；`--setup` 的 Next steps
+  也提前预警——此前这个漂移在所有就绪面上隐形，只在派发时炸。
+- **swarm 没有面向面板的进度入口。** 即便 pi 那次产出了 50 条真心跳，宿主全程没用
+  `--progress`/`--watch`，而是自己写了三轮轮询：`until [ -s file ]` → `ps -p <pid>`（其自身的
+  阳性对照证明看不到 Windows PID，判据当场作废）→ `--jobs | grep " yes "`。因为 swarm 收尾只说
+  了怎么**收**（`--result`），没说怎么**看**。现在收尾会指向 `--progress` / `--watch` / `--jobs`。
+
 ## [0.53.0] - 2026-08-10
 
 一次 12 分钟的 pi 后台评审,`progress_seq` 只有 **2**——「已排队」和「已完成」。中间那 744 秒里

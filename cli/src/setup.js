@@ -27,6 +27,7 @@ import { compareVersionDesc } from './version.js';
 import { reconcileModels } from './model-normalize.js';
 import { parseAgentsFile } from './agents.js';
 import { listTaskTypes } from './tasks.js';
+import { missingTaskFrames } from './workspace-drift.js';
 import { parseEffortPolicyCell, parseModelRuleCell, isOobCell, MODEL_SENTINELS, resolveVerifiedLatest, computeEffortClamp } from './policy.js';
 import { join } from 'node:path';
 
@@ -289,6 +290,18 @@ export function formatModelDrift(row) {
   if (rec.missingFromLive.length) parts.push(`STALE default(s) not in live catalog: ${rec.missingFromLive.join(', ')}`);
   if (rec.newOnLive.length) parts.push(`NEW live model(s) absent from defaults: ${rec.newOnLive.slice(0, 8).join(', ')}${rec.newOnLive.length > 8 ? '…' : ''}`);
   const verdict = (rec.missingFromLive.length || rec.newOnLive.length) ? 'DRIFT' : 'OK';
+  // Close the loop: DRIFT means the vendor moved and hopper's shipped preset has
+  // not caught up. Say what to DO about it, since the whole point of the
+  // per-vendor `Default model` column is that a project need not wait for a
+  // hopper release to use a model the vendor already shipped.
+  if (verdict === 'DRIFT' && row.name) {
+    const suggestion = rec.newOnLive[0] || null;
+    parts.push(
+      'to use a live model now, set it per-project in .hopper/AGENTS.md `## Approved Vendors` → `Default model`'
+      + (suggestion ? ` (e.g. \`| \`${row.name}\` | yes | … | ${suggestion} |\`)` : '')
+      + ` — or per-machine with HOPPER_${String(row.name).toUpperCase()}_MODEL`,
+    );
+  }
   return { verdict, detail: parts.join('; ') };
 }
 
@@ -346,6 +359,23 @@ export function buildNextSteps(rows, sum, { hopperDir = null } = {}) {
   }
   if (sum.authMissing.length) {
     steps.push(`Authenticate: ${sum.authMissing.join(', ')} — \`hopper-dispatch --check ${sum.authMissing[0]}\` shows the fix.`);
+  }
+  // Workspace frame drift, raised HERE because it is otherwise invisible until a
+  // dispatch dies on it. Live 2026-08-10: a `--swarm --task-type decision-review`
+  // failed 2/2 with "Task-type frame not found" and the host silently downgraded
+  // the panel to a different review type — this readiness surface had listed only
+  // the frames that DO exist and said nothing about the ones that do not.
+  if (hopperDir) {
+    try {
+      const missing = missingTaskFrames(hopperDir);
+      if (missing.length) {
+        steps.push(
+          `This workspace is missing ${missing.length} task-type frame(s) hopper ships: ${missing.join(', ')}. `
+          + 'Dispatching one of those types will FAIL until they exist — install with '
+          + '`hopper-dispatch --migrate-config` (dry run) then `--yes`.',
+        );
+      }
+    } catch (_) { /* unreadable workspace — the other steps still apply */ }
   }
   // Version conflict outranks the optional/hygiene steps below it: a stale duplicate
   // on PATH does not look like a failure anywhere else — dispatch just quietly runs
@@ -510,6 +540,39 @@ function triState(value) {
 }
 
 /**
+ * The model an UNPINNED dispatch to this vendor actually lands on, and where
+ * that came from. Mirrors the resolution order in resolveAdapterOptsForTask so
+ * the readiness surfaces cannot drift from what dispatch really does.
+ *
+ * Deliberately omits the two most specific levels (`--model`, and the task-type
+ * `Model rule` cell): both are per-dispatch and cannot be reported for "the
+ * vendor" in general. This answers "what do I get if I ask for nothing".
+ *
+ * @param {string} vendor
+ * @param {{projectDefault?: string|null, env?: Record<string,string|undefined>}} [o]
+ * @returns {{ value: string|null, source: 'env'|'project'|'adapter'|'none' }}
+ */
+export function effectiveModelDefault(vendor, { projectDefault = null, env = process.env } = {}) {
+  const envKey = `HOPPER_${String(vendor).toUpperCase()}_MODEL`;
+  const fromEnv = typeof env[envKey] === 'string' && env[envKey].trim() ? env[envKey].trim() : null;
+  if (fromEnv) return { value: fromEnv, source: 'env' };
+  if (typeof projectDefault === 'string' && projectDefault.trim()) {
+    return { value: projectDefault.trim(), source: 'project' };
+  }
+  let declared = null;
+  try { declared = resolveVerifiedLatest(capabilitiesForAdapter(vendor)?.modelArg); } catch (_) { declared = null; }
+  return declared ? { value: declared, source: 'adapter' } : { value: null, source: 'none' };
+}
+
+/** Human label for where a default came from, including how to change it. */
+function modelDefaultSourceLabel(vendor, source) {
+  if (source === 'env') return `from HOPPER_${String(vendor).toUpperCase()}_MODEL (this machine)`;
+  if (source === 'project') return "from .hopper/AGENTS.md '## Approved Vendors' → 'Default model' (this project)";
+  if (source === 'adapter') return 'from the adapter (hopper ships this preference)';
+  return 'nothing pinned — the vendor/account picks';
+}
+
+/**
  * Full static capability report for one vendor, as terminal lines.
  *
  * Pure: no I/O, no spawn, no cache read — so it is unit-testable and cannot
@@ -521,7 +584,10 @@ function triState(value) {
  *   this vendor clamps it. Injectable so the report is deterministic in tests.
  * @returns {string[]}
  */
-export function buildCapabilityReport(vendor, { defaultReasoning = process.env.HOPPER_DEFAULT_REASONING || 'xhigh' } = {}) {
+export function buildCapabilityReport(vendor, {
+  defaultReasoning = process.env.HOPPER_DEFAULT_REASONING || 'xhigh',
+  projectDefault = null,
+} = {}) {
   const adapter = getAdapter(vendor);          // throws on unknown vendor
   const caps = capabilitiesForAdapter(vendor);
   const out = [];
@@ -542,10 +608,33 @@ export function buildCapabilityReport(vendor, { defaultReasoning = process.env.H
   const modelArg = caps.modelArg || {};
   const knownGood = Array.isArray(modelArg.knownGood) ? modelArg.knownGood : [];
   out.push('', `Model selector (--model): ${modelArg.accepted || '?'}`);
+  // The model a dispatch actually lands on when nothing overrides it. Rendered
+  // ahead of the catalog because it is the question a caller is usually asking.
+  const effective = effectiveModelDefault(vendor, { projectDefault });
+  out.push(`  effective default: ${effective.value || '(none)'}   ${modelDefaultSourceLabel(vendor, effective.source)}`);
+  out.push('  ↑ what `verified-latest` and an unpinned dispatch both resolve to. Override order:');
+  out.push(`      --model <id>  >  HOPPER_${String(vendor).toUpperCase()}_MODEL  >  AGENTS.md 'Default model'  >  adapter preset`);
+  if (effective.source === 'adapter' || effective.source === 'none') {
+    out.push("      To pin your own (survives a newer vendor model shipping before hopper updates its preset),");
+    out.push(`      add a 'Default model' column to '## Approved Vendors' in .hopper/AGENTS.md:  | \`${vendor}\` | yes | … | <model-id> |`);
+  }
+  // A platform router takes `<provider>/<model>`, and the provider ids are NOT
+  // guessable — so print them. Without this the caller has to know that "Kimi"
+  // is `kimi-coding` and that the ChatGPT plan is `openai-codex`, not `openai`.
+  const providers = Array.isArray(modelArg.platformProviders) ? modelArg.platformProviders : [];
+  if (providers.length) {
+    out.push('');
+    out.push(`  ${vendor} is a multi-provider platform: \`--model <provider>/<model-id>\`. Common provider ids —`);
+    out.push('  (guessing does NOT work: kimi / moonshot / qwen / gemini / claude / grok / copilot are all rejected)');
+    const width = Math.max(...providers.map((p) => p.id.length));
+    for (const p of providers) {
+      out.push(`      ${p.id.padEnd(width)}  ${p.label}`);
+      out.push(`      ${' '.repeat(width)}  auth: ${p.auth}`);
+    }
+    out.push(`  Verify one with \`pi auth check --provider <id> --json\`; list your reachable models with \`--probe ${vendor}\`.`);
+  }
   if (knownGood.length) {
     out.push(...wrapNote(`known-good: ${knownGood.join(', ')}`, 96, '  '));
-    const latest = resolveVerifiedLatest(knownGood);
-    out.push(`  verified-latest -> ${latest || '(unresolvable — knownGood[0] is a placeholder; --model is omitted)'}`);
   } else {
     out.push('  known-good: (none declared — the vendor account default is used)');
   }

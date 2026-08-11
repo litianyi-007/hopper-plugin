@@ -34,6 +34,13 @@ export const opencodeAdapter = {
   capabilities: {
     modelArg: {
       accepted: 'freeform',
+      // DELIBERATELY null, for the same reason knownGood below is a format
+      // example rather than a catalog: which models exist depends entirely on the
+      // user's opencode auth configuration, so hopper has no basis for a
+      // preference. `verified-latest` resolves to nothing and --model is omitted
+      // (unchanged behavior — the `<provider>/<model>` placeholder already
+      // resolved to null; this just says so on purpose instead of by accident).
+      hopperDefault: null,
       // Phase 6a-corrected per user feedback 2026-05-21: do NOT hardcode
       // model lists in the adapter — actual catalog depends on the user's
       // opencode auth config + active subscriptions, which is per-machine
