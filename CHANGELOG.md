@@ -19,6 +19,39 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.55.1] - 2026-08-12
+
+### Fixed — `package-lock.json` 的版本字段落后 5 个发布，而它明明写在发布清单里
+
+`package-lock.json` 的 `version` 停在 0.50.0，仓库已经发到 0.55.0——落后五个 release 无人
+察觉。但这次不是清单漏写：项目自己的发布清单明确列出了 `package-lock.json` 是需要跟着
+一起 bump 的位置之一。问题不在清单不完整，在**一份写下来的清单不是机制**——没人拿它当程序
+跑，遗漏就只能靠人记得。
+
+既有的两条版本一致性守卫都是**硬编码枚举**：`tests/unit/claude-code-host.test.js` 的
+`version consistency` 测试枚举 plugin.json / package.json / CLI `--version` / smoke.md /
+vendors.md / marketplace.json 六处，`tests/unit/vendored-plugin-sync.test.js` 的
+`release metadata` 测试再枚举另外几个 manifest 路径——两者都从未提及 `package-lock.json`，
+所以两者都**不可能**抓到这次漂移。不是失职，是设计上就看不见这个文件：枚举型守卫只能守住
+写进列表的位置，新增的位置或没人想到要写的位置永远是盲区。
+
+新增 `tests/unit/version-discovery.test.js`，不再枚举，改为**递归发现**：遍历整个仓库（跳过
+`node_modules`/`.git`）找出每一个 `*.json`，收集三种形状里可能携带「本包自身版本号」的位置
+——顶层 `.version`、`.plugins[*].version`（`marketplace.json` 的 catalog 形状）、
+`.packages[""].version`（`package-lock.json` v2/v3 的自引用条目，空字符串键专指锁文件描述
+的包本身，其余 355 条第三方依赖各自的 `version` 字段一律不收集）——再断言全部与
+`package.json` 一致。当前发现 9 处、覆盖 7 个文件；实测确认收集器在 `package-lock.json`
+里精确取到 2 处而不是混进 300 多条依赖版本。另补一条 floor assertion：发现数掉到阈值以下、
+或 `package.json`/`package-lock.json` 本身没被扫到，判定为扫描器自身坏了（而不是版本真的
+一致），失败信息说明这一点——防止「悄悄不再匹配任何东西」这种和本条目要修的缺陷同类的假绿。
+
+破坏性反证跑过两次：把 `package-lock.json` 的两处版本改错，新守卫变红、旧的
+`version consistency` 测试仍然绿——证明了这个盲区是真实存在的，旧守卫确实看不见这个文件；
+把 `marketplace.json` 的嵌套 `plugins[0].version` 改错，新守卫同样正确变红。两次都已还原。
+
+版本只到 patch：本条目除新增测试与其覆盖范围外，没有任何用户可观察的行为变化，符合本文件
+「Versioning」一节的约定——非功能性微调保留给 patch 位。
+
 ## [0.55.0] - 2026-08-12
 
 被派发的 vendor 有时会收到一份**没有任务的任务书**——框架、治理段、执行模式守则一应俱全，
