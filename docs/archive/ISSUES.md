@@ -29,7 +29,7 @@ Chinese. Historical records are not rewritten here; only this framing is new.
 | [`mimo-codeimpl-timeout`](#mimo-codeimpl-timeout) | 待 hopper 自查 | 中(有 workaround=改派其它 vendor,但暴露 adapter 真实限制) |
 | [`monitor-cross-session-crosstalk`](#monitor-cross-session-crosstalk) | open | medium-high (UX correctness: a session is woken/notified by  |
 | [`progress-watch-hang`](#progress-watch-hang) | open — pre-existing, NOT introduced by the governance-fusion change (which never touched the `-- | medium (blocks the full-suite `npm test` gate; has a workaro |
-| [`queue-brief-truncated-by-unescaped-pipe`](#queue-brief-truncated-by-unescaped-pipe) | Open — 未修，仅登记 | 中高——vendor 收到一份被截断的任务书，无任何报错；与已修的 queue-brief-dropped-without-leader-tasklist 同一失败形状 |
+| [`prompt-artifact-lifecycle-and-windows-permissions`](#prompt-artifact-lifecycle-and-windows-permissions) | open — recorded, not fixed | not a credential leak (this repo's brief discipline forbids  |
 | [`stale-status-on-runner-death`](#stale-status-on-runner-death) | open — 未修，仅登记（见文末「归档说明」） | 中——不丢数据，但调用方会误判任务未完成，重复派发、浪费 vendor 调用 |
 | [`task-spec-structural-only-body-accepted`](#task-spec-structural-only-body-accepted) | Open — 未修，仅登记 | 低——需要人写出这种 leader-tasklist 才会触发，但失败形状与已修两处完全相同 |
 
@@ -37,6 +37,7 @@ Chinese. Historical records are not rewritten here; only this framing is new.
 
 | Issue | Status | Severity |
 |---|---|---|
+| [`queue-brief-truncated-by-unescaped-pipe`](#queue-brief-truncated-by-unescaped-pipe) | CLOSED 2026-08-12 — fixed in 0.56.0（行级 cell 数校验 fail-closed + `\|` 转义支持，见 Resolution） | 中高——vendor 收到一份被截断的任务书，无任何报错；与已修的 queue-brief-dropped-without-leader-tasklist 同一失败形状 |
 | [`queue-brief-dropped-without-leader-tasklist`](#queue-brief-dropped-without-leader-tasklist) | CLOSED 2026-08-12 — fixed in 0.55.0（详细 spec 与 queue brief 现在合并进 prompt；缺失时 fail-closed，见 Resolution） | 高——被派发的 vendor 收到没有任务内容的框架，却仍返回 exit 0 / status: done |
 | [`grok-models-succeeds-but-hopper-dispatch-auth-failed`](#grok-models-succeeds-but-hopper-dispatch-auth-failed) | CLOSED 2026-08-05 — root cause confirmed; fixed in 0.50.0 (see Resolution) | 高：两次已完成、已计费的 grok 评审被记为认证失败并丢弃 |
 | [`grok-adapter-protocol-invalid-false-fail`](#grok-adapter-protocol-invalid-false-fail) | CLOSED — root cause confirmed as a line-level parse gap; fixed in this commit (see Resolution) | medium-high — the vendor actually COMPLETES the task (delive |
@@ -45,7 +46,6 @@ Chinese. Historical records are not rewritten here; only this framing is new.
 | [`lockfile-missing-platform-rollup-variants`](#lockfile-missing-platform-rollup-variants) | RESOLVED 2026-08-03 — lockfile regenerated, `npm ci` restored in CI | anyone cloning this repo and running `npm ci` on linux or ma |
 | [`opencode-ansi-log-output-not-parsed`](#opencode-ansi-log-output-not-parsed) | CLOSED — fixed in the audit-close commit (candidates 1+2 implemented; see Resolution) | medium-high — the vendor COMPLETES the task correctly (full  |
 | [`opencode-windows-multiline-prompt-truncation`](#opencode-windows-multiline-prompt-truncation) | CLOSED — fixed in 6aa10d3; pointer-instruction hardening added in the audit-follow-up commit (se | high on Windows — every opencode dispatch with a multi-line  |
-| [`prompt-artifact-lifecycle-and-windows-permissions`](#prompt-artifact-lifecycle-and-windows-permissions) | open — recorded, not fixed | not a credential leak (this repo's brief discipline forbids  |
 | [`resolve-ignores-vendor-override`](#resolve-ignores-vendor-override) | 已修复（2026-08-03，同日）——见文末「修复记录」。选的是「实际 vs 预期」两个方向里的方向 1： | 中——不是安全问题，是「所见非所得」：`--resolve` 打印的 Vendor 与真实 dispatch 会用的 V |
 | [`setup-sandbox-column-dead-code`](#setup-sandbox-column-dead-code) | CLOSED（2026-08-05 修复；影响面比原记录大得多，见下方「影响面更正」） | 中——不是安全问题，是「建议不可执行」 |
 | [`verifypidimage-linux-node24-comm-mismatch`](#verifypidimage-linux-node24-comm-mismatch) | FIXED in `cli/src/subprocess.js` (pending real-CI confirmation — see "Not verified" below) | does not risk killing an unrelated process (the caller, |
@@ -2360,7 +2360,7 @@ pid:    71484
 
 - **版本**：hopper 0.55.0（发现于 brief-drop 修复轮的复审派发过程中）
 - **严重度**：中高——**vendor 收到一份被截断的任务书，无任何报错**。与 `queue-brief-dropped-without-leader-tasklist`（已修）是**同一个失败形状**：看起来有任务，实际不是完整的那份
-- **状态**：**Open — 未修，仅登记**
+- **状态**：**CLOSED — fixed in 0.56.0**（2026-08-12，见文末「Resolution」）
 
 ### 现象
 
@@ -2402,6 +2402,37 @@ vendor 名，就完全静默。
 主会话给 T-102 复审写 brief 时，为举例三种 marker 形态而在 brief 里写了字面量
 `| T-1 | … |`，派发直接失败。追查后才发现失败是碰巧的。
 **这条本身就是 T-102 的 Q3「同一形状还有没有第三处」的答案——只不过它不在 `dispatch.js`，在 `queue.js`。**
+
+### Resolution（2026-08-12，0.56.0）
+
+按「建议的修法」实现了列数校验、fail-closed，并且**没有停在建议文字本身**：
+
+- `parseQueueContent()`（`cli/src/queue.js:28`）解析每个表头之后的数据行时，先记下表头声明的
+  列数（`columnMap.cellCount`，`:69`），逐行比对切出来的 cell 数；不等就抛出新错误码
+  `E_ROW_CELL_COUNT_MISMATCH`（`:123-134`）并中止整个解析，不再按下标猜哪个 cell 是哪个字段。
+  多切（Brief 含裸 `|`）与少切（漏写一列）两种畸形都会被拦，不只是本 issue 报的那一种方向。
+- **建议修法里写的错误文案提到「brief 里的 `\|` 需转义」——这次真的把 `\|` 实现成了转义**，不是
+  只改文案。`parseRowCells()`（`:168-195`）现在把 `\|` 当字面量 `|` 处理、不触发分列；未转义的
+  裸 `|` 仍然分列。选择"真正实现转义"而不是"改口不提转义、只说明允许什么"，是因为本仓
+  `.hopper/queue.md` 与 `handoffs/leader-tasklist.md` 里已经出现过需要在 brief 正文中引用竖线
+  表格行/管道语法的真实场景（例如本 issue 自己「实测」表格第二行 `形态举例 | T-1 | 表格行`
+  就是在举例这种写法）——完全禁止字面量 `|` 会挡住这类合法内容；转义后 round-trip 出完整文本
+  （含那个 `|` 字符），不是被腰斩的前半段。
+- **对已存量 queue.md 的影响是真实的**：这条守卫是回溯性的，任何一行 cell 数与表头不符就会让
+  整份文件解析失败，而不是像修复前那样把畸形行悄悄跳过。有此类行的项目需要修 `.hopper/queue.md`
+  本身；唯一的例外是完全不含数据的空白行（见下方 REWORK 第 3 点），这不是"放宽以迁就旧文件"，
+  而是恢复修复前对这类行本就一致的容忍。
+- 测试：`tests/unit/queue.test.js` 新增 5 条，覆盖本 issue「实测」表格的第三行（原始缺陷，必须
+  抛错而非产出 `brief="前半段任务" vendor="codex"`）、错误文案的自我一致性（提到的转义机制必须
+  真的被支持）、无竖线正常行不被误伤、`\|` 转义完整往返、cell 数偏少同样被拒。四条依赖新校验的
+  测试逐一用破坏性反证验证过：临时禁用 cell 数校验后变红，恢复后转绿。
+
+**REWORK（同日，代码评审判 REWORK 后追加，版本号仍是 0.56.0）**：上面这版校验本身有三个洞
+（本仓自己的 `.hopper/queue.md` 因"省略末尾列"旧约定整体解析失败、放宽省略会让原缺陷以"等宽
+抵消"形式复活、全空行处理因竖线数量不同而不一致），外加核出同族的第四处（重复 task ID 被
+`Array.find()` 静默取第一条）。用户裁定方案 A——强制等宽，不做省略豁免；全空行在等宽校验之前
+单独豁免；新增 `E_DUPLICATE_TASK_ID`。详见 `CHANGELOG.md` `[0.56.0]` 的「Fixed²」一节（含
+BREAKING 说明、迁移方法、以及"等宽抵消"残留边界的精确表述）。
 
 ---
 
