@@ -40,10 +40,15 @@ function makeHopper({ vendorCell = '', preferenceVendor = 'codex' } = {}) {
   const hopperDir = join(root, '.hopper');
   mkdirSync(join(hopperDir, 'tasks'), { recursive: true });
   mkdirSync(join(hopperDir, 'handoffs'), { recursive: true });
+  // The Brief cell is load-bearing even though these tests are about vendor/model
+  // diagnostics: a queued task with an empty Brief AND no leader-tasklist.md entry
+  // has no task content at all, and dispatch fails closed on it rather than
+  // composing a content-free prompt. Keep a real brief so these fixtures exercise
+  // the diagnostics they are named for, not the empty-task guard.
   writeFileSync(join(hopperDir, 'queue.md'), [
-    '| ID | Task-type | Status | Vendor |',
-    '|----|-----------|--------|--------|',
-    `| T-FB | code-impl | pending | ${vendorCell} |`,
+    '| ID | Task-type | Status | Vendor | Brief |',
+    '|----|-----------|--------|--------|-------|',
+    `| T-FB | code-impl | pending | ${vendorCell} | wire the feedback fixes |`,
     '',
   ].join('\n'));
   writeFileSync(join(hopperDir, 'tasks', 'code-impl.md'), '# code-impl\n\nDo the work described in the spec.\n');

@@ -18,21 +18,26 @@ Chinese. Historical records are not rewritten here; only this framing is new.
 
 ## Status index
 
-### Open — 6
+### Open — 10
 
 | Issue | Status | Severity |
 |---|---|---|
 | [`codex-bypass-flag-missing-from-argv`](#codex-bypass-flag-missing-from-argv) | open — extends/sharpens the still-open ISSUE-codex-windows-sandbox-1326.md | high on Windows — codex vendor does ZERO work; every dispatc |
 | [`codex-review-hijack`](#codex-review-hijack) | 待 hopper 自查 | 高(codex 经 hopper 做"审查异仓 diff"类任务可靠失败,已 3+ 次) |
 | [`codex-windows-sandbox-1326`](#codex-windows-sandbox-1326) | open | high on Windows (the codex vendor cannot execute ANY command |
+| [`composeprompt-no-fail-closed-on-empty-spec`](#composeprompt-no-fail-closed-on-empty-spec) | Open — 未修，仅登记 | 低——当前 dispatch.js 已在上游拦住，属纵深防御缺失而非活跃缺陷 |
 | [`mimo-codeimpl-timeout`](#mimo-codeimpl-timeout) | 待 hopper 自查 | 中(有 workaround=改派其它 vendor,但暴露 adapter 真实限制) |
 | [`monitor-cross-session-crosstalk`](#monitor-cross-session-crosstalk) | open | medium-high (UX correctness: a session is woken/notified by  |
 | [`progress-watch-hang`](#progress-watch-hang) | open — pre-existing, NOT introduced by the governance-fusion change (which never touched the `-- | medium (blocks the full-suite `npm test` gate; has a workaro |
+| [`queue-brief-truncated-by-unescaped-pipe`](#queue-brief-truncated-by-unescaped-pipe) | Open — 未修，仅登记 | 中高——vendor 收到一份被截断的任务书，无任何报错；与已修的 queue-brief-dropped-without-leader-tasklist 同一失败形状 |
+| [`stale-status-on-runner-death`](#stale-status-on-runner-death) | open — 未修，仅登记（见文末「归档说明」） | 中——不丢数据，但调用方会误判任务未完成，重复派发、浪费 vendor 调用 |
+| [`task-spec-structural-only-body-accepted`](#task-spec-structural-only-body-accepted) | Open — 未修，仅登记 | 低——需要人写出这种 leader-tasklist 才会触发，但失败形状与已修两处完全相同 |
 
-### Closed — 11
+### Closed — 12
 
 | Issue | Status | Severity |
 |---|---|---|
+| [`queue-brief-dropped-without-leader-tasklist`](#queue-brief-dropped-without-leader-tasklist) | CLOSED 2026-08-12 — fixed in 0.55.0（详细 spec 与 queue brief 现在合并进 prompt；缺失时 fail-closed，见 Resolution） | 高——被派发的 vendor 收到没有任务内容的框架，却仍返回 exit 0 / status: done |
 | [`grok-models-succeeds-but-hopper-dispatch-auth-failed`](#grok-models-succeeds-but-hopper-dispatch-auth-failed) | CLOSED 2026-08-05 — root cause confirmed; fixed in 0.50.0 (see Resolution) | 高：两次已完成、已计费的 grok 评审被记为认证失败并丢弃 |
 | [`grok-adapter-protocol-invalid-false-fail`](#grok-adapter-protocol-invalid-false-fail) | CLOSED — root cause confirmed as a line-level parse gap; fixed in this commit (see Resolution) | medium-high — the vendor actually COMPLETES the task (delive |
 | [`grok-claude-buffered-output-idle-falsekill`](#grok-claude-buffered-output-idle-falsekill) | FIXED (mitigation applied below); a proper streaming-based fix is DEFERRED (see below) | high — every grok/claude BACKGROUND dispatch that legitimate |
@@ -2174,5 +2179,317 @@ push to trigger real `ubuntu-latest` CI. The next `ubuntu-latest, 22` and
 `ubuntu-latest, 24` CI run against this change is the actual proof; until
 then this is "should work by construction" (`/proc/<pid>/exe` is a standard,
 long-documented Linux facility, not a guess), not "confirmed working."
+
+---
+
+<a id="queue-brief-dropped-without-leader-tasklist"></a>
+
+## queue-brief-dropped-without-leader-tasklist
+
+---
+
+## ISSUE：queue.md 的 brief 在任务无 leader-tasklist 条目时被静默丢弃
+
+- **发现**：2026-08-11，test-harnessloop 项目 rounds/0013 派 ★审查闸时
+- **版本**：hopper 0.53.0（安装缓存 == submodule 工作区，已用 `plugin-status.sh` 确认）
+- **严重度**：**高** —— 被派发的 vendor 收到一个**没有任务内容**的框架，却仍返回
+  `exit 0` / `status: done` / `Task completed successfully.`
+- **状态**：**CLOSED — fixed in 0.55.0**（2026-08-12，见文末「Resolution」）
+
+### 症状
+
+`hopper-dispatch T-090 --background`（vendor=codex）44 秒后报 `done`、`exit_code: 0`。
+但 vendor 的实际输出是：
+
+```
+## Open questions
+- What is the T-090 queue brief?
+- Which commit or working-tree diff should be reviewed?
+
+## Verdict
+FAIL
+```
+
+### 根因
+
+vendor 实际收到的 prompt 里，`## Task spec` 段**只有一行占位符**：
+
+```
+## Task spec
+
+(no detailed spec found for T-090 in leader-tasklist.md; using queue.md brief only)
+```
+
+**「using queue.md brief only」这句话与实际行为不符 —— brief 并没有被拼进 prompt。**
+
+### 机械证据（不是靠读那一行字下的结论）
+
+| 量 | 值 |
+|---|---|
+| `queue.md` 里 T-090 的 brief 长度 | **959 chars** |
+| vendor 实际收到的 prompt 段长度 | **2874 chars** |
+| `--resolve T-090` 自报的 composed prompt length | **2868 chars** |
+| 若 brief 被包含，应约为 | **3833 chars** |
+| `'RAE-0001' in prompt`（brief 特征串） | **False** |
+| `'no detailed spec found' in prompt` | **True** |
+
+`--resolve` 自报的 composed 长度就等于「不含 brief」的长度 —— 说明**合成阶段就丢了 brief**，
+不是传输截断。而 `--resolve` 的显示界面又**照常回显完整 Brief**，造成「看起来一切正常」的假象。
+
+### 触发条件（对照组坐实）
+
+| 任务 | `.hopper/handoffs/leader-tasklist.md` 中的条目数 | brief 是否到达 vendor |
+|---|---|---|
+| T-088 | 2 | ✅ 到达（prompt 中特征词命中 26 次） |
+| T-089 | 2 | ✅ 到达 |
+| **T-090** | **0** | ❌ **丢失** |
+
+→ **仅当任务在 `leader-tasklist.md` 中没有详细 spec 时触发。**
+有 spec 的路径正常，所以此前 89 个任务都没暴露它。
+
+### 反证（确认不是环境问题）
+
+同一 brief 改用 `--adhoc --brief "<text>"` 重派：
+`Prompt: inline argv` 从 **3193B → 4753B**，brief 确实进入 prompt。
+**同一 vendor、同一模型、同一 sandbox，唯一变量是走 queue 行还是走 adhoc。**
+
+### 建议修法（两条，第二条即使不修第一条也应做）
+
+1. **真的把 queue brief 拼进 composed prompt**（当任务没有 leader-tasklist 条目时）。
+2. **若确实无法拼入，占位符文案必须诚实**——说「brief 未包含」，而不是
+   「using queue.md brief only」。**静默的假陈述比缺失本身更危险**：
+   `exit 0` + `status: done` + `Task completed successfully.` 三个信号全绿，
+   而任务内容根本没送到。下游若不做独立核对，会拿着一份「已评审通过」的假记录收盘。
+
+### workaround
+
+用 `--adhoc --task-type <t> --brief "<text>"`（brief 即 spec），或先在
+`leader-tasklist.md` 里为该任务补一条详细 spec。
+
+### 相关
+
+- 完整取证：test-harnessloop 仓
+  `.harnessloop/goals/20260718-002-agent-app/rounds/0013/evidence/hopper-defect-queue-brief-dropped.md`
+- 同期另记一条环境侧问题：`~/.local/bin/hopper-dispatch` 的 shim 指向已不存在的旧安装路径
+  （`marketplaces/agent-hopper/...`）；现行布局下 marketplace 已是 directory source、
+  缓存在 `~/.claude/plugins/cache/agent-hopper/hopper/<version>`。**shim 不在任何重指流程的覆盖范围内。**
+
+### Resolution（2026-08-12，0.55.0）
+
+两条「建议修法」都做了，且第 2 条不是「把文案改诚实」而是**把这段文案整个从 vendor prompt 里
+拿掉**——诚实版的占位符仍然是「拿一句诊断当任务书」，只是不再撒谎。
+
+- `loadTaskSpec()`（`cli/src/dispatch.js`）改为返回 `string | null` 并 **export**：两条未命中
+  分支返回 `null`，不再返回描述自己失败的字符串；非 ENOENT 的 IO 错误仍然 throw。
+- 合成在调用点做：详细 spec 在前，queue brief 跟在 `### Queue brief` 标题下并注明来源，**明写
+  冲突时详细 spec 优先**。选合并而非二选一的依据是 `cli/src/tasks.js:154-155` 的执行模式守则
+  第 4 条原文——「The brief and Task spec below are the complete, closed loop.」：prompt 自己
+  已经承诺了两样都在。
+- 诊断降级为 **operator notice**（stderr / `--resolve` 的 `  notice:` 行），不进 vendor prompt。
+- **spec 与 brief 皆空 → 抛错（fail-closed）**，与 adhoc / swarm 对空 brief 的既有拒绝对齐。
+  这是新增的拒绝，不放宽任何权限边界。
+- 回归测试 `tests/unit/dispatch-task-content.test.js`（12 条）覆盖四种 fixture：有条目 / 文件在
+  但无条目 / 文件不存在 / brief 空且无 spec；并反向断言占位符句子永不出现在 composedPrompt 中。
+  `composePrompt` 的拼装形状未改动（`tests/unit/tasks.test.js` 的四条逐字节断言原样绿）。
+
+---
+
+<a id="stale-status-on-runner-death"></a>
+
+## stale-status-on-runner-death
+
+---
+
+## Issue: runner 异常终止后，任务状态文件停在陈旧值（工作实际已完成）
+
+**发现**：test-harnessloop，2026-08-10，任务 T-088（codex，`code-review-adversarial`）
+**严重度**：中——不丢数据，但会让调用方**误判任务未完成**，进而重复派发、浪费 vendor 调用
+
+### 现象
+
+`--progress` 与 `T-088-output.md` 报告：
+
+```
+status: in-progress
+phase:  starting
+pid:    71484
+```
+
+而实际情况：
+
+- `ps -p 71484` **无输出**——runner 进程早已不存在
+- `T-088-output.log` 最后修改 **01:29:11**，查看时为 **10:32**，静止 9 小时
+- **该 log 里有完整产出**：四问裁决、`## Verdict`、`## Next recommendation` 一应俱全
+
+即：**vendor 侧工作已完成、产出已落盘，但状态文件从未被更新到终态**，`phase` 甚至停在最初的 `starting`。
+
+### 影响
+
+1. 调用方按状态字段判断会得出「仍在跑」，从而**无限等待**或**重复派发**（本次即差点重派第三次，每次都是真实 vendor 花费）。
+2. `--watch` / `--progress` 这类基于状态文件的接口在此场景下**给出错误答案**。
+3. 与本项目既有纪律「不得仅凭 exit 0 / vendor 自述 success 采信」形成对称问题：**同样不能仅凭状态字段判定任务未完成**。本次是靠人工去读 raw log 才发现的。
+
+### 复现线索（未逐条验证，供排查方向）
+
+同一任务先前有一次 `adapter-timeout` 失败（`duration_ms: 495138`，基线上限 300s），随后以 `--timeout 1500000` 重派。**怀疑与「重派同一 task-id 时状态文件的接管/覆盖」或「runner 被信号终止时缺少 finalize」有关**——两者都会导致终态写入被跳过。
+
+### 建议方向（不预设实现）
+
+- runner 退出路径（含被信号杀死）加 finalize，至少把 `status` 落成 `failed`/`unknown`，而不是留在 `in-progress`
+- `--progress` / `--watch` 在读到 `status: in-progress` 时，**交叉核对 `pid` 是否存活**；进程不存在则报「状态陈旧」而非「仍在运行」
+- 若 raw log 已含终态标记（如 `## Verdict`），可据此提示「产出可能已完整，请核对 raw log」
+
+### 与既有 issue 的区别（已核对，非重复）
+
+`ISSUE-progress-watch-hang.md`（2026-06-17）讲的是**测试文件本身挂起**——`tests/unit/progress-watch.test.js` 让 `npm test` 不终止。
+本 issue 讲的是**运行时状态文件在 runner 死后不落终态**，两者根因与影响面不同，仅同属 progress/watch 面。
+
+### 归档说明
+
+本文件按 hopper 仓既有惯例（`ISSUE-*.md`）落在仓库根，与 `ISSUE-codex-review-hijack.md`、`ISSUE-resolve-ignores-vendor-override.md` 等并列。**未修**，仅登记。
+
+---
+
+<a id="queue-brief-truncated-by-unescaped-pipe"></a>
+
+## queue-brief-truncated-by-unescaped-pipe
+
+---
+
+## ISSUE：queue.md 的 brief 含未转义竖线时被静默截断，且可静默派给"看起来正确"的 vendor
+
+- **版本**：hopper 0.55.0（发现于 brief-drop 修复轮的复审派发过程中）
+- **严重度**：中高——**vendor 收到一份被截断的任务书，无任何报错**。与 `queue-brief-dropped-without-leader-tasklist`（已修）是**同一个失败形状**：看起来有任务，实际不是完整的那份
+- **状态**：**Open — 未修，仅登记**
+
+### 现象
+
+`cli/src/queue.js` 的列解析按**下标**取值（`cells[map.briefIdx]`、`cells[map.vendorIdx]`），
+表头 7 列，行若因 brief 内含字面量 `|` 而切出 8 个及以上 cell 时，**多出来的部分被直接丢弃**，
+不做任何列数校验。
+
+### 实测（三个对照，2026-08-12）
+
+表头固定为 `| ID | Task-type | Status | Depends | Priority | Brief | Vendor |`：
+
+| 行内容（Brief 段） | 解析出的 brief | 解析出的 vendor | 是否报错 |
+|---|---|---|---|
+| `请审查 foo 的 bar 行为`（无竖线，对照） | `"请审查 foo 的 bar 行为"` | `"codex"` | 否 ✅ |
+| `形态举例 \| T-1 \| 表格行` | `"形态举例"` | `"T-1"` | **是**——`E_VENDOR_NOT_APPROVED` |
+| `前半段任务 \| codex \| 后半段被吃掉的关键要求` | `"前半段任务"` | `"codex"` | **否** ❌ |
+
+**第三行是静默失败**：brief 只剩前半段、后半段的关键要求被吃掉，vendor 解析成 `codex`
+（已批准），于是**照常派发**。
+
+### 为什么第二行响了而第三行没响
+
+拦下第二行的是 `.hopper/AGENTS.md` 的 Approved Vendors 守卫（`agents.js:351`
+`assertVendorApproved`）——它拦的是"vendor 名不认识"，**不是"brief 被截断"**。
+所以这层保护是**碰巧生效**，不是针对本问题的防御：只要竖线之后恰好是一个已批准的
+vendor 名，就完全静默。
+
+### 建议的修法
+
+**列数校验，fail-closed**：行的 cell 数与表头列数不等时拒绝该行并报明确错误
+（"row has N cells, header declares M — brief 里的 `|` 需转义为 `\|`"），
+而不是按下标静默取值。
+
+对照本项目已反复确认的原则：**清单会过时，发现式守卫不会**——按下标取值属于"假定输入合规"，
+列数校验属于发现式守卫。
+
+### 发现经过
+
+主会话给 T-102 复审写 brief 时，为举例三种 marker 形态而在 brief 里写了字面量
+`| T-1 | … |`，派发直接失败。追查后才发现失败是碰巧的。
+**这条本身就是 T-102 的 Q3「同一形状还有没有第三处」的答案——只不过它不在 `dispatch.js`，在 `queue.js`。**
+
+---
+
+<a id="task-spec-structural-only-body-accepted"></a>
+
+## task-spec-structural-only-body-accepted
+
+---
+
+## ISSUE：leader-tasklist 小节的"正文"只有结构性标记时仍被当作有效 spec
+
+- **版本**：hopper 0.55.0（由 T-102 复审的 grok 一路实跑发现；登记前已用真实 `loadTaskSpec` 复核，见下）
+- **严重度**：低——需要人写出这种 leader-tasklist 才会触发，但**失败形状与已修的两处完全相同**
+- **状态**：**Open — 未修，仅登记**
+
+### 现象
+
+`loadTaskSpec()` 的 fail-closed 判据是「匹配 marker 之后有无非空白正文」
+（`cli/src/dispatch.js:380-381`：`afterMarker.trim().length > 0 ? section : null`）。
+一个正文只有结构性标记（如 `---` 分隔线、空表格骨架 `|---|---|`、单个 `>` 引用符）的小节，
+**非空白，因此被判为有效 spec 并派发**——vendor 拿到一份没有任务内容的任务书。
+
+### 实测复核（2026-08-12，登记前用真实代码验证，非转述）
+
+直接调用 `loadTaskSpec` 对四个 fixture 小节验证（`otherTaskIds` 传全部四个 id 以确保边界正确）：
+
+| 小节正文 | `loadTaskSpec` 返回值 |
+|---|---|
+| `---` | 非 null —— `"## T-1\n\n---"` |
+| `\|---\|---\|` | 非 null —— `"## T-2\n\n\|---\|---\|"` |
+| `>` | 非 null —— `"## T-3\n\n>"` |
+| `Real content line.`（对照） | 非 null —— `"## T-4\n\nReal content line."` |
+
+三个「仅结构性标记」的正文全部被接受为有效 spec，返回值形状与「真有内容」的对照组完全一致——
+证实了本条问题的判断，不是猜测。
+
+### 与已修两处的关系
+
+这是**同一族的第三个实例**：
+
+| # | 实例 | 状态 |
+|---|---|---|
+| 1 | 无 leader-tasklist 条目时返回自述文案冒充 spec | 已修 0.55.0 |
+| 2 | 裸 marker（`## T-1` 光标题没正文）非空 → 冒充 spec | 已修 0.55.0 |
+| 3 | 正文只有结构性标记 → 冒充 spec | **本条，未修** |
+
+共同形状：**「看起来有内容」与「真的承载了任务」被当成了同一件事。**
+
+### 建议的修法
+
+判据从「有非空白字符」收紧为「去掉纯结构性标记后仍有实质内容」。
+需要注意不要过度收紧——正文里合法包含表格或分隔线的 spec 必须仍被接受，
+判据应是「**除了**结构性标记之外还有别的」，不是「不含结构性标记」。
+
+---
+
+<a id="composeprompt-no-fail-closed-on-empty-spec"></a>
+
+## composeprompt-no-fail-closed-on-empty-spec
+
+---
+
+## ISSUE：`composePrompt` 对空/纯空白 taskSpec 没有 fail-closed，只靠上游拦截
+
+- **版本**：hopper 0.55.0（T-102 复审的 grok 提出，`cli/src/tasks.js:169`；登记前已核对行号与实测输出，见下）
+- **严重度**：低——当前 `dispatch.js` 已在上游拦住，属纵深防御缺失而非活跃缺陷
+- **状态**：**Open — 未修，仅登记**
+
+### 现象
+
+`composePrompt(frameContent, taskSpec, …)` 不校验 `taskSpec` 是否为空或纯空白，
+直接拼进「## Task spec」一节（`cli/src/tasks.js:169`：
+`` parts.push(`## Task spec\n\n${taskSpec.trim()}`); ``）。**当前唯一的防线在 `dispatch.js` 的
+`composeTaskContent()`**，即任何绕过该函数直接调用 `composePrompt` 的新调用点，都会重新打开
+0.55.0 刚堵上的洞。
+
+### 实测复核（2026-08-12，登记前用真实代码验证，非转述）
+
+直接调用 `composePrompt('# Frame', '')` 与 `composePrompt('# Frame', '   \n  ')`：两次调用都
+**未抛错**，都正常返回一份完整 prompt，其中「## Task spec」小节之后没有任何内容
+（`...## Task spec\n\n\n`）。确认没有任何 empty/whitespace 守卫。
+
+### 为什么本轮没修
+
+`cli/src/tasks.js` 被 `tests/unit/tasks.test.js` 的 **4 条逐字节 `assert.equal`**
+（`:130`/`:138`/`:150`/`:155`）锁死拼装形状，本轮修复的既定约束是**一字不改该文件**。
+
+注：在函数入口加 fail-closed 抛错**不会**改变合法输入的拼装结果，
+因此理论上与那 4 条断言不冲突——是本轮的 scope 约束，不是技术阻碍。留待独立一轮评估。
 
 ---

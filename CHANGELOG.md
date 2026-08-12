@@ -19,6 +19,157 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.55.0] - 2026-08-12
+
+被派发的 vendor 有时会收到一份**没有任务的任务书**——框架、治理段、执行模式守则一应俱全，
+唯独「## Task spec」那一节写的是一句关于文件缺失的自述，然后 vendor 照样跑完、RPC 照样返回
+`exit 0` / `status: done`。走 `--adhoc` 的路径从来没这个问题（`cli/src/dispatch.js:180`
+`const taskSpec = brief;`，brief 就是 spec），坏的只有 queue.md 那条路径。
+
+**根因在 `loadTaskSpec()` 的两条未命中分支**：正则在 `handoffs/leader-tasklist.md` 里找不到
+该 task-id 的小节时，它返回
+`(no detailed spec found for <id> in leader-tasklist.md; using queue.md brief only)`；文件整个
+不存在（ENOENT）时返回 `(no leader-tasklist.md found at <path>; using queue.md brief only)`。
+调用点 `resolveDispatch()` 把这个返回值原样交给 `composePrompt(frame, taskSpec, …)`——**于是
+这句诊断自己成了 taskSpec**。而 `queue.js:140` 解析出来的 `task.brief` 在整条 queue 路径上
+**从未被读取过一次**。两句话还都声称「using queue.md brief only」：说了「只用 brief」，实际
+一个字都没用——**修的这个缺陷本身，就是一句假话造成的**。
+
+修法与几条别的选择：
+
+- **合并，不是二选一。** 每次派发都会带上执行模式守则，其第 4 条原文写着「The brief and Task
+  spec below are the complete, closed loop.」（`cli/src/tasks.js:154-155`）。**prompt 自己已经
+  向 vendor 承诺了两样东西都在**，那么「详细 spec 存在时就丢掉 brief」会让这句承诺在有详细
+  spec 时变成假话——与这次要修的缺陷同类。现在：详细 spec 在前，queue brief 跟在
+  `### Queue brief` 标题下并注明来源，且**明写冲突时详细 spec 优先**（一份过期的 Brief 单元格
+  不能反过来压倒它本该概括的 spec）。只有 brief 时，brief 原样作为 spec，与 adhoc 路径一致。
+- **`loadTaskSpec()` 改为返回 `string | null` 并导出。** 缺失就报告缺失，不再返回描述自己失败
+  的散文。非 ENOENT 的 IO 错误**仍然 throw**——一个权限不足或损坏的 leader-tasklist.md 是真故障，
+  不许被洗成「没有 spec」。
+- **诊断文字降级为 operator notice**，走 stderr 与 `--resolve` 回显（`  notice: …`，与既有的
+  host-isomorphism / policy notice 同一格式），**不再进入 vendor prompt**。文案也改成只陈述
+  事实：`No detailed spec section for <id> in leader-tasklist.md; task content comes from
+  queue.md Brief.`
+- **spec 与 brief 皆空时 fail-closed 抛错**，与 adhoc（`dispatch.js:166-167`）、swarm
+  （`:212-213`）对齐——两条路径本来就拒绝空 brief，只有 queue 路径会派发一个空任务出去。错误信息
+  指明该填哪里。**安全边界没有放宽**：这是新增的拒绝，不是新增的放行；vendor 权限、沙箱、
+  approved-vendors 白名单一律未动。
+- **补一处 fail-closed 的漏洞：matched-but-bodyless 的小节曾经不算「空」。** 上一条的抛错依赖
+  `loadTaskSpec()` 在无内容时诚实返回 `null`，但它原先只判断「匹配到的小节 `.trim()` 后是否
+  非空」——而这个小节**永远包含被匹配到的 marker 本身**。于是 leader-tasklist.md 里恰好写了
+  `"## T-1\n"`（只有一行裸标题、下面什么都没有）这种情况，`section.length > 0` 为真，函数把
+  这行标题原样当成「有效 spec」返回，上面的 fail-closed 抛错因此从未触发——vendor 会收到一份
+  「## Task spec」只写着「## T-1」四个字的任务书，这正是本条目一开始要修的那类缺陷的翻版。
+  现在改判「marker 之后有没有实际正文」：从匹配到的小节前缀里剥掉 marker 文本本身
+  （`cli/src/dispatch.js:332-381`），要求剩余部分 `.trim()` 后非空才算有 spec；三种 marker
+  形式（`## T-1` 标题、`**T-1**` 加粗、`| T-1 | ... |` 表格行）剥离后统一判断。命中时仍然原样
+  返回**整个小节**（含 marker 行）——只有「算不算有效」的判定变了，成功路径的返回值字节不动。
+- **`fileExists()` 收窄到只吞 ENOENT。** 它是 `composeTaskContent()` 用来区分「leader-tasklist.md
+  整个不存在」与「存在但没有该 task 小节」这两句 operator notice 文案的探测函数
+  （`cli/src/dispatch.js:436`），原先 `access()` 抛出的**任何**异常都被吞成 `false`——一个权限
+  不足（`EACCES`）的目录会被误报成「文件不存在」，notice 文案说谎。现在只有
+  `err.code === 'ENOENT'` 映射为 `false`，其余一律 rethrow。
+- ⚠ 一处容易写错的地方留在注释里：**这里不能用 `??`**。`queue.js:140` 对缺失的 Brief 列给的是
+  **空字符串**，而 `'' ?? brief` 仍然是 `''`——nullish 只认 null/undefined。合并逻辑全部按
+  `.trim()` 后的空串判断。
+
+**钉住的测试**：新增 `tests/unit/dispatch-task-content.test.js`（12 条），四种 fixture 全覆盖
+——有详细 spec 条目 / 文件在但无该条目 / 文件整个不存在 / brief 为空且无 spec——外加「占位符
+句子永不出现在 composedPrompt 里」的反向断言、非 ENOENT 错误仍然抛出、`--resolve` 的
+operator notice 与 fail-closed 退出码、以及上面 matched-but-bodyless marker 的专项回归：
+leader-tasklist.md 恰好是 `"## T-1\n"` 加空 Brief → 必须 fail-closed 抛错，而不是把裸标题当
+spec 派发出去。四条破坏性反证各自实测变红（去掉回落 7 红、null 改回占位符 6 红、去掉
+fail-closed 3 红、marker-body 判定改回「小节非空即可」2 红——新旧两条断言 `loadTaskSpec` 回到
+`"## T-1"` / `"**T-1**"` 而非 `null`）。`composePrompt` 的拼装形状**一个字节都没动**——合并在
+dispatch 侧完成，`tests/unit/tasks.test.js` 的四条逐字节断言原样绿。
+
+**顺带修一处现存漂移**：三个 README 的版本徽章停在 0.50.0、落后四个版本。同一行旁边的 hosts
+徽章有发现式守卫（`readme-hosts-badge.test.js`，2026-08-03 建立后再没漂过），版本徽章没有。
+补上 `tests/unit/readme-version-badge.test.js`——两侧都是发现来的（`README*.md` glob ×
+package.json），不是手写清单。
+
+**两处 fixture 债一并还清**：`resolve-and-model-hints.test.js` 与 `resolve-vendor-override.test.js`
+的 queue fixture 都没有 Brief 列、也不写 leader-tasklist，即「空任务」——它们本意测的是
+unregistered-vendor / model-in-Vendor 列诊断与 `--vendor` 覆盖，现在补了非空 Brief，不再借道
+一条本该被拒绝的路径。后者还有一条 `doesNotMatch(/override/i)` 收紧成
+`/\(--vendor override\)/i`：mkdtemp 前缀本身叫 `hopper-resolve-override-…`，裸词匹配会误伤
+stdout 里回显的临时目录路径（这条路径恰好也会经过上面改过的 `composeTaskContent()`：fixture
+没写 leader-tasklist.md，`--resolve` 因此还会打印一行 specNotice，文字里同样带着这个
+`hopper-resolve-override-…` 绝对路径）。但收紧之后这条断言只剩「没有覆盖时不出现」的反向保证——
+如果 marker 整体从 CLI 输出里消失，`doesNotMatch` 一样会通过，测不出回归。因此在「覆盖生效」的
+两条测试里各补一条正向断言 `assert.match(r.stdout, /\(--vendor override\)/i)`，两侧配对才形成
+完整的开关覆盖。
+
+**追加（同日，对抗评审发现并被主会话独立复现）：`loadTaskSpec()` 的 section-END 边界检测本身
+两处独立地坏，导致一个任务的"spec"可能包含另一个任务的内容**——比丢失 spec 更糟，vendor 会
+直接执行别人的任务。两处根因都是该文件里早已存在的旧代码，不是本条目上面几条改动引入的：
+
+- **根因 (a)：`rest.slice(50)` 的魔数。** 边界搜索会先跳过固定 50 个字符再找下一个任务的
+  marker；当前任务小节短于 50 字符时，下一个任务的标题恰好落在被跳过的窗口里，永远搜不到，
+  于是整段一路吃进下一个任务体内。复现（空 queue brief，task id `T-1`）：
+  `"## T-1\n\n## T-2\nActual body belongs only to T-2."` → 旧代码 `loadTaskSpec` 返回
+  `"## T-1\n\n## T-2\nActual body belongs only to T-2."`，T-1 的 spec 变成了 T-2 的正文。把
+  T-1 小节垫长过 50 字符，边界即可正确找到——坐实魔数是根因。
+- **根因 (b)：边界识别比起点识别更窄。** 起点识别（`markerRe`）认三种 marker 形态：
+  `**<id>**`、`^##+\s+<id>`、`^\|\s*<id>\s*\|`；边界识别原先只认 `^##\s+` 一种。于是下一个
+  任务若写成加粗或表格行形态，根本不构成边界——与小节长度无关（垫长了照样漏）。
+
+修法（首选，不靠猜形状）：`resolveDispatch()` 本来就解析了 queue.md、手握每一个已知 task id，
+现在把这份 id 列表（排除自己）通过新增的可选参数传给
+`loadTaskSpec(hopperDir, taskId, { otherTaskIds })`（函数体 `cli/src/dispatch.js:321-382`，
+调用点在 `resolveDispatch` 内 `cli/src/dispatch.js:125-131`）。`rest.slice(50)` 的魔数整个
+删掉——不论下面哪种检查，都改为从匹配到的 marker 文本**结束处**开始搜索，不再跳过任何固定
+长度。
+
+⚠ **同日对抗评审又挑出两处缺陷，都出在"边界怎么合成"这一步，不是 marker 形态本身**——第一版
+把两种检查写成了非此即彼，而不是取并集：
+
+- **union 缺陷 1（真实派发路径反而变差）**：第一版是 `otherTaskIds` 有值就只走"已知 id
+  marker"检查、没有就只走"标题"检查——二选一。但 `resolveDispatch`（真实派发路径）**总是**
+  传 `otherTaskIds`，于是在这条路径上，一个**普通 `##` 标题不再构成边界**：任何存在于
+  `leader-tasklist.md` 但**没有 queue.md 行**的任务（典型如所有 `--adhoc` 派发的任务，本仓
+  T-091–T-100 皆属此类，天然不在 `otherTaskIds` 里）就再也无法终止**前一个**任务的小节，
+  内容反向泄漏进前一个任务的 spec。复现：`otherTaskIds: ['T-1','T-2']`、`## T-1` 后跟一段
+  长正文（排除魔数干扰）、再跟着 `## T-91`（T-91 不在 id 列表里）——T-1 的 spec 吃进了
+  `SECRET_ADHOC`。同样的输入不传 `otherTaskIds` 时能正确截断，改动前的旧代码
+  （`rest.slice(50).search(/^##\s+/m)`，正文过 50 字符后）也能正确截断——**说明是这版"首选
+  修法"本身在真实路径上比改动前更差**。
+- **union 缺陷 2（`##+` 误吞正文自带的子标题）**：标题检查原写作 `^##+\s+`（两个及以上 `#`），
+  于是 spec 正文里自己合法带的 `### 背景` / `### 验收` 这类子标题也被当成边界，从第一个子
+  标题处整段截断。
+
+修法：边界改为**并集**取最早匹配，而不是二选一——(i) **无条件**检查一个纯 H2 标题
+（`^##\s+`，**恰好两个 `#`**，与改动前的旧代码同形）；(ii) 当 `otherTaskIds` 有值时，**额外**
+检查加粗 / 任意级别标题 / 表格行三种形态里命中**已知其它 task id** 的 marker。两者独立运行，
+取 offset 更小（更早出现）的那个；已知 id 只会**增加**边界，绝不会取消 (i) 的无条件标题检查。
+(i) 坚持"恰好两个 `#`"而不放宽到 `##+`，就是为了不误吞 spec 自己的 `###`/`####` 子标题。
+
+`otherTaskIds` 缺省时（调用方不传，比如直接调用 `loadTaskSpec` 的测试代码），(ii) 不产生任何
+额外边界，但 (i) 的纯标题检查仍然无条件生效——不再存在"有 id 列表 / 没有 id 列表两套互斥逻辑"
+这回事，只是 (ii) 这一半贡献的边界集合可能是空集。
+
+**测试**：`tests/unit/dispatch-task-spec-boundary.test.js` 现有 14 条：两个原始根因各自的复现
++ 对照；over-truncation 硬约束（正文里合法的加粗行/markdown 表格必须原样保留，含一个"像 id
+但不在已知列表里"的加粗 token `**T-9**` 不得被误判为边界）；`resolveDispatch` 端到端复验
+（含最后一个任务、无后续边界时仍取到完整内容）；对 `docs/archive/ISSUES.md`
+`queue-brief-dropped-without-leader-tasklist` 那条"spec 与 brief 皆空 → fail-closed 抛错"
+断言的重新验证；以及本次新增的两条 union 缺陷回归——union 缺陷 1（`otherTaskIds` 不含的
+`## T-91` 仍必须截断前一任务）与 union 缺陷 2（`### 背景`/`### 验收` 在有/无 `otherTaskIds`
+两种模式、以及 `resolveDispatch` 端到端场景下都必须原样保留）。**四处修复分别做了破坏性
+反证**：单独回退根因 (a)，14 条中 2 红；恢复后单独回退根因 (b)，4 红；恢复后单独回退 union
+缺陷 1 的修复（`otherTaskIds` 有值时跳过 (i) 的无条件标题检查，还原成二选一），1 红（精确命中
+新增的 union 缺陷 1 用例，其余 13 条含 union 缺陷 2 的三条用例全绿——因为那三条用例的正文里
+不含任何已知其它 id，二选一退化不影响它们）；恢复后单独回退 union 缺陷 2 的修复
+（把 (i) 的 `^##\s+` 放宽回 `^##+\s+`），3 红（精确命中新增的三条 union 缺陷 2 用例，其余
+11 条全绿）。四次回退互不重叠地各自命中对应缺陷的用例，证明四处修复各自独立生效、缺一不可。
+
+**顺带**：`docs/archive/ISSUES.md` 的 `queue-brief-dropped-without-leader-tasklist` Resolution
+段把回归测试数写成"11 条"，实数（`grep -c '^test(' tests/unit/dispatch-task-content.test.js`）
+是 12——本条目上面的"钉住的测试"段当时就写对了，已改正 ISSUES.md 那一处的笔误。另登记一条新
+open issue `queue-brief-truncated-by-unescaped-pipe`：`cli/src/queue.js` 按下标取列，brief
+内含未转义的 `|` 会把行切出多余的 cell 并静默丢弃，可能把内容错位挤进 Vendor 列——与本条目修
+的泄漏是同一种"看起来有任务、实际不是完整那份"的失败形状的第三处，本轮只登记、不修。
+
 ## [0.54.0] - 2026-08-11
 
 排查 hawk 项目最近一次 `--swarm` 派发时发现：两个 panelist 都是 `model: (vendor default)`、

@@ -1,7 +1,7 @@
 {
   "$schema": "https://catalog.deva.msh.team/schemas/kimi.plugin.schema.json",
   "name": "hopper",
-  "version": "0.54.0",
+  "version": "0.55.0",
   "description": "Vendor-neutral background dispatch for AI agents. Thin plugin layer over the llm-hopper file-based protocol: dispatches task-typed work to vendor CLI subprocesses (codex, kimi, opencode, copilot, agy, grok, mimo, claude). State lives in plain markdown and JSONL under .hopper/.",
   "keywords": [
     "hopper",

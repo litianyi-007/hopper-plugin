@@ -27,7 +27,7 @@ import {
   READ_ONLY_DEFAULT_TASK_TYPES, WEB_SEARCH_TASK_TYPES,
   validateTaskId, TASK_TYPE_PATTERN, VENDOR_PATTERN,
 } from './validation.js';
-import { readFile } from 'node:fs/promises';
+import { readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const READ_ONLY_TASK_RE = /\b(?:read[-_\s]?only|readonly)\b|只读/i;
@@ -82,7 +82,8 @@ function policyForTaskType(agentsData, taskType) {
  *   frame: string,
  *   vendor: string,
  *   composedPrompt: string,
- *   taskSpec: string
+ *   taskSpec: string,
+ *   specNotice: string|null
  * }>}
  */
 export async function resolveDispatch({ hopperDir, taskId, vendorOverride = null }) {
@@ -109,8 +110,25 @@ export async function resolveDispatch({ hopperDir, taskId, vendorOverride = null
   // short-circuit, the host!=vendor isomorphism guard applied downstream.
   assertVendorApproved(agentsData, vendor);
 
-  // 4. Read task spec (from leader-tasklist.md if present)
-  const taskSpec = await loadTaskSpec(hopperDir, taskId);
+  // 4. Build the task CONTENT: the detailed spec section from
+  //    handoffs/leader-tasklist.md (when there is one) MERGED with the queue.md
+  //    Brief cell — never one silently standing in for the other.
+  //
+  //    WHY MERGE (and not "pick one"): the execution-mode guardrail composed into
+  //    every handoff states, verbatim, "The brief and Task spec below are the
+  //    complete, closed loop." (cli/src/tasks.js). Dropping either half would make
+  //    that sentence false for the vendor reading it — the very class of defect
+  //    this path used to have: loadTaskSpec's two miss branches returned a
+  //    PLACEHOLDER STRING claiming "using queue.md brief only" which then became
+  //    the spec, so the brief never reached the vendor at all and the vendor got a
+  //    frame with no task in it (and still exited 0 / status done).
+  const { taskSpec, specNotice } = await composeTaskContent({
+    hopperDir, taskId, task,
+    // Every other known task id, so loadTaskSpec's section-END search can stop
+    // at the next OTHER task's exact marker (any of the three forms) instead of
+    // pattern-guessing — see loadTaskSpec's doc comment (root cause (b) fix).
+    otherTaskIds: tasks.map((t) => t.id),
+  });
 
   // 5. Resolve optional governance overlay (keyed on the resolved vendor) and
   // compose. resolveGovernance is pure file I/O — no subprocess (spec §3 #4).
@@ -121,7 +139,7 @@ export async function resolveDispatch({ hopperDir, taskId, vendorOverride = null
   // resolveAdapterOptsForTask's --reasoning / --model fallback chains below.
   const policy = policyForTaskType(agentsData, task.taskType);
 
-  return { task, frame, vendor, composedPrompt, taskSpec, policy, vendorDefaultModel: vendorDefaultModel(agentsData, vendor) };
+  return { task, frame, vendor, composedPrompt, taskSpec, specNotice, policy, vendorDefaultModel: vendorDefaultModel(agentsData, vendor) };
 }
 
 /**
@@ -163,7 +181,10 @@ export async function resolveAdhocDispatch({ hopperDir, taskType, brief, id, ven
   const governance = await resolveGovernance({ hopperDir, vendor, task });
   const composedPrompt = composePrompt(frame, taskSpec, { governance });
   const policy = policyForTaskType(agentsData, taskType);
-  return { task, frame, vendor, composedPrompt, taskSpec, policy, vendorDefaultModel: vendorDefaultModel(agentsData, vendor) };
+  // specNotice: shape parity with resolveDispatch. Always null here — an ad-hoc
+  // dispatch has no leader-tasklist lookup to miss (the brief IS the spec, and an
+  // empty one was already rejected above).
+  return { task, frame, vendor, composedPrompt, taskSpec, specNotice: null, policy, vendorDefaultModel: vendorDefaultModel(agentsData, vendor) };
 }
 
 /**
@@ -205,29 +226,237 @@ export function planSwarm({ taskType, brief, vendors, idBase, now = Date.now() }
   return uniq.map((vendor) => ({ vendor, id: `${base}-${vendor}`, taskType, brief }));
 }
 
-async function loadTaskSpec(hopperDir, taskId) {
-  // Try .hopper/handoffs/leader-tasklist.md and extract the relevant section
-  const path = join(hopperDir, 'handoffs', 'leader-tasklist.md');
+/** Absolute path of the optional detailed-spec file. Single source of truth. */
+export function leaderTasklistPath(hopperDir) {
+  return join(hopperDir, 'handoffs', 'leader-tasklist.md');
+}
+
+/** Escape a literal string for embedding in a RegExp source. */
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Build the alternation of the three section-marker forms hopper recognizes, for
+ * one escaped id or an already-alternated group of escaped ids (`a|b|c`):
+ * `**<idsPattern>**`, `^##+\s+<idsPattern>\b`, `^|\s*<idsPattern>\s*|`. Shared by
+ * section-START detection (a single task id) and section-END/boundary detection
+ * (root cause (b) fix below — the END search used to only recognize the heading
+ * form, so a following task written as `**T-2** …` or `| T-2 | … |` was never a
+ * boundary at all and got swallowed into the current section).
+ * @param {string} idsPattern  one escaped id, or `id1|id2|...` (already escaped)
+ */
+function markerAlternation(idsPattern) {
+  return `\\*\\*(?:${idsPattern})\\*\\*|^##+\\s+(?:${idsPattern})\\b|^\\|\\s*(?:${idsPattern})\\s*\\|`;
+}
+
+/**
+ * Load the DETAILED spec section for a task from .hopper/handoffs/leader-tasklist.md.
+ *
+ * Returns the section text, or `null` when there is no detailed spec — either
+ * because the file has no section for this task-id, or because the file does not
+ * exist at all. It NEVER returns prose describing its own failure: this function
+ * used to return placeholder strings like
+ *   "(no detailed spec found for T-1 in leader-tasklist.md; using queue.md brief only)"
+ * which the caller then handed to composePrompt AS the task spec — so the vendor
+ * received a handoff whose entire "Task spec" section was a sentence about a
+ * missing file, the queue.md Brief was never composed in at all, and the sentence
+ * itself was false ("using queue.md brief only" while using nothing). Missing data
+ * is now reported as absence (`null`); the caller decides the fallback.
+ *
+ * Any non-ENOENT I/O error still throws — an unreadable/permission-denied
+ * leader-tasklist.md is a real fault and must not be laundered into "no spec".
+ *
+ * CROSS-TASK LEAK FIX (2026-08-12): section-END detection used to be broken two
+ * independent ways, so a task's "spec" could contain ANOTHER task's content —
+ * worse than a missing spec, since the vendor executes someone else's task:
+ *   (a) `rest.slice(50)` skipped a fixed 50 characters before searching for the
+ *       next boundary. A section shorter than 50 chars let the NEXT task's
+ *       heading fall inside that skipped window, so it was never seen and the
+ *       slice ran on into it. Fixed by searching from right after the matched
+ *       marker TEXT instead of a fixed offset — nothing is ever skipped.
+ *   (b) the END search only recognized a `^##\s+` heading, while the START
+ *       search (and therefore what actually marks a new task) recognizes THREE
+ *       forms (bold / heading / table-row). A following task written in bold or
+ *       table-row form was never a boundary at all, regardless of section
+ *       length. Fixed via `options.otherTaskIds` (see below) — the section now
+ *       ends at the next marker naming any OTHER known task id, in any of the
+ *       three forms.
+ *
+ * FOLLOW-UP FIX (same day, adversarial review of the first pass): the boundary
+ * is the UNION of two independent checks, not an either/or choice between them —
+ * an earlier version made them mutually exclusive (id-aware search REPLACED the
+ * heading search whenever `otherTaskIds` was supplied) and that regressed the
+ * real dispatch path, which always supplies `otherTaskIds`:
+ *   - a plain H2 heading (`^##\s+`, EXACTLY two hashes) always ends a section,
+ *     in both modes. This is what lets a task that exists in
+ *     leader-tasklist.md but has no queue.md row (e.g. anything dispatched via
+ *     `--adhoc`, so it never appears in `otherTaskIds`) still correctly
+ *     terminate the PREVIOUS task's section — the union-not-replacement bug
+ *     otherwise leaked such a task's content into its predecessor's "spec".
+ *   - a bold / any-level-heading / table-row marker naming a KNOWN OTHER task
+ *     id (from `otherTaskIds`) ALSO ends a section — this is what recognizes a
+ *     following task written in bold or table-row form (root cause (b) above).
+ *   The two checks run independently and the EARLIEST match wins; known ids
+ *   only ever ADD boundaries beyond the plain-H2 check, they never remove it.
+ *   Deliberately H2-ONLY (not `^##+\s+`, any level) for the unconditional
+ *   heading check: a spec body legitimately contains its OWN `###`/`####`
+ *   subsections (e.g. `### 背景` / `### 验收`), and those must survive intact —
+ *   widening to `##+` would cut a spec off at its first subsection.
+ *
+ * @param {string} hopperDir
+ * @param {string} taskId
+ * @param {{ otherTaskIds?: string[] }} [options]
+ *   `otherTaskIds` — every other known task id (e.g. every id in queue.md).
+ *   Exact ids beat pattern-guessing: when supplied, a bold / heading /
+ *   table-row marker naming one of them ALSO ends the section (in addition to
+ *   the unconditional H2-heading check below) — a legitimate `**Bold**` line
+ *   or markdown table inside THIS task's own body can never be mistaken for a
+ *   boundary, because it does not spell another KNOWN task's id. Omitted /
+ *   empty (e.g. a direct/test caller with no queue.md id list to hand) simply
+ *   means this half of the union contributes no extra boundaries — the plain
+ *   H2-heading check below still applies either way.
+ * @returns {Promise<string|null>}  section text, or null when there is none
+ */
+export async function loadTaskSpec(hopperDir, taskId, options = {}) {
+  const path = leaderTasklistPath(hopperDir);
+  let content;
   try {
-    const content = await readFile(path, 'utf-8');
-    // Find a section starting with **<task-id>** or ## <task-id> or ### <task-id>
-    const escapedId = taskId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const sectionStart = content.search(new RegExp(
-      `(\\*\\*${escapedId}\\*\\*|^##+\\s+${escapedId}\\b|^\\|\\s*${escapedId}\\s*\\|)`,
-      'm'
-    ));
-    if (sectionStart === -1) {
-      return `(no detailed spec found for ${taskId} in leader-tasklist.md; using queue.md brief only)`;
-    }
-    // Take the next ~80 lines as the task spec (or until next H2 heading)
-    const rest = content.slice(sectionStart);
-    const nextH2 = rest.slice(50).search(/^##\s+/m);
-    const end = nextH2 === -1 ? Math.min(rest.length, 8000) : 50 + nextH2;
-    return rest.slice(0, end).trim();
+    content = await readFile(path, 'utf-8');
   } catch (err) {
-    if (err.code === 'ENOENT') {
-      return `(no leader-tasklist.md found at ${path}; using queue.md brief only)`;
+    if (err.code === 'ENOENT') return null;
+    throw err;
+  }
+  // Find a section starting with **<task-id>** or ## <task-id> or ### <task-id>
+  const escapedId = escapeRegExp(taskId);
+  const markerRe = new RegExp(markerAlternation(escapedId), 'm');
+  const markerMatch = content.match(markerRe);
+  if (!markerMatch) return null;
+  const sectionStart = markerMatch.index;
+  const markerText = markerMatch[0];
+  const rest = content.slice(sectionStart);
+  // Boundary search space: everything AFTER the matched marker text itself — see
+  // root cause (a) in the doc comment above. No fixed offset is skipped.
+  const searchSpace = rest.slice(markerText.length);
+
+  const otherIds = Array.isArray(options.otherTaskIds)
+    ? [...new Set(options.otherTaskIds.filter((id) => typeof id === 'string' && id.length > 0 && id !== taskId))]
+    : [];
+
+  // Boundary = the EARLIEST of two independent checks (union, not either/or —
+  // see the doc comment's "FOLLOW-UP FIX"):
+  let boundaryOffset = -1; // offset into `searchSpace`, or -1 when no boundary found
+
+  // (i) a plain H2 heading — EXACTLY two hashes — always ends a section, in
+  //     both modes. This is what lets an adhoc task with no queue.md row (so
+  //     it's absent from otherTaskIds) still terminate the PREVIOUS task's
+  //     section via its own heading. H2-only (not `^##+\s+`) so a spec's own
+  //     `###`/`####` subsections are never mistaken for a boundary.
+  const headingOffset = searchSpace.search(/^##\s+/m);
+  if (headingOffset !== -1) boundaryOffset = headingOffset;
+
+  // (ii) a bold / any-level-heading / table-row marker naming a KNOWN OTHER
+  //      task id ALSO ends a section — this recognizes a following task
+  //      written in bold or table-row form (root cause (b)). Only ADDS
+  //      boundaries beyond (i); never removes the plain-H2 check above.
+  if (otherIds.length > 0) {
+    const idsPattern = otherIds.map(escapeRegExp).join('|');
+    const boundaryRe = new RegExp(markerAlternation(idsPattern), 'm');
+    const idOffset = searchSpace.search(boundaryRe);
+    if (idOffset !== -1 && (boundaryOffset === -1 || idOffset < boundaryOffset)) {
+      boundaryOffset = idOffset;
     }
+  }
+  const end = boundaryOffset === -1 ? Math.min(rest.length, 8000) : markerText.length + boundaryOffset;
+  const section = rest.slice(0, end).trim();
+  // Fail-closed rule: decide on "is there actual BODY after the matched marker",
+  // not "is the section non-empty" — the section always includes the marker line
+  // itself, so a bare "## T-1" heading with nothing under it previously satisfied
+  // `section.length > 0` and returned a non-null "spec" that was just the heading.
+  // That let the marker slip past composeTaskContent's fail-closed throw entirely
+  // (a matched-but-bodyless section looked identical to a real spec). Strip the
+  // matched marker text itself off the front — `rest` starts exactly at the
+  // match, so `section` does too — and require non-whitespace remainder.
+  const afterMarker = section.startsWith(markerText) ? section.slice(markerText.length) : section;
+  return afterMarker.trim().length > 0 ? section : null;
+}
+
+/** Header that labels the queue.md Brief inside a merged task spec. */
+export const QUEUE_BRIEF_HEADING = '### Queue brief';
+
+/**
+ * Precedence line appended to a MERGED spec. The vendor sees two sources of task
+ * content; it must be told which wins, or a stale Brief cell can silently
+ * out-argue the detailed spec it was supposed to summarize.
+ */
+export const QUEUE_BRIEF_PRECEDENCE_NOTE =
+  '(Source: the Brief column of .hopper/queue.md. Where it conflicts with the detailed spec above, the detailed spec wins.)';
+
+/**
+ * Assemble the task CONTENT for a queued dispatch out of its two possible
+ * sources, and say (to the operator, never to the vendor) when one is missing.
+ *
+ * Rules:
+ *   - both present  → detailed spec first, then the Brief under `### Queue brief`,
+ *                     with an explicit "detailed spec wins on conflict" line
+ *   - spec only     → the spec verbatim
+ *   - brief only    → the brief verbatim (mirrors the ad-hoc path, where the brief
+ *                     IS the spec) + an operator notice explaining why there is no
+ *                     detailed section
+ *   - neither       → THROW (fail closed). Dispatching a content-free prompt is how
+ *                     a vendor "succeeds" (exit 0, status done) at nothing. Matches
+ *                     the ad-hoc/swarm paths, which already reject an empty brief.
+ *
+ * Note `??` is unusable here: queue.js gives a missing Brief cell the EMPTY STRING,
+ * and `'' ?? brief` is `''` — nullish coalescing only catches null/undefined.
+ * Everything below is emptiness-aware via .trim().
+ *
+ * @param {{hopperDir: string, taskId: string, task: {brief?: string}, otherTaskIds?: string[]}} args
+ *   `otherTaskIds` — passed straight through to loadTaskSpec's exact-boundary
+ *   resolution (every other known task id from queue.md); see its doc comment.
+ * @returns {Promise<{taskSpec: string, specNotice: string|null}>}
+ */
+async function composeTaskContent({ hopperDir, taskId, task, otherTaskIds }) {
+  const detailed = (await loadTaskSpec(hopperDir, taskId, { otherTaskIds }) || '').trim();
+  const brief = typeof task?.brief === 'string' ? task.brief.trim() : '';
+
+  if (detailed && brief) {
+    return {
+      taskSpec: `${detailed}\n\n${QUEUE_BRIEF_HEADING}\n\n${brief}\n\n${QUEUE_BRIEF_PRECEDENCE_NOTE}`,
+      specNotice: null,
+    };
+  }
+  if (detailed) return { taskSpec: detailed, specNotice: null };
+
+  // No detailed section. Distinguish "file has no entry for this id" from "no file
+  // at all" — same two situations the old placeholder strings described, except the
+  // text now goes to the OPERATOR (stderr / --resolve echo) instead of being fed to
+  // the vendor as if it were the task.
+  const path = leaderTasklistPath(hopperDir);
+  const tasklistExists = await fileExists(path);
+  if (brief) {
+    return {
+      taskSpec: brief,
+      specNotice: tasklistExists
+        ? `No detailed spec section for ${taskId} in leader-tasklist.md; task content comes from queue.md Brief.`
+        : `leader-tasklist.md is absent at ${path}; task content comes from queue.md Brief.`,
+    };
+  }
+  throw new Error(
+    `Task ${taskId} has no task content: queue.md Brief is empty and no detailed spec was found`
+    + (tasklistExists ? ` (no section for ${taskId} in ${path})` : ` (${path} does not exist)`)
+    + `. Fill the Brief cell for ${taskId} in .hopper/queue.md, or add a "## ${taskId}" section to leader-tasklist.md.`
+  );
+}
+
+async function fileExists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch (err) {
+    // Only "does not exist" maps to false. Anything else (EACCES, etc.) is a real
+    // fault and must not be misreported as "file does not exist".
+    if (err.code === 'ENOENT') return false;
     throw err;
   }
 }

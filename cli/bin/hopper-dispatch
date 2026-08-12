@@ -62,7 +62,7 @@ import { resolve, join, dirname, basename, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
-const VERSION = '0.54.0';
+const VERSION = '0.55.0';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -958,6 +958,10 @@ async function runResolve(hopperDir, taskId, vendorOverride = null) {
     console.log(`  Task-type: ${result.task.taskType}`);
     console.log(`  Vendor:    ${result.vendor}${vendorOverride ? ' (--vendor override)' : ''}`);
     if (hostCheck.notice) console.log(`  notice:    ${hostCheck.notice}`);
+    // Where the task content came from, when it did NOT come from a detailed
+    // leader-tasklist.md section. This diagnostic used to be smuggled into the
+    // vendor prompt as the task spec itself; it is an OPERATOR notice.
+    if (result.specNotice) console.log(`  notice:    ${result.specNotice}`);
     console.log(`  Brief:     ${result.task.brief}`);
     console.log(`  Composed prompt length: ${result.composedPrompt.length} chars`);
     if (process.env.HOPPER_DEBUG) {
@@ -1110,6 +1114,8 @@ async function runDispatch(hopperDir, taskId, { write = false, force = false, ad
     const resolved = adhocSpec
       ? await resolveAdhocDispatch({ hopperDir, taskType: adhocSpec.taskType, brief: adhocSpec.brief, id: taskId, vendorOverride })
       : await resolveDispatch({ hopperDir, taskId, vendorOverride });
+    // Operator-facing provenance of the task content (never sent to the vendor).
+    if (resolved.specNotice) console.error(`  notice: ${resolved.specNotice}`);
     const effectiveAdapterOpts = resolveAdapterOptsForTask(resolved, adapterOpts);
     if (effectiveAdapterOpts.sandbox) {
       // When the resolver overrides an EXPLICIT request (only codex does this: its -s sandbox
@@ -1276,6 +1282,8 @@ async function runBackgroundDispatch(hopperDir, taskId, { adapterOpts = {}, vend
   } catch (err) {
     bail(`Error: ${err.message}`, 1);
   }
+  // Operator-facing provenance of the task content (never sent to the vendor).
+  if (resolved.specNotice) console.error(`  notice: ${resolved.specNotice}`);
   const effectiveAdapterOpts = resolveAdapterOptsForTask(resolved, adapterOpts);
 
   const adapter = getAdapter(resolved.vendor);
