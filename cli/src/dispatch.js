@@ -27,7 +27,7 @@ import {
   READ_ONLY_DEFAULT_TASK_TYPES, WEB_SEARCH_TASK_TYPES,
   validateTaskId, TASK_TYPE_PATTERN, VENDOR_PATTERN,
 } from './validation.js';
-import { readFile, access } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const READ_ONLY_TASK_RE = /\b(?:read[-_\s]?only|readonly)\b|只读/i;
@@ -250,6 +250,222 @@ function markerAlternation(idsPattern) {
   return `\\*\\*(?:${idsPattern})\\*\\*|^##+\\s+(?:${idsPattern})\\b|^\\|\\s*(?:${idsPattern})\\s*\\|`;
 }
 
+// ─── structural-only body detection (docs/archive/ISSUES.md#task-spec-structural-
+// only-body-accepted) ─────────────────────────────────────────────────────────
+//
+// The rule is "is there anything BESIDES structural markup", never "does it
+// CONTAIN structural markup" — a legitimate spec may (and often does) contain
+// tables, horizontal rules, and blockquotes. Every check below is therefore
+// scoped to a single LINE, and the body as a whole is judged by the union
+// across lines: the instant ONE line carries real content, the whole section
+// is accepted, no matter how much structural noise surrounds it.
+//
+// Verified against real markdown and extended slightly past the reported
+// examples (documented in CHANGELOG.md under this fix): the table check
+// covers any cell count (not just 2 columns) and treats an all-empty row
+// (`| | |`) — INCLUDING a bare single `|` with no cells at all — the same as
+// a delimiter row (`|---|---|`) with one rule; the horizontal-rule check
+// accepts tab-separated spaced variants in addition to space-separated ones;
+// the bare-list-marker check accepts `)` as well as `.` after an ordered-list
+// digit (`1)` as well as `1.`), and recognizes an empty/unchecked checkbox
+// item (`- [ ]` / `- [x]`) as its own case; the bare-blockquote check accepts
+// nested empty markers (`> >`), not only a lone `>`; a borderless table-
+// separator row (`--- | ---`, no outer pipes) is recognized alongside the
+// piped form; an HTML `<hr>` tag is recognized alongside the markdown
+// thematic break; and a line holding only zero-width/invisible formatting
+// characters (U+200B ZERO WIDTH SPACE and its siblings U+200C/U+200D/U+FEFF)
+// is treated as blank, since JS's `.trim()` does not strip them and a naive
+// blank check would otherwise see one as "non-whitespace content".
+//
+// Deliberately NOT included (named here, not silently dropped, per the
+// project's stated preference for a LITTLE under-rejection over any
+// over-rejection): a bare subheading with nothing under it (`### 背景` alone),
+// a line of pure emphasis markup with no words (`**`), and an HTML comment
+// (`<!-- ... -->`) all still count as "content" and are ACCEPTED — none of
+// them appear in the reported structural-token list, and guessing past that
+// list risks fail-closing a real spec that happens to use one of them as a
+// section divider. See CHANGELOG.md for the full residual-gap statement.
+//
+// CODE-BLOCK EXEMPTION (2026-08-13, REWORK — over-rejection found by
+// adversarial review and independently reproduced against the code above,
+// before this fix): a fenced (``` or ~~~) or 4-space/tab-INDENTED code block
+// is content the author explicitly marked as literal — the structural-noise
+// checks above must never even look at a line INSIDE one, no matter what
+// that line looks like. Reproduced: a spec whose real content was an
+// indented `    ---` (an indented code block showing a literal horizontal
+// rule), an indented `\t> ` (a tab-indented literal blockquote marker), or
+// an indented `    | | |` (an indented literal table skeleton) was WRONGLY
+// rejected as structural-only — exactly the "over-rejection fail-closes a
+// task that would otherwise have run correctly" harm the original scope-lock
+// warned against, because isStructuralOnlyLine trims each line before
+// judging it and trimming DESTROYS the very indentation that marks it as
+// literal code. Fixed in hasSubstantiveContent below: a fence's OPEN/CLOSE
+// delimiter lines are themselves structural (they carry no task content),
+// but every line strictly BETWEEN them counts as content unconditionally —
+// including a blank one, since the code makes no attempt to interpret fenced
+// content at all. An immediately-empty fenced block (open fence, zero lines,
+// close fence) therefore still contributes nothing, which is the corollary
+// this principle predicts (see the "empty fenced block" under-rejection
+// case). A line starting with 4+ spaces or a tab — checked on the UNTRIMMED
+// line, before any structural regex would strip that indentation and
+// misread it — gets the same unconditional treatment without needing fence-
+// state tracking, provided it has real (non-whitespace) characters after the
+// indent; a purely blank line stays blank regardless of how much leading
+// whitespace it has.
+
+/** A table-row line (`| a | b |`) whose cells are ALL either empty or a
+ * delimiter-cell pattern (`---`, `:---`, `---:`, `:---:`) — an empty skeleton
+ * or delimiter row, not real content. A row with real text in ANY cell
+ * (including a header row) returns false: that row DOES carry content. Naive
+ * split-on-`|` is deliberate — this is a noise heuristic, not a parser, and a
+ * mis-split can only ever make a cell look non-empty (never empty), which can
+ * only push the verdict toward "content", the safe direction for this rule.
+ * No minimum-length guard: a bare single `|` (or `||`) degenerates to one (or
+ * more) empty cells via the same slice/split, so it is caught here too — a
+ * lone `|` used to slip through as "content" (REWORK P3). */
+function isStructuralTableRow(trimmedLine) {
+  if (!trimmedLine.startsWith('|') || !trimmedLine.endsWith('|')) return false;
+  const cells = trimmedLine.slice(1, -1).split('|');
+  return cells.every((cell) => {
+    const c = cell.trim();
+    return c === '' || /^:?-+:?$/.test(c);
+  });
+}
+
+// A table-separator row WITHOUT the outer pipes (`--- | ---`, `-|-|-`) — the
+// piped form is covered by isStructuralTableRow above; this is the
+// borderless variant (REWORK P3).
+const BORDERLESS_TABLE_DELIM_RE = /^:?-+:?(?:\s*\|\s*:?-+:?)+$/;
+// Horizontal rule: 3+ of the SAME `-`/`*`/`_` character, optionally separated
+// by spaces/tabs (CommonMark thematic-break shapes, `---`/`***`/`___` and
+// their spaced variants `- - -` / `* * *` / `_ _ _`). The backreference `\1`
+// keeps this to a SINGLE repeated character — `-*-` (mixed) is not a rule and
+// correctly falls through to "content".
+const HR_LINE_RE = /^([-*_])(?:[ \t]*\1){2,}$/;
+// The HTML thematic-break tag, any case, self-closed or not (REWORK P3).
+const HTML_HR_RE = /^<hr\s*\/?\s*>$/i;
+// A blockquote marker, possibly nested (`> >`), with nothing after it.
+const BARE_BLOCKQUOTE_RE = /^>[>\s]*$/;
+// A single list marker (bullet or ordered) alone on a line — no item text.
+const BARE_LIST_MARKER_RE = /^(?:[-*+]|\d+[.)])$/;
+// An empty/unchecked task-list checkbox item — no text after the box (REWORK P3).
+const BARE_CHECKBOX_RE = /^[-*+]\s*\[[ xX]\]$/;
+// Zero-width / invisible formatting characters. `.trim()` does NOT strip
+// these (Unicode category Cf, not the Zs/whitespace set JS trims), so a line
+// holding only one of them reads as "non-whitespace" to a naive check — this
+// makes it blank explicitly (REWORK P3: U+200B specifically reported;
+// siblings ZWNJ/ZWJ/BOM added here as the same class of invisible marker).
+const INVISIBLE_ONLY_RE = /^[​‌‍﻿]+$/;
+
+/**
+ * True when `line` is structural markdown noise that carries no task content
+ * by itself: blank (including zero-width-only), a horizontal rule (markdown
+ * thematic break or `<hr>`), a table delimiter/all-empty/borderless-
+ * separator row, a bare blockquote marker, an empty checkbox item, or a bare
+ * list marker. False for everything else — INCLUDING a table row /
+ * blockquote / list item that has real text, and INCLUDING a bare heading,
+ * which is not in the reported structural-token list (see the residual-gap
+ * note above). Deliberately unaware of code fences or indentation — that is
+ * hasSubstantiveContent's job below, which is responsible for never calling
+ * this on a line that is inside a code block (see "CODE-BLOCK EXEMPTION").
+ */
+function isStructuralOnlyLine(line) {
+  const t = line.trim();
+  if (t === '') return true;
+  if (INVISIBLE_ONLY_RE.test(t)) return true;
+  if (isStructuralTableRow(t)) return true;
+  if (BORDERLESS_TABLE_DELIM_RE.test(t)) return true;
+  if (HR_LINE_RE.test(t)) return true;
+  if (HTML_HR_RE.test(t)) return true;
+  if (BARE_BLOCKQUOTE_RE.test(t)) return true;
+  if (BARE_CHECKBOX_RE.test(t)) return true;
+  if (BARE_LIST_MARKER_RE.test(t)) return true;
+  return false;
+}
+
+// Code-fence delimiter shape: 0-3 leading spaces then a run of 3+ backticks
+// or 3+ tildes (CommonMark fence syntax). Used both to detect an OPEN
+// candidate (may carry a trailing info string, e.g. a "diff" or "js" language
+// tag) and, with the extra "nothing else on the line" constraint below, a
+// CLOSE candidate.
+const FENCE_MARKER_RE = /^ {0,3}(`{3,}|~{3,})/;
+// A CLOSING fence must contain NOTHING but the fence run itself (optionally
+// re-indented, with only trailing whitespace after) — an info string only
+// makes sense on the OPEN side, so a fence-shaped line carrying one while
+// INSIDE an open fence is content (e.g. a nested example), not a close.
+const FENCE_CLOSE_ONLY_RE = /^ {0,3}(`{3,}|~{3,})\s*$/;
+// A line starting with 4+ spaces or a tab — checked on the RAW, untrimmed
+// line, since trimming would destroy the very indentation this is looking
+// for. Real (non-whitespace) content must remain after the indent; a purely
+// blank indented line is still blank, not code content.
+const INDENTED_CODE_LINE_RE = /^(?:\t| {4,})/;
+
+/** Does `rawLine` open a fenced code block? Returns the fence character and
+ * run length (needed to recognize the eventual closing fence), or null. */
+function matchFenceOpen(rawLine) {
+  const m = rawLine.match(FENCE_MARKER_RE);
+  return m ? { char: m[1][0], len: m[1].length } : null;
+}
+
+/** Does `rawLine` close a fence previously opened with `fenceChar` repeated
+ * `fenceLen` times? Per CommonMark, a closing fence must use the SAME
+ * character and be AT LEAST as long as the opening one, with nothing else on
+ * the line. */
+function isFenceClose(rawLine, fenceChar, fenceLen) {
+  const m = rawLine.match(FENCE_CLOSE_ONLY_RE);
+  return !!m && m[1][0] === fenceChar && m[1].length >= fenceLen;
+}
+
+/**
+ * A section body carries real content the instant AT LEAST ONE line is not
+ * pure structural noise — deliberately permissive: a legitimate spec that is
+ * MOSTLY structure (a table, a horizontal rule, a blockquote, a code sample)
+ * still passes as soon as it has one line of real prose, table data, or code
+ * anywhere in it. Only a body that is ENTIRELY structural noise (or blank)
+ * is rejected.
+ *
+ * Code is opaque (see "CODE-BLOCK EXEMPTION" above): a fenced block's
+ * OPEN/CLOSE delimiter lines are structural, but every line strictly between
+ * them counts as content unconditionally — isStructuralOnlyLine is never
+ * even consulted for them. An indented-code line gets the same unconditional
+ * treatment without needing fence-state tracking.
+ */
+function hasSubstantiveContent(text) {
+  const lines = text.split('\n');
+  let fence = null; // { char, len } while inside an open fence, else null
+  for (const rawLine of lines) {
+    if (fence) {
+      if (isFenceClose(rawLine, fence.char, fence.len)) {
+        fence = null; // the closing delimiter line itself is structural
+        continue;
+      }
+      return true; // any line strictly inside an open fence is content, verbatim
+    }
+    const opener = matchFenceOpen(rawLine);
+    if (opener) {
+      fence = opener; // the opening delimiter line itself is structural
+      continue;
+    }
+    if (INDENTED_CODE_LINE_RE.test(rawLine) && rawLine.trim() !== '') return true;
+    if (!isStructuralOnlyLine(rawLine)) return true;
+  }
+  return false;
+}
+
+/** Reason codes loadTaskSpec reports via `options.diagnostics.reason` on every
+ * `null`-returning path — see "DIAGNOSABLE NULL REASON" on loadTaskSpec's doc
+ * comment below. Exported so callers/tests can compare against the constant
+ * instead of a hand-typed string literal. */
+export const SPEC_MISS_REASON = Object.freeze({
+  /** leader-tasklist.md does not exist at all (ENOENT). */
+  NO_TASKLIST_FILE: 'no-tasklist-file',
+  /** leader-tasklist.md exists, but has no section marker for this task id. */
+  NO_SECTION: 'no-section',
+  /** A section marker for this task id was found, but its body is judged
+   * structural-only (docs/archive/ISSUES.md#task-spec-structural-only-body-accepted). */
+  STRUCTURAL_ONLY_BODY: 'structural-only-body',
+});
+
 /**
  * Load the DETAILED spec section for a task from .hopper/handoffs/leader-tasklist.md.
  *
@@ -304,9 +520,44 @@ function markerAlternation(idsPattern) {
  *   subsections (e.g. `### 背景` / `### 验收`), and those must survive intact —
  *   widening to `##+` would cut a spec off at its first subsection.
  *
+ * STRUCTURAL-ONLY BODY FIX (2026-08-13,
+ * docs/archive/ISSUES.md#task-spec-structural-only-body-accepted): the
+ * fail-closed check below used to be "is there any non-whitespace character
+ * after the marker" — so a section whose entire body was a horizontal rule
+ * (`---`), an empty table skeleton (`|---|---|`), or a bare blockquote marker
+ * (`>`) was non-whitespace and therefore ACCEPTED as a real spec, same as the
+ * bodyless-heading bug this function already fixed once. The rule is now "is
+ * there anything BESIDES structural markup" (isStructuralOnlyLine /
+ * hasSubstantiveContent, above) — deliberately NOT "does it contain
+ * structural markup", since a legitimate spec may (and often does) contain
+ * tables, horizontal rules, and blockquotes. A section is rejected only when
+ * EVERY line is blank or one of the enumerated structural-only shapes; one
+ * real line anywhere in the body is enough to accept the whole section.
+ *
+ * DIAGNOSABLE NULL REASON (2026-08-13, REWORK — found by adversarial review,
+ * independently reproduced): this function has always had THREE distinct
+ * reasons to return `null` — no leader-tasklist.md at all, a leader-
+ * tasklist.md with no section for this id, and (as of the fix directly
+ * above) a section that matched but whose body is structural-only — yet the
+ * plain `string|null` return value collapses all three into the same `null`,
+ * indistinguishable to the caller. composeTaskContent used to word its
+ * operator notice as "No detailed spec section for <id>" regardless of which
+ * of the three actually happened, which is FALSE for the third case: the
+ * section is right there, and was correctly rejected on the merits, not
+ * absent. A maintainer reading that notice would go looking for a section
+ * that already exists, chasing the wrong cause — the same family of
+ * misdiagnosis this file has repeatedly fixed elsewhere (self-describing
+ * placeholder text; a boundary leak masquerading as a full spec). Fixed via
+ * an optional out-param, `options.diagnostics` — when the caller passes an
+ * object, this function sets `.reason` to one of the `SPEC_MISS_REASON`
+ * values below on every `null`-returning path (left untouched on success).
+ * This does NOT change the return type or any existing caller's success-path
+ * semantics: every caller that does not pass `diagnostics` sees the exact
+ * same `string|null` contract as before.
+ *
  * @param {string} hopperDir
  * @param {string} taskId
- * @param {{ otherTaskIds?: string[] }} [options]
+ * @param {{ otherTaskIds?: string[], diagnostics?: { reason?: string } }} [options]
  *   `otherTaskIds` — every other known task id (e.g. every id in queue.md).
  *   Exact ids beat pattern-guessing: when supplied, a bold / heading /
  *   table-row marker naming one of them ALSO ends the section (in addition to
@@ -316,22 +567,31 @@ function markerAlternation(idsPattern) {
  *   empty (e.g. a direct/test caller with no queue.md id list to hand) simply
  *   means this half of the union contributes no extra boundaries — the plain
  *   H2-heading check below still applies either way.
+ *   `diagnostics` — optional out-param object; see "DIAGNOSABLE NULL REASON"
+ *   above. Mutated only when this function returns `null`.
  * @returns {Promise<string|null>}  section text, or null when there is none
  */
 export async function loadTaskSpec(hopperDir, taskId, options = {}) {
   const path = leaderTasklistPath(hopperDir);
+  const diagnostics = options.diagnostics && typeof options.diagnostics === 'object' ? options.diagnostics : null;
   let content;
   try {
     content = await readFile(path, 'utf-8');
   } catch (err) {
-    if (err.code === 'ENOENT') return null;
+    if (err.code === 'ENOENT') {
+      if (diagnostics) diagnostics.reason = SPEC_MISS_REASON.NO_TASKLIST_FILE;
+      return null;
+    }
     throw err;
   }
   // Find a section starting with **<task-id>** or ## <task-id> or ### <task-id>
   const escapedId = escapeRegExp(taskId);
   const markerRe = new RegExp(markerAlternation(escapedId), 'm');
   const markerMatch = content.match(markerRe);
-  if (!markerMatch) return null;
+  if (!markerMatch) {
+    if (diagnostics) diagnostics.reason = SPEC_MISS_REASON.NO_SECTION;
+    return null;
+  }
   const sectionStart = markerMatch.index;
   const markerText = markerMatch[0];
   const rest = content.slice(sectionStart);
@@ -376,9 +636,16 @@ export async function loadTaskSpec(hopperDir, taskId, options = {}) {
   // That let the marker slip past composeTaskContent's fail-closed throw entirely
   // (a matched-but-bodyless section looked identical to a real spec). Strip the
   // matched marker text itself off the front — `rest` starts exactly at the
-  // match, so `section` does too — and require non-whitespace remainder.
+  // match, so `section` does too.
   const afterMarker = section.startsWith(markerText) ? section.slice(markerText.length) : section;
-  return afterMarker.trim().length > 0 ? section : null;
+  // Then require actual BODY, not just non-whitespace — see "STRUCTURAL-ONLY BODY
+  // FIX" above. A body of pure structural markdown noise (horizontal rule, empty
+  // table skeleton, bare blockquote/list marker) is non-whitespace but still
+  // carries no task content, and must fail closed exactly like the bodyless-
+  // heading case this same rule already covers.
+  if (hasSubstantiveContent(afterMarker)) return section;
+  if (diagnostics) diagnostics.reason = SPEC_MISS_REASON.STRUCTURAL_ONLY_BODY;
+  return null;
 }
 
 /** Header that labels the queue.md Brief inside a merged task spec. */
@@ -411,13 +678,32 @@ export const QUEUE_BRIEF_PRECEDENCE_NOTE =
  * and `'' ?? brief` is `''` — nullish coalescing only catches null/undefined.
  * Everything below is emptiness-aware via .trim().
  *
+ * DIAGNOSABLE NULL REASON (2026-08-13, REWORK): the "spec only"/"neither" notice
+ * and throw text below used to be worded from a simple ENOENT-or-not check
+ * (`fileExists(path)`), which only ever distinguished two situations — but
+ * loadTaskSpec can now report a THIRD (`SPEC_MISS_REASON.STRUCTURAL_ONLY_BODY`):
+ * a section exists and was read, but its body was judged structural-only. That
+ * third case used to fall into the "no section" wording ("No detailed spec
+ * section for <id>"), which is FALSE — the section is there; it was correctly
+ * rejected on the merits. Both messages below now branch on
+ * `specDiagnostics.reason` (the out-param loadTaskSpec fills in) instead of a
+ * fresh existence check, so each of the three reasons gets its own true
+ * sentence. The wording for the two PRE-EXISTING reasons (no file at all; no
+ * section for this id) is BYTE-IDENTICAL to before — only the previously-
+ * mislabeled third case gets new text. `fileExists()` is gone: its only job
+ * was approximating this same distinction less precisely.
+ *
  * @param {{hopperDir: string, taskId: string, task: {brief?: string}, otherTaskIds?: string[]}} args
  *   `otherTaskIds` — passed straight through to loadTaskSpec's exact-boundary
  *   resolution (every other known task id from queue.md); see its doc comment.
  * @returns {Promise<{taskSpec: string, specNotice: string|null}>}
  */
 async function composeTaskContent({ hopperDir, taskId, task, otherTaskIds }) {
-  const detailed = (await loadTaskSpec(hopperDir, taskId, { otherTaskIds }) || '').trim();
+  // out-param: loadTaskSpec sets .reason on every null-return path (see
+  // SPEC_MISS_REASON / "DIAGNOSABLE NULL REASON" above); read below only when
+  // `detailed` turns out empty.
+  const specDiagnostics = {};
+  const detailed = (await loadTaskSpec(hopperDir, taskId, { otherTaskIds, diagnostics: specDiagnostics }) || '').trim();
   const brief = typeof task?.brief === 'string' ? task.brief.trim() : '';
 
   if (detailed && brief) {
@@ -428,37 +714,35 @@ async function composeTaskContent({ hopperDir, taskId, task, otherTaskIds }) {
   }
   if (detailed) return { taskSpec: detailed, specNotice: null };
 
-  // No detailed section. Distinguish "file has no entry for this id" from "no file
-  // at all" — same two situations the old placeholder strings described, except the
-  // text now goes to the OPERATOR (stderr / --resolve echo) instead of being fed to
-  // the vendor as if it were the task.
+  // No detailed section reached the vendor. Report WHY, truthfully, using the
+  // reason loadTaskSpec actually observed — not a re-derived approximation.
   const path = leaderTasklistPath(hopperDir);
-  const tasklistExists = await fileExists(path);
+  const reason = specDiagnostics.reason;
   if (brief) {
-    return {
-      taskSpec: brief,
-      specNotice: tasklistExists
-        ? `No detailed spec section for ${taskId} in leader-tasklist.md; task content comes from queue.md Brief.`
-        : `leader-tasklist.md is absent at ${path}; task content comes from queue.md Brief.`,
-    };
+    let specNotice;
+    if (reason === SPEC_MISS_REASON.STRUCTURAL_ONLY_BODY) {
+      specNotice = `leader-tasklist.md HAS a section for ${taskId}, but its body is only structural markdown (no real content — see docs/archive/ISSUES.md#task-spec-structural-only-body-accepted); task content comes from queue.md Brief.`;
+    } else if (reason === SPEC_MISS_REASON.NO_TASKLIST_FILE) {
+      specNotice = `leader-tasklist.md is absent at ${path}; task content comes from queue.md Brief.`;
+    } else {
+      // SPEC_MISS_REASON.NO_SECTION, or (defensively) an unset reason.
+      specNotice = `No detailed spec section for ${taskId} in leader-tasklist.md; task content comes from queue.md Brief.`;
+    }
+    return { taskSpec: brief, specNotice };
+  }
+  let reasonDetail;
+  if (reason === SPEC_MISS_REASON.STRUCTURAL_ONLY_BODY) {
+    reasonDetail = ` (a section for ${taskId} exists in ${path}, but its body is only structural markdown — no real content)`;
+  } else if (reason === SPEC_MISS_REASON.NO_TASKLIST_FILE) {
+    reasonDetail = ` (${path} does not exist)`;
+  } else {
+    reasonDetail = ` (no section for ${taskId} in ${path})`;
   }
   throw new Error(
     `Task ${taskId} has no task content: queue.md Brief is empty and no detailed spec was found`
-    + (tasklistExists ? ` (no section for ${taskId} in ${path})` : ` (${path} does not exist)`)
+    + reasonDetail
     + `. Fill the Brief cell for ${taskId} in .hopper/queue.md, or add a "## ${taskId}" section to leader-tasklist.md.`
   );
-}
-
-async function fileExists(path) {
-  try {
-    await access(path);
-    return true;
-  } catch (err) {
-    // Only "does not exist" maps to false. Anything else (EACCES, etc.) is a real
-    // fault and must not be misreported as "file does not exist".
-    if (err.code === 'ENOENT') return false;
-    throw err;
-  }
 }
 
 /**

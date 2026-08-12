@@ -19,6 +19,177 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.57.0] - 2026-08-13
+
+### Fixed — leader-tasklist 小节的正文只有结构性标记（分隔线/空表格/裸引用）时，仍被当作有效 spec 派发
+
+`loadTaskSpec()` 的 fail-closed 判据一直是「匹配 marker 之后有没有非空白字符」
+（`cli/src/dispatch.js` 原 `afterMarker.trim().length > 0 ? section : null`）。一个正文**只有**
+结构性 markdown 标记——水平分隔线 `---`、空表格骨架 `|---|---|`、单独一个引用符 `>`——的小节，
+这些标记本身就是非空白字符，因此照样被判为「有效 spec」并派发：vendor 收到一份 Task spec 只写
+着一条分隔线的任务书。详见
+`docs/archive/ISSUES.md#task-spec-structural-only-body-accepted`（此前 Open，本版本 CLOSED）——
+这是同一个 `loadTaskSpec()` fail-closed 判据下的**第三个**同形状实例，前两个（无 leader-tasklist
+条目时返回自述文案冒充 spec；裸 marker 无正文时非空判定误放行）已在 0.55.0 修过。
+
+**判据从「有非空白字符」收紧为「除了结构性标记之外还有别的」——不是「不含结构性标记」。**
+这个区分是本次修复的硬约束：一份合法 spec 完全可能包含表格、分隔线、引用块，收紧过头会让这类
+真实 spec 被误判为空而 fail-closed，代价比原缺陷更高（原缺陷只是偶尔放行一份空任务书；误伤
+则是让一个本该正常跑的任务直接跑不起来）。因此判定逐行进行、跨行取**并集**：整节正文只要有
+**任意一行**不是纯结构性标记，整个小节立即被接受，不论周围环绕多少结构性噪音。
+
+`cli/src/dispatch.js` 新增 `isStructuralOnlyLine()` 与 `hasSubstantiveContent()`（紧接
+`markerAlternation()` 之后），把以下六类判定为「结构性、不算内容」：空白行、水平分隔线
+（`---`/`***`/`___` 及间隔写法 `- - -`）、表格分隔行（`|---|---|`、`| :--- | ---: |`）、
+表格全空行（`| | |`）、裸引用符（`>`，后面没有别的）、裸列表标记（`-`/`*`/`+`/`1.`，行内没有
+条目文字）。对照真实 markdown 验证后做了几处小扩展（超出 issue 报告清单字面范围，均属等价写法
+的覆盖，不改变判据本身）：水平分隔线额外接受制表符间隔；表格检查把「分隔行」与「全空行」
+合并成一条规则、且不限两列；裸列表标记额外接受有序列表的 `)` 分隔符（`1)` 与 `1.` 同等对待）；
+裸引用符额外接受嵌套空引用（`> >`）。
+
+**如实记录三类刻意未覆盖的结构性噪音，不假装清单已经完备**（上一版本的 CHANGELOG 曾因为「话说
+满了」在代码评审里被抓到，这次直接把没做的写清楚）：整节正文只有一行裸副标题（如单独一行
+`### 背景`，下面没有内容）、纯强调符号单独一行（`**`）、HTML 注释单独一行（`<!-- ... -->`）——
+这三类不在本 issue 报告的结构性标记清单里，本次**有意不扩展**判定去覆盖它们：把「裸副标题」也
+计入结构性噪音，会有更高概率误伤一个合法用副标题分节、正文另起一段的真实 spec，与上一段说的
+「过度收紧的代价更高」矛盾。这些形状目前仍会被当作「有内容」通过——这是**刻意保留**的欠杀，
+不是遗漏。
+
+**测试**：新增 `tests/unit/dispatch-task-spec-structural-only.test.js`（25 条）。欠杀套件 17
+条逐一验证 issue 报告的每种结构性标记形状（水平分隔线 3 种字符 × 直写/间隔共 6 种、表格分隔行
+2 种、表格全空行、分隔行+全空行两行组合、裸引用符、4 种裸列表标记、纯空白、多种混合共 1 种）
+返回 `null`；过度收紧套件 6 条——这一套**比欠杀套件更重要**——验证「表格含真实数据行」「正文+
+分隔线」「引用块带真实文字」「列表项带真实文字」「单句」「大部分是结构但夹一句真话」全部被
+接受，且原文一字不改地返回；另 2 条端到端经 `resolveDispatch` 验证结构性正文配空 Brief 仍
+fail-closed（issue 报告的复现形状本身），以及混合内容仍能把真实文字带进 vendor 收到的
+composed prompt。
+
+**破坏性反证**：把 `loadTaskSpec()` 末尾临时改回修复前的 `afterMarker.trim().length > 0`（`diff`
+确认改动命中且只命中这一行），欠杀套件 17 条里 16 条转红（水平分隔线/表格/引用符/列表标记等
+结构性形状全部被误判为「有内容」）+ 端到端 fail-closed 测试转红，合计 17 个 `not ok`；纯空白
+那一条（修复前的 `.trim().length > 0` 本来就能正确处理纯空白，不受这个缺陷影响）与全部 6 条
+过度收紧测试、1 条端到端混合内容测试保持绿——8 个 `ok`，17+8=25 条对齐，精确对应缺陷的真实
+形状（结构性标记被误当内容，不是空白判定出错）。还原后 25 条全绿。
+
+`npm test`（`tests/unit/*.test.js`）从修复前的 1361 条增至 1386 条（新增 25 条），1384 pass /
+0 fail / 2 skip（两条 pre-existing skip 与本次无关）；`node --test
+tests/integration/real-fixtures.test.js` 7 条全绿；`node scripts/sync-vendored-plugin.mjs
+--check` 退出码 0。本轮未改 `cli/src/tasks.js`、`cli/src/queue.js`（`git diff` 两者皆空），
+也未碰 `tests/integration/`。
+
+### REWORK（同日，代码评审判 REWORK；两条发现主会话独立复现后确认属实，版本号不再追加）
+
+上面这版判据合入后，代码评审判 REWORK，找出一条红线违反和一条同族诊断问题；主会话独立复现
+两条发现、用户裁定处置方案。这四点是对同一个 0.57.0 版本内容的修正，不是新版本。
+
+**P1（红线违反，必须修）：缩进/围栏代码块里的字面示例被误拒。** 逐行判据在判断每一行之前先
+`.trim()`，这会**销毁缩进本身**——而缩进正是 markdown 用来标记"这是字面代码，不要解释它"的
+方式。复现（`otherTaskIds` 传 `['T-1']`）：
+
+```
+## T-1\n\n    ---\n        → 旧版返回 null   ← 应接受（缩进代码块里的字面分隔线示例）
+## T-1\n\n\t> \n            → 旧版返回 null   ← 应接受（tab 缩进的字面引用符示例）
+## T-1\n\n    | | |\n       → 旧版返回 null   ← 应接受（缩进代码块里的字面空表格示例）
+```
+
+这正好踩中 scope-lock 明写的红线——**过度拒绝比欠拒绝更糟**：一份合法 spec（比如"教怎么写
+markdown 分隔线"这类任务，示例本身就长得像分隔线）会被 fail-closed 拦下，而这原本是能正常跑的
+任务。**修法要有原则，不是打补丁**：代码块是作者显式标记为字面内容的东西，结构性判据根本不该
+往里面看。`cli/src/dispatch.js` 的 `hasSubstantiveContent()` 现在逐行扫描时维护一个"是否在围栏
+块内"的状态机（新增 `matchFenceOpen()` / `isFenceClose()` / `FENCE_MARKER_RE` /
+`INDENTED_CODE_LINE_RE`）：
+
+- 围栏块（`` ``` `` 或 `~~~`）的**开合定界行本身**算结构性标记（不算内容）；
+- 围栏块**内部的每一行**——不论长得像什么——一律算内容，`isStructuralOnlyLine()` 根本不会被
+  拿去检查这些行；
+- 缩进代码块（行首 4 空格或 tab，且缩进之后有非空白字符）同样一律算内容，不需要围栏状态；
+- 其余行才走既有的 `isStructuralOnlyLine()` 判据。
+
+推论——空围栏块（`` ``` `` 紧接 `` ``` ``，内部零行）依然被拒：这不是新开的洞，是同一条原则的
+自然结果（内部没有任何行，所以没有任何行能贡献"内容"）。
+
+**P2（诊断说谎，同族缺陷）：null 的原因被抹平，误导排查方向。** `loadTaskSpec()` 一直有三种
+返回 `null` 的原因——文件整个不存在、文件存在但没有该 id 的小节、小节匹配但正文判定为纯结构——
+但 `string | null` 的返回值把三者压成同一个 `null`，调用方完全无法区分。`composeTaskContent()`
+过去无论哪种原因都说"No detailed spec section for `<id>`"——**这句话在第三种情况下是假的**：
+小节明明就在那里，是被依据判据正确拒绝的，不是不存在。排查的人会去找一个其实已经存在的小节，
+方向就错了——与本文件反复修的自述文案/占位符那一族缺陷同源。
+
+修法：`loadTaskSpec()` 新增可选 out-参数 `options.diagnostics`，在每一条返回 `null` 的路径上
+设置 `.reason` 为新导出的 `SPEC_MISS_REASON`（`NO_TASKLIST_FILE` / `NO_SECTION` /
+`STRUCTURAL_ONLY_BODY`）之一；成功路径完全不碰这个字段。`composeTaskContent()` 的两处诊断文案
+（`specNotice` 与 fail-closed 抛错）现在按 `specDiagnostics.reason` 分支，第三种原因得到一句
+新文案（明说"小节存在，但正文只有结构性标记"），**另外两种既有原因的文案逐字节保持不变**——
+未破坏现有调用方的成功路径语义，也未改动两条已被既有测试锁死的旧文案。原先靠一次 `access()`
+探测文件是否存在来近似这个区分的 `fileExists()` 连带被删除——它的唯一用途已被更准确的
+`diagnostics.reason` 取代，`node:fs/promises` 的 `access` 导入随之移除。
+
+**P3（欠拒绝，六种更多形状被接受，风险低于 P1，一并补上）**：空围栏块（见上，P1 的推论）、
+无外侧管线的分隔形状（`--- | ---`，新增 `BORDERLESS_TABLE_DELIM_RE`）、空 task item
+（`- [ ]` / `- [x]`，新增 `BARE_CHECKBOX_RE`）、HTML `<hr>`（新增 `HTML_HR_RE`，不分大小写、
+兼容自闭合）、仅零宽字符 U+200B（新增 `INVISIBLE_ONLY_RE`；`.trim()` 不会剥离它，因为它是
+Unicode Cf 类而非 Zs/空白类——顺带把同类的 ZWNJ/ZWJ/BOM 三个也一起覆盖了，超出 issue 报告范围，
+写在这里）、裸 `|`（去掉 `isStructuralTableRow()` 原有的 `length < 2` 保护——移除后单个 `|`
+经同一套 slice/split 退化成一个空 cell，因此被同一条既有规则捕获；**破坏性反证过程中发现**
+`||`（两个字符）其实不受这条保护影响，去不去掉长度保护它都能通过既有的 slice/split 逻辑正确
+判定——上面这条"补上裸 `|`"的说法精确到只对**单个** `|` 成立）。P1 的原则优先于 P3：所有新增
+判据都加了"含真实文字则必须仍被接受"的对照测试，确认无一破坏过度收紧红线。
+
+**残留声明更正——上一段（本条目最初落地时）写的清单本身不完整，这里补全，且明说不穷尽**：
+
+- 原有三类维持不变，仍会被接受（刻意不覆盖，理由同前）：整节正文只有一行裸副标题
+  （如单独一行 `### 背景`）、纯强调符号单独一行（`**`）、HTML 注释单独一行（`<!-- ... -->`）。
+- **新发现、原声明没提到的两类**（破坏性反证与残留复核过程中实测确认，非猜测）：
+  - `===`（等号下划线，setext 一级标题的下划线写法）单独一行——`HR_LINE_RE` 只认
+    `-`/`*`/`_` 三个字符，不认 `=`，一整节正文只有 `===` 目前仍会被接受。
+  - U+200B/U+200C/U+200D/U+FEFF 之外的其它 Unicode 不可见/格式字符（如 U+00AD 软连字符、
+    U+2060 WORD JOINER）——`INVISIBLE_ONLY_RE` 只精确覆盖这四个已验证的码点，Unicode 里
+    还有十几个同类字符没有枚举进去，单独一行由这些字符组成的正文也会被接受。
+- **这份清单是"目前确知会通过"的清单，不宣称穷尽**——不再重复上一版本因为话说满了在评审里
+  被抓到的错误。
+
+**测试**：`tests/unit/dispatch-task-spec-structural-only.test.js` 从 25 条增至 57 条
+（新增 32 条）。P1 新增 9 条——三个红线复现原样接受、正文全字节保留缩进；三种"围栏块里放
+diff/markdown 表格语法/shell 输出"的合法 spec 形态（内容分别是一份看起来像分隔线的 diff
+header、一份和 P3 结构完全相同的空表格骨架、一行裸 `-`）全部接受，围栏内容原样不受结构判据
+评估；tilde 围栏（`~~~`）同样受豁免；空围栏块仍拒绝；一条端到端经 `resolveDispatch` 复验缩进
+示例完整送达 vendor。P3 新增 15 条——11 条欠拒绝逐一覆盖六类新形状返回 `null`，4 条过度收紧
+对照（带真实文字的 checkbox / `<hr>` 后跟真实正文 / 零宽字符与真实文字混排 / 表格一格裸 `|`
+另一格真实文字）确认新判据不误伤真实内容。P2 新增 8 条——四条直接验证
+`diagnostics.reason` 在三种失败原因下分别等于对应的 `SPEC_MISS_REASON` 常量、成功路径不碰
+该字段、省略 `diagnostics` 参数时行为与之前完全一致；三条端到端验证structural-only-body
+原因下 `specNotice`/抛错文案明说"小节存在"且不再出现"No detailed spec section"/"no section
+for"这类误导性措辞，另一条验证两个既有原因的文案逐字节保持原样。
+
+**破坏性反证，分三块，每块各自独立注入、独立反证**（先打印命中数，确认命中后再看红，红了
+再还原看绿）：
+
+1. **代码块豁免（P1）**：把 `hasSubstantiveContent()` 临时换回不识别围栏/缩进的单行版本
+   （`diff` 命中 21 行）。57 条中 5 条转红——三条红线复现直接命中（缩进被 `.trim()` 冲掉后
+   重新被判成结构性标记）、空围栏块推论测试命中（没有状态机时纯 `` ``` `` 定界行不匹配任何
+   既有结构规则，反而被判成"内容"，比修复前更寡）、一条端到端测试命中；**三条"围栏块放
+   diff/表格/shell"的测试没有转红**——如实记录：那三个例子的围栏定界行/首行内容本身不巧地
+   不匹配任何旧判据，即使没有状态机也会被判定为"内容"，所以没有直接暴露这条缺陷，命中的
+   5 条已经能精确证明修复本身是必需的（都指向同一个"缩进/围栏被 trim 判据吞掉"根因）。还原
+   后 57 条全绿。
+2. **诊断原因（P2）**：在 `composeTaskContent()` 里临时把 `STRUCTURAL_ONLY_BODY` 原因压平回
+   `NO_SECTION`，模拟修复前的误判（`diff` 命中 6 行）。57 条中 2 条转红——两条验证文案措辞的
+   端到端测试（`specNotice` 与抛错消息都重新说出"No detailed spec section"/"no section for"
+   这类此时为假的话）；直接测 `loadTaskSpec()` 本身 `diagnostics.reason` 的单元测试不受影响
+   （因为这次注入只动了 `composeTaskContent()` 对原因的**消费**，没有动 `loadTaskSpec()`
+   本身对原因的**产出**）——精确对应"消费端把原因抹平"这个根因。还原后 57 条全绿。
+3. **P3 补充**：临时恢复 `isStructuralTableRow()` 的 `length < 2` 保护、禁用
+   `isStructuralOnlyLine()` 里新增的四条判据（`diff` 命中两处共 11 行）。57 条中 10 条转红
+   （六类新形状里除 `||` 外全部命中——`||` 如上文所述本就不依赖这条保护，是这次反证顺带
+   实测确认的）；4 条过度收紧对照测试保持绿。还原后 57 条全绿。
+
+**验证数字更新**（叠加在上面这版基础上，最终状态）：`tests/unit/dispatch-task-spec-structural-
+only.test.js` 57/57；`npm test`（`tests/unit/*.test.js`）1418 条，1416 pass / 0 fail / 2 skip
+（两条 pre-existing skip 与本次无关，从 REWORK 前就存在）；`node --test
+tests/integration/real-fixtures.test.js` 仍 7/7；`node scripts/sync-vendored-plugin.mjs
+--check` 退出码 0（直接捕获，非管道）；`git diff cli/src/tasks.js cli/src/queue.js` 两者仍为
+空——本轮 REWORK 同样未碰这两个文件；版本号保持 0.57.0，未再次 bump（本版本尚未发布）。
+
 ## [0.56.0] - 2026-08-12
 
 > **⚠ BREAKING（追加于代码评审 REWORK 后，同版本号未变）**：数据行的 cell 数现在必须**严格等于**

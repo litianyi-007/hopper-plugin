@@ -18,7 +18,7 @@ Chinese. Historical records are not rewritten here; only this framing is new.
 
 ## Status index
 
-### Open — 10
+### Open — 9
 
 | Issue | Status | Severity |
 |---|---|---|
@@ -31,12 +31,12 @@ Chinese. Historical records are not rewritten here; only this framing is new.
 | [`progress-watch-hang`](#progress-watch-hang) | open — pre-existing, NOT introduced by the governance-fusion change (which never touched the `-- | medium (blocks the full-suite `npm test` gate; has a workaro |
 | [`prompt-artifact-lifecycle-and-windows-permissions`](#prompt-artifact-lifecycle-and-windows-permissions) | open — recorded, not fixed | not a credential leak (this repo's brief discipline forbids  |
 | [`stale-status-on-runner-death`](#stale-status-on-runner-death) | open — 未修，仅登记（见文末「归档说明」） | 中——不丢数据，但调用方会误判任务未完成，重复派发、浪费 vendor 调用 |
-| [`task-spec-structural-only-body-accepted`](#task-spec-structural-only-body-accepted) | Open — 未修，仅登记 | 低——需要人写出这种 leader-tasklist 才会触发，但失败形状与已修两处完全相同 |
 
-### Closed — 12
+### Closed — 13
 
 | Issue | Status | Severity |
 |---|---|---|
+| [`task-spec-structural-only-body-accepted`](#task-spec-structural-only-body-accepted) | CLOSED 2026-08-13 — fixed in 0.57.0（逐行结构性标记判定 + fail-closed，见 Resolution） | 低——需要人写出这种 leader-tasklist 才会触发，但失败形状与已修两处完全相同 |
 | [`queue-brief-truncated-by-unescaped-pipe`](#queue-brief-truncated-by-unescaped-pipe) | CLOSED 2026-08-12 — fixed in 0.56.0（行级 cell 数校验 fail-closed + `\|` 转义支持，见 Resolution） | 中高——vendor 收到一份被截断的任务书，无任何报错；与已修的 queue-brief-dropped-without-leader-tasklist 同一失败形状 |
 | [`queue-brief-dropped-without-leader-tasklist`](#queue-brief-dropped-without-leader-tasklist) | CLOSED 2026-08-12 — fixed in 0.55.0（详细 spec 与 queue brief 现在合并进 prompt；缺失时 fail-closed，见 Resolution） | 高——被派发的 vendor 收到没有任务内容的框架，却仍返回 exit 0 / status: done |
 | [`grok-models-succeeds-but-hopper-dispatch-auth-failed`](#grok-models-succeeds-but-hopper-dispatch-auth-failed) | CLOSED 2026-08-05 — root cause confirmed; fixed in 0.50.0 (see Resolution) | 高：两次已完成、已计费的 grok 评审被记为认证失败并丢弃 |
@@ -2446,7 +2446,7 @@ BREAKING 说明、迁移方法、以及"等宽抵消"残留边界的精确表述
 
 - **版本**：hopper 0.55.0（由 T-102 复审的 grok 一路实跑发现；登记前已用真实 `loadTaskSpec` 复核，见下）
 - **严重度**：低——需要人写出这种 leader-tasklist 才会触发，但**失败形状与已修的两处完全相同**
-- **状态**：**Open — 未修，仅登记**
+- **状态**：**CLOSED — fixed in 0.57.0**（2026-08-13，见文末「Resolution」）
 
 ### 现象
 
@@ -2486,6 +2486,73 @@ BREAKING 说明、迁移方法、以及"等宽抵消"残留边界的精确表述
 判据从「有非空白字符」收紧为「去掉纯结构性标记后仍有实质内容」。
 需要注意不要过度收紧——正文里合法包含表格或分隔线的 spec 必须仍被接受，
 判据应是「**除了**结构性标记之外还有别的」，不是「不含结构性标记」。
+
+### Resolution（2026-08-13，0.57.0）
+
+按「建议的修法」实现：判据从「匹配 marker 之后有无非空白字符」收紧为「除了结构性标记之外还有
+别的」，**逐行**判定、跨行取**并集**——只要正文里有任意一行不是结构性标记，整个小节就被接受，
+不论周围有多少结构性噪音。判据刻意不是「不含结构性标记」：合法 spec 本就可能包含表格、分隔线、
+引用块，本轮的过度收紧测试比欠杀测试更被看重（scope-lock 原文：过度收紧比欠杀更差）。
+
+- `cli/src/dispatch.js` 新增 `isStructuralOnlyLine()` / `hasSubstantiveContent()`
+  （紧接 `markerAlternation()` 之后）：逐行判断是否为纯结构性标记（空白行、水平分隔线、表格
+  分隔行/全空行、裸引用符、裸列表标记），`loadTaskSpec()` 末尾的判据从
+  `afterMarker.trim().length > 0` 换成 `hasSubstantiveContent(afterMarker)`。
+- 结构性标记清单按本 issue 列出的六类实现，并对照真实 markdown 验证后做了几处小扩展（写在这里，
+  不是清单的字面延伸就必然被排除）：水平分隔线额外接受制表符间隔的写法（不只是空格间隔）；
+  表格检查把「分隔行」与「全空行」合并成同一条规则，且不限两列；裸列表标记额外接受有序列表的
+  `)` 分隔符（`1)` 与 `1.` 同等对待）；裸引用符额外接受嵌套空引用（`> >`）。
+- **刻意没有覆盖、如实记录的残留（不是遗漏）**：整节正文只有一行裸副标题（如单独一行
+  `### 背景`、下面没有内容）、纯强调符号单独一行（如 `**`）、HTML 注释单独一行
+  （`<!-- ... -->`）——这三类不在本 issue 报告的结构性标记清单里，本次**有意不扩展**到它们：
+  猜测性地把「裸副标题」也判定为无内容，有更高概率误伤一个合法地用副标题分节、正文另起一段的
+  真实 spec。这些形状目前仍会被当作「有内容」而通过——按任务约束「宁可留一点欠杀，也不要冒
+  误伤真实 spec 的风险」的裁定，这是刻意保留的欠杀，此处明说而非留给使用者自己发现。
+- 测试：新增 `tests/unit/dispatch-task-spec-structural-only.test.js`（25 条）。欠杀套件 17 条
+  覆盖本 issue 报告的全部结构性标记形状（水平分隔线三种字符 × 直写/间隔共 6 种、表格分隔行
+  两种、全空表格行、分隔行+全空行两行组合、裸引用符、四种裸列表标记、纯空白、多种混合共 1
+  种），全部返回 `null`；过度收紧套件 6 条覆盖「表格含真实数据行」「正文+分隔线」「引用块带
+  真实文字」「列表项带真实文字」「单句」「大部分是结构但夹一句真话」，全部被接受且原文一字
+  不改地返回；另有 2 条端到端（经 `resolveDispatch`）——结构性正文 + 空 Brief 仍 fail-closed
+  （本 issue 报的复现形状本身）、混合内容仍能把真实文字带进 vendor 收到的 composed prompt。
+- **破坏性反证**：把 `loadTaskSpec()` 末尾临时换回修复前的 `afterMarker.trim().length > 0`
+  （`diff` 确认命中且仅命中这一行），欠杀套件 17 条里 16 条变红（水平分隔线/表格/引用符/
+  列表标记等结构性形状全部被误判为「有内容」）+ 端到端 fail-closed 测试变红，合计 17 个
+  `not ok`；纯空白那一条（修复前的 `.trim().length > 0` 本来就能正确处理纯空白，不受这个
+  缺陷影响）与全部 6 条过度收紧测试、1 条端到端混合内容测试保持绿——8 个 `ok`，25 条对齐。
+  这精确对应缺陷的真实形状（结构性标记被误当内容，不是空白判定出错）。还原后 25 条全绿。
+- `npm test`（`tests/unit/*.test.js`，1386 条，含新增 25 条，2 条 pre-existing skip 与本次
+  无关）与 `node --test tests/integration/real-fixtures.test.js`（7 条）均全绿；
+  `node scripts/sync-vendored-plugin.mjs --check` 退出码 0。
+- 本轮未改 `cli/src/tasks.js`、`cli/src/queue.js`（`git diff` 确认两者皆空），也未碰
+  `tests/integration/`。
+
+**REWORK（同日，代码评审判 REWORK 后追加，版本号仍是 0.57.0）**：上面这版判据合入后，代码
+评审找出一条红线违反（P1）和一条同族诊断问题（P2），外加六种更多欠杀形状（P3）；主会话独立
+复现两条主要发现，确认属实，用户裁定处置方案。详见 `CHANGELOG.md` `[0.57.0]` 的「REWORK」一节
+（完整根因、修法、三块各自独立的破坏性反证、更正后的残留声明），这里只记结论：
+
+- **P1（红线，必须修）**：逐行判据先 `.trim()` 再判断，销毁了缩进——一份合法 spec 若把
+  `---`/`> `/`| | |` 写进缩进代码块或围栏块作为字面示例，会被误判结构性噪音而 fail-closed，
+  这正是本条目「建议的修法」段落自己写明的红线（「需要注意不要过度收紧」）。修法：
+  `hasSubstantiveContent()` 现在识别围栏块（`` ``` ``/`~~~`）与 4 空格/tab 缩进代码块，块内
+  任意一行一律算内容，不再交给结构性判据评估；块的开合定界行本身仍算结构性标记。
+- **P2（诊断说谎，同族）**：`loadTaskSpec()` 三种不同的「无 spec」原因（文件不存在/无该小节/
+  小节存在但正文纯结构）被同一个 `null` 抹平，导致「小节存在但被拒」时用户看到的诊断文案却说
+  「没有这个小节」——方向性误导。修法：新增可选 out-参数 `options.diagnostics`，`loadTaskSpec`
+  在每条 `null` 路径上如实标注原因（`SPEC_MISS_REASON`），两处诊断文案按原因分别说真话；两条
+  既有原因的文案逐字节不变。
+- **P3（欠拒绝，六种更多形状，风险低于 P1）**：空围栏块、无外侧管线的分隔形状
+  （`--- | ---`）、空 task item（`- [ ]`）、HTML `<hr>`、仅零宽字符 U+200B、裸 `|`，此前均被
+  接受为「有内容」，本次一并补上判据。
+- **残留声明更正**：本条目最初落地时的残留清单遗漏了两类——`===`（等号下划线）与
+  U+200B/200C/200D/FEFF 之外的其它不可见字符——现已在 `CHANGELOG.md` 补全，并明确该清单「确知
+  会通过，不宣称穷尽」。
+- 测试从 25 条增至 57 条（新增 32 条，覆盖 P1/P2/P3 三块 + 过度收紧对照）；三块改动分别做了
+  独立的破坏性反证（各自先打印注入命中数，确认非 0 才采信红），命中数与红/绿结果详见
+  CHANGELOG；`npm test` 1418 条全绿（2 条 pre-existing skip 与本次无关），集成测试仍 7/7，
+  `git diff cli/src/tasks.js cli/src/queue.js` 仍为空，版本号未再次 bump（仍是 0.57.0，尚未
+  发布）。
 
 ---
 
