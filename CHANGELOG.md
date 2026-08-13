@@ -19,6 +19,73 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.58.0] - 2026-08-13
+
+### Changed — grok 的两处独立 pin（vendor 派发默认值 + outer host wrapper 默认值）同步移到 `grok-4.6`
+
+- **`cli/src/vendors/grok.js`**：`DEFAULT_MODEL` 从 `grok-4.5` 改为 `grok-4.6`；`knownGood` 从
+  `['grok-4.5']` 改为 `['grok-4.6', 'grok-4.5']`（旧值保留在 index 1，作为回退基线——不是遗漏，
+  `tests/unit/vendor-model-auth.test.js` 有专门断言钉住这一点）。live micro-test verified
+  2026-08-13：`grok -p "Reply with exactly: MODELCHECK-46-OK" -m grok-4.6 --output-format json
+  --no-auto-update` → `{"text":"MODELCHECK-46-OK","stopReason":"end_turn",...}`（真实派发，不是
+  仅凭 `grok models` 列出就采信——这条纪律来自已关闭的
+  [`grok-model-line-rotation-stale-knownGood`](docs/archive/ISSUES.md#grok-model-line-rotation-stale-knownGood)）。
+  同日 `--probe grok` 显示 catalog 恰好两项：`grok-4.6, grok-4.5`。`knownGood` 上方原本主张"实时
+  probe 是自愈首选来源"的说明性注释，针对 dispatch 路径其实是假的——已就地替换为记录本次实测的
+  更正说明（见下方新登记 issue）。
+- **同批次追加（用户裁定，同一版本号，不另起）**：outer host wrapper `hosts/grok-cli/bin/hopper-grok`
+  的 `GROK_HOST_MODEL` 默认值与 `hosts/grok-cli/README.md` 对应文档同步从 `grok-4.5` 改为
+  `grok-4.6`——这是与上面完全独立的**第二个** pin（wrapper 是纯 bash 脚本，直接
+  `exec grok -p ... -m "${GROK_HOST_MODEL:-grok-4.6}"`，从不经过 `cli/src/vendors/grok.js`），
+  用的是同一个已验证过的 grok CLI + 同一个 `-m` 参数，因此不需要为它单独重跑一次模型可用性验证；
+  但重跑了 wrapper 自身的行为测试（mock grok 二进制）确认默认值与显式
+  `GROK_HOST_MODEL` 覆盖仍然正确工作。`tests/unit/extra-hosts.test.js` 两条断言（wrapper 帮助
+  文案/README 内容匹配、mock 派发的实际 argv 匹配）同步更新为 `grok-4.6`，断言强度未放宽；
+  防止回退到更早那次模型线腐烂的历史守卫 `doesNotMatch(/default:\s*grok-build/)` 原样保留、未删。
+- **顺带修复的文档漂移**：`cli/src/scaffold.js` 的 grok 示例 invocation 字符串、
+  `docs/release/INSTALL-MATRIX.md` 的能力对照表、`commands/models.md` 的示例文案——三处仍写着
+  `grok-4.5`。这三处正是本文件 `[0.32.0]`（`grok-build → grok-4.5` 那次切换）明确记录过要同步的
+  "活文档"清单，本次核对全仓 `grok-4.5` 残留时发现它们在这一轮 `4.5 → 4.6` 切换里被漏改了——不属于
+  本版本开始前"已完成"的清单，是登记新 issue 前做全仓核查时顺带发现并一并改正的。
+- **测试**：`tests/unit/dispatch-fallback-chain.test.js`、`tests/unit/vendor-model-default.test.js`
+  （2 处）、`tests/unit/vendors-contract.test.js`、`tests/unit/vendor-model-auth.test.js`（含一条
+  断言消息更正）、`tests/unit/extra-hosts.test.js`（2 处）同步更新。`npm run sync:plugin` 已跑，
+  vendored `plugins/hopper/` 与主源码一致（本次同步覆盖 `cli/src/scaffold.js` 与
+  `cli/bin/hopper-dispatch` 的版本号）。
+
+### Added — 新登记 OPEN issue：[`verified-latest-resolution-bypasses-probe-cache`](docs/archive/ISSUES.md#verified-latest-resolution-bypasses-probe-cache)
+
+（本版本更重要的部分——不只是换了个默认值，而是借这次切换核实出一个此前未被独立跟踪的缺口）
+
+- `cli/src/dispatch.js:868` 解析 `verified-latest` 哨兵时读的是
+  `getAdapter(vendor)?.capabilities?.modelArg`——一个随模块 `import` 一次性构造的**静态**对象；
+  `cli/src/policy.js:142` 的 `resolveVerifiedLatest` 函数体只读这个参数（`hopperDefault` 或
+  `knownGood[0]`），从不 `import`/读取 `cache.js`。探测缓存
+  `~/.hopper/cache/vendor-capabilities.json` 的唯一读取方是 `cli/src/setup.js`（服务
+  `--setup`/`--doctor`/`--models` 诊断面），`dispatch.js` 不在其中。实测 2026-08-13：跑完
+  `--probe grok`（缓存写入 `grok-4.6, grok-4.5`）后紧接着解析，结果仍然只由源码里的
+  `hopperDefault` 决定，与缓存内容无关——**`--probe` 自愈的是缓存，不是派发**。
+- 这是已关闭的
+  [`grok-model-line-rotation-stale-knownGood`](docs/archive/ISSUES.md#grok-model-line-rotation-stale-knownGood)
+  「更深的待办」一节当初就预见、列为 follow-up、明确不在那次范围内的缺口的**更窄存活形式**——那次
+  修复只让 `--probe` 本身诚实（真的 spawn `grok models`），从未把探针结果接进
+  `resolveVerifiedLatest`/`--check-model` 这两条真正决定派发的路径。这次是那条 follow-up 第一次被
+  独立核实、登记为可跟踪 issue。
+- Issue 正文里还如实记录了一个相关但独立的发现：outer host wrapper 的 `GROK_HOST_MODEL` 默认值是
+  第二个、与 vendor 派发默认值完全独立的硬编码 pin，两者之间**没有任何机制**互相引用或校验一致
+  （已核实：wrapper 是纯 bash、不读 JS 源码；两组测试也各自独立断言，互不知晓对方存在）。本版本
+  靠人工同时改两处解决了这一次的不同步，但没有解决"没有机制保证同步"本身——与上面的探测缓存旁路、
+  以及顺带修复的三处活文档漂移，是同一族"事实分散在多处、无自动一致性守卫"缺陷的三个独立实例。
+  严重度评为中——今天不会静默错派模型（退役 slug 会用 `"unknown model id"` 大声失败），但模型线
+  换代仍无自愈路径。建议方向（非本次决定）：`resolveVerifiedLatest` 对新鲜探测缓存优先于静态
+  `hopperDefault`/`knownGood`。
+
+**验证**：`npm test` 1418 条，1416 pass / 0 fail / 2 skip（两条 pre-existing skip 与本次无关）；
+`node --test tests/integration/real-fixtures.test.js` 7/7；`node --test
+tests/unit/version-discovery.test.js` 3/3；`node scripts/sync-vendored-plugin.mjs --check` 退出码
+0（直接捕获，非管道）；全仓 `grep -rn grok-4\.5` 复核，剩余引用全部逐处核实为历史记录/夹具样本/
+故意保留的回退基线，无一处属于"该改而漏改"。
+
 ## [0.57.0] - 2026-08-13
 
 ### Fixed — leader-tasklist 小节的正文只有结构性标记（分隔线/空表格/裸引用）时，仍被当作有效 spec 派发

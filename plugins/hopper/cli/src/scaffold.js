@@ -195,7 +195,7 @@ const VENDOR_ROW_META = {
     notSupportedPhrase: 'Also not supported',
   },
   grok: {
-    invocation: '`grok -p "<input>" --permission-mode bypassPermissions --always-approve -m grok-4.5`',
+    invocation: '`grok -p "<input>" --permission-mode bypassPermissions --always-approve -m grok-4.6`',
     note: 'xAI Grok Build (headless needs an explicit permission mode)',
   },
   mimo: {

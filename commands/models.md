@@ -49,7 +49,7 @@ The CLI prints one block per vendor:
 
 Surface the raw output and then a short summary like:
 
-> Codex has 6 models with 5 reasoning levels. Kimi reports configured aliases from `provider list --json` on 0.14+ or from config fallback. OpenCode has 13 models. MiMo reports configured models from `mimo models`. Copilot reports no model list (server-side per-tier). Agy is static (gemini-3.5-flash). Grok reads its live `grok models` output (e.g. `grok-4.5`) and falls back to the static knownGood baseline only if that spawn/parse fails. For dispatch, you can also **omit `--model`** entirely — each vendor has an implicit default.
+> Codex has 6 models with 5 reasoning levels. Kimi reports configured aliases from `provider list --json` on 0.14+ or from config fallback. OpenCode has 13 models. MiMo reports configured models from `mimo models`. Copilot reports no model list (server-side per-tier). Agy is static (gemini-3.5-flash). Grok reads its live `grok models` output (e.g. `grok-4.6`) and falls back to the static knownGood baseline only if that spawn/parse fails. For dispatch, you can also **omit `--model`** entirely — each vendor has an implicit default.
 
 If the user asked about a specific vendor, focus on that one's models + the "omit --model" alternative.
 

@@ -40,7 +40,7 @@ import { diagnosticSignal, heuristicsAllowed, isSuccessfulTerminalReason, isUnsu
 // '<x>': Invalid params: "unknown model id"`. `grok -p ... -m grok-4.5
 // --output-format json` live micro-test on 2026-07-18 (grok CLI v0.2.101)
 // returned `{"text":"OK","stopReason":"EndTurn",...}` — CONFIRMED working.
-const DEFAULT_MODEL = 'grok-4.5';
+const DEFAULT_MODEL = 'grok-4.6';
 
 const GROK_CREDENTIAL_BASENAMES = Object.freeze([
   'config.toml',
@@ -102,11 +102,22 @@ export const grokAdapter = {
       // of 2026-06-02, returned `Couldn't set model '<x>': Invalid params:
       // "unknown model id"` by 2026-07-16). Live `--probe grok` (see
       // cli/src/vendor-probe/grok.js) now parses `grok models`' own "Available
-      // models:" listing and is the PREFERRED self-healing source when its cache
-      // is fresh — this static list is the offline/never-probed fallback baseline
-      // only, not the source of truth.
-      knownGood: ['grok-4.5'],
-      sourceNote: 'grok `-m, --model <MODEL>` (CONFIRMED docs.x.ai/build/cli/headless-scripting). V-verified 2026-07-18 via `grok -p "..." -m grok-4.5 --output-format json` live micro-test on grok CLI v0.2.101 → {"text":"OK","stopReason":"EndTurn",...} (real dispatch, not just `grok models` listing it). `grok models` (live, same date) confirms grok-4.5 is also the CLI\'s own default. `grok-build` / `grok-composer-2.5-fast` (the prior knownGood) both now 400 with "unknown model id" — retired sometime between 2026-06-02 and 2026-07-16. CLI built-in default when -m omitted is still UNCONFIRMED as a matter of policy, so this adapter ALWAYS passes -m explicitly. NAME COLLISION: the third-party grok-cli defaults to grok-code-fast-1 and uses different auth/output flags.',
+      // models:" listing.
+      //
+      // **更正 2026-08-13** —— 这里原本写着「实时 probe 是缓存新鲜时的首选自愈来源，
+      // 本静态列表只是离线/未探测过的回退基线，不是事实来源」。**对真正决定派哪个模型
+      // 的那条路径，这两句都是假的。** `cli/src/dispatch.js:868` 调的是
+      // `resolveVerifiedLatest(getAdapter(vendor)?.capabilities?.modelArg)` —— 它读的
+      // 就是这个静态对象，从不查 `~/.hopper/cache/vendor-capabilities.json`。
+      // 2026-08-13 实测：跑完 `--probe grok`（缓存里已写入 `grok-4.6, grok-4.5`）之后，
+      // 紧接着解析出来的仍然是 `grok-4.5`，因为下面那行 `hopperDefault` 才是
+      // `resolveVerifiedLatest` 的返回值。**probe 自愈的是缓存，不是派发。**
+      // 这正是 ISSUE-grok-model-line-rotation-stale-knownGood 点名的根因
+      //（「修复静态数据的唯一机制本身也是静态的」）以更窄的形式存活下来：探针变成实时的
+      // 了，但它的结果从未接进解析路径。已另行登记；此注释存在的意义，是不让下一个读者
+      // 像这一个一样被误导。
+      knownGood: ['grok-4.6', 'grok-4.5'],
+      sourceNote: 'grok `-m, --model <MODEL>` (CONFIRMED docs.x.ai/build/cli/headless-scripting). **grok-4.6 V-verified 2026-08-13** via `grok -p "Reply with exactly: MODELCHECK-46-OK" -m grok-4.6 --output-format json --no-auto-update` live micro-test → {"text":"MODELCHECK-46-OK","stopReason":"end_turn",...} (real dispatch, NOT just `grok models` listing it — that distinction is the whole lesson of ISSUE-grok-model-line-rotation-stale-knownGood). Same-date `--probe grok` lists exactly two: grok-4.6, grok-4.5. Prior baseline: V-verified 2026-07-18 via `grok -p "..." -m grok-4.5 --output-format json` live micro-test on grok CLI v0.2.101 → {"text":"OK","stopReason":"EndTurn",...} (real dispatch, not just `grok models` listing it). `grok models` (live, same date) confirms grok-4.5 is also the CLI\'s own default. `grok-build` / `grok-composer-2.5-fast` (the prior knownGood) both now 400 with "unknown model id" — retired sometime between 2026-06-02 and 2026-07-16. CLI built-in default when -m omitted is still UNCONFIRMED as a matter of policy, so this adapter ALWAYS passes -m explicitly. NAME COLLISION: the third-party grok-cli defaults to grok-code-fast-1 and uses different auth/output flags.',
     },
     reasoningArg: {
       accepted: 'enumerated',

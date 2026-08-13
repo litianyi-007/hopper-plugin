@@ -97,7 +97,7 @@ test('claude resolves to its DECLARED default, never to knownGood[0] — the dow
 });
 
 test('vendors that DO have a preference keep resolving to it', () => {
-  const expected = { codex: 'gpt-5.6-sol', grok: 'grok-4.5', claude: 'opus' };
+  const expected = { codex: 'gpt-5.6-sol', grok: 'grok-4.6', claude: 'opus' };
   for (const [vendor, model] of Object.entries(expected)) {
     assert.equal(resolveVerifiedLatest(capabilitiesForAdapter(vendor).modelArg), model, vendor);
   }
@@ -226,7 +226,7 @@ test('swarm panelists each resolve their own vendor default (the objection, answ
   const codex = resolveAdapterOptsForTask(resolved('codex'), {});
   const grok = resolveAdapterOptsForTask(resolved('grok'), {});
   assert.equal(codex.model, 'gpt-5.6-sol');
-  assert.equal(grok.model, 'grok-4.5');
+  assert.equal(grok.model, 'grok-4.6');
   assert.notEqual(codex.model, grok.model, 'per-vendor resolution, not one shared id');
   for (const out of [codex, grok]) {
     assert.notEqual(out.effectiveSelector, null, 'every panelist must be attestable');

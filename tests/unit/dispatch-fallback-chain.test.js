@@ -138,8 +138,9 @@ test('model chain: sentinel resolution is vendor-scoped (grok gets its own known
   const out = resolveAdapterOptsForTask(resolvedWith('grok', 'code-impl', { effortPolicy: '', modelRule: 'verified-latest' }), {});
   // ISSUE-grok-model-line-rotation-stale-knownGood.md: grok-build retired
   // ("unknown model id") between 2026-06-02 and 2026-07-16; knownGood[0]
-  // moved to grok-4.5 (V-verified 2026-07-18 live micro-test).
-  assert.equal(out.model, 'grok-4.5');
+  // moved to grok-4.5 (V-verified 2026-07-18)，再于 2026-08-13 移到 grok-4.6
+  // （V-verified 同日 live micro-test：真派一次返回 MODELCHECK-46-OK / end_turn）。
+  assert.equal(out.model, 'grok-4.6');
 });
 
 test('model chain: unbound Model rule (OOB) falls through to the vendor hopper default, not to nothing', () => {

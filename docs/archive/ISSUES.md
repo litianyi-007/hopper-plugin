@@ -18,7 +18,7 @@ Chinese. Historical records are not rewritten here; only this framing is new.
 
 ## Status index
 
-### Open — 9
+### Open — 10
 
 | Issue | Status | Severity |
 |---|---|---|
@@ -31,6 +31,7 @@ Chinese. Historical records are not rewritten here; only this framing is new.
 | [`progress-watch-hang`](#progress-watch-hang) | open — pre-existing, NOT introduced by the governance-fusion change (which never touched the `-- | medium (blocks the full-suite `npm test` gate; has a workaro |
 | [`prompt-artifact-lifecycle-and-windows-permissions`](#prompt-artifact-lifecycle-and-windows-permissions) | open — recorded, not fixed | not a credential leak (this repo's brief discipline forbids  |
 | [`stale-status-on-runner-death`](#stale-status-on-runner-death) | open — 未修，仅登记（见文末「归档说明」） | 中——不丢数据，但调用方会误判任务未完成，重复派发、浪费 vendor 调用 |
+| [`verified-latest-resolution-bypasses-probe-cache`](#verified-latest-resolution-bypasses-probe-cache) | open — 未修，仅登记 | 中——今天不会静默错派模型（退役 slug 会用 "unknown model id" 大声失败），但模型线换代仍无自愈路径 |
 
 ### Closed — 13
 
@@ -2589,5 +2590,101 @@ BREAKING 说明、迁移方法、以及"等宽抵消"残留边界的精确表述
 
 注：在函数入口加 fail-closed 抛错**不会**改变合法输入的拼装结果，
 因此理论上与那 4 条断言不冲突——是本轮的 scope 约束，不是技术阻碍。留待独立一轮评估。
+
+---
+
+<a id="verified-latest-resolution-bypasses-probe-cache"></a>
+
+## verified-latest-resolution-bypasses-probe-cache
+
+---
+
+## ISSUE：`verified-latest` 的解析路径从不读探测缓存，所以 `--probe` 自愈的是缓存、不是派发
+
+- **版本**：hopper 0.58.0（grok `DEFAULT_MODEL` 从 `grok-4.5` 换到 `grok-4.6` 时顺带核实发现；
+  登记前已核对行号与实测输出，见下）
+- **严重度**：中——今天不会静默错派模型（一个退役的 slug 会用 `"unknown model id"` 大声失败），
+  但系统对模型线换代仍然**没有自愈路径**，这正是已关闭的
+  [`grok-model-line-rotation-stale-knownGood`](#grok-model-line-rotation-stale-knownGood)
+  当初开工单的初衷
+- **状态**：**Open — 未修，仅登记**
+- **关联**：`cli/src/dispatch.js`、`cli/src/policy.js`、`cli/src/cache.js`、`cli/src/setup.js`、
+  `cli/src/vendors/index.js`、`cli/src/vendors/grok.js`；已关闭的
+  [`grok-model-line-rotation-stale-knownGood`](#grok-model-line-rotation-stale-knownGood)
+  （尤其其「更深的待办」一节）
+
+### 现象
+
+`cli/src/dispatch.js:868` 解析 `verified-latest` 哨兵时调用
+`resolveVerifiedLatest(getAdapter(resolved.vendor)?.capabilities?.modelArg)`——`getAdapter()`
+（`cli/src/vendors/index.js:44`）返回的是**静态** `REGISTRY` 对象里的一项，该对象由模块顶层的
+`import` 一次性构造，进程存活期间从未被改写。`cli/src/policy.js:142` 的 `resolveVerifiedLatest`
+函数体本身也印证了这一点：它只读传入的 `modelArg` 参数——已声明时读 `caps.hopperDefault`，否则退回
+`caps.knownGood[0]`——两者都是随适配器模块一起导入的编译期常量，函数体内没有一行
+`readFileSync`/`import ... from './cache.js'`。
+
+反过来，探测缓存 `~/.hopper/cache/vendor-capabilities.json` 的读取面**只有一个**调用方：
+`cli/src/setup.js:22` 的 `import { getVendorCache, setVendorCache } from './cache.js'`，服务于
+`--setup`/`--doctor`/`--models` 这些诊断展示面。`cli/src/dispatch.js` 与 `cli/src/vendors/index.js`
+都不 import `cache.js`。也就是说，即使这台机器五分钟前刚跑过 `--probe grok`、缓存里明明白白写着
+最新 catalog，真正决定"这次派发用哪个模型"的 `verified-latest` 解析路径也看不到那份数据——它能看到
+的只有 `cli/src/vendors/grok.js` 里写死的 `hopperDefault`/`knownGood`。
+
+### 实测（2026-08-13）
+
+跑一次 `hopper-dispatch --probe grok`，缓存写入 `grok-4.6, grok-4.5`；紧接着解析
+`resolveVerifiedLatest(grokAdapter.capabilities.modelArg)`，返回的仍然只是探测前就已经写在源码里的
+`hopperDefault`——与缓存内容无关，无论缓存是新鲜、陈旧还是缺失，结果完全由源码决定。这次切换里，
+唯一改变解析结果的动作是直接编辑 `cli/src/vendors/grok.js` 把 `DEFAULT_MODEL` 从 `grok-4.5` 改成
+`grok-4.6`；probe 全程没有参与、也不可能参与，因为它写的那份数据根本不在这条路径的读取范围内。
+
+### 与 `grok-model-line-rotation-stale-knownGood` 的关系
+
+这不是一种新缺陷，是已关闭 issue 里明写的「更深的待办」的一个**更窄**的存活实例。那次修复（V3）
+让 `--probe grok` 从"假探针"（只会把硬编码列表原样刷回缓存）变成了真探针（真的 spawn
+`grok models` 并解析结果），但那次修复的范围只到"探针本身诚实"为止，从未把探针的结果接进
+`resolveVerifiedLatest` / `--check-model` 这两条真正决定派发与"verified"判定的路径。那个 issue 的
+「更深的待办」一节当时就已经预见到这一点、列为 follow-up、明确写明不在那次范围内。这次是那条
+follow-up 第一次被独立核实、登记为可跟踪的 issue，而不是继续挂在一个已关闭 issue 的尾巴上。
+
+`cli/src/vendors/grok.js` 里原本在 `knownGood` 上方的一段说明性注释（这次切换前）主张"实时 probe
+是缓存新鲜时的首选自愈来源，静态列表不是事实来源"——**这句话对 dispatch 路径是假的**，已在本次
+改动中就地更正为记录本次实测结果的更正说明（同文件 :107-118 行的"更正 2026-08-13"段落），避免
+下一个读者被同一段误导。
+
+### 相关但独立的发现：outer host wrapper 的 `GROK_HOST_MODEL` 默认值是第二个、完全独立的 pin
+
+`hosts/grok-cli/bin/hopper-grok`（外层宿主 wrapper——让 grok 作为 **HOST** 反过来调用
+`hopper-dispatch`，方向与上面讨论的"grok 作为 **VENDOR** 被派发"正相反）的 `GROK_HOST_MODEL`
+环境变量默认值是**另一处**硬编码的 grok 模型 pin（`exec grok -p "$PROMPT" ... -m
+"${GROK_HOST_MODEL:-grok-4.6}"`），与 `cli/src/vendors/grok.js` 的 `DEFAULT_MODEL` 完全独立——
+**已核实确认两者之间没有任何机制互相引用或校验一致性**，不是猜测：wrapper 是纯 bash 脚本，不
+`import`/读取任何 JS 源码；连测试套件也不例外——`tests/unit/extra-hosts.test.js` 对 wrapper 默认值
+的断言是一条独立的字面正则匹配（直接读 wrapper 文件的文本），从不读取
+`grokAdapter.capabilities.modelArg`；反过来 `tests/unit/vendor-model-default.test.js`/
+`tests/unit/vendors-contract.test.js` 对 vendor 侧默认值的断言也从不读取 wrapper 文件。两组测试各自
+独立地把同一个事实（"grok 现在该用哪个模型"）钉死成一份字面量，互不知晓对方存在。
+
+这次 grok-4.5→grok-4.6 切换里，两处 pin 是**同一版本内人工同时改的**（0.58.0；用户裁定"两条路径
+一起切，理由是它们用的是同一个 grok CLI，分歧留着以后必然踩坑"）。人工同时改**解决了这一次**的
+不同步，但没有解决"没有机制保证同步"这件事本身——这本身就是本 issue 标题所指的同一族缺陷
+（静态数据分散在多处、无自动一致性守卫）的又一个实例，只是这次分散的不是"探测缓存 vs 解析路径"，
+而是"同一个事实在两条独立代码路径里各自被硬编码了一份，谁都不知道对方的存在"。
+
+顺带一提，同一次全仓核查（`grep -rn grok-4\.5`，逐处核实是否"该改而漏改"）还发现三处"活文档"
+（`cli/src/scaffold.js` 的示例 invocation 字符串、`docs/release/INSTALL-MATRIX.md` 的能力对照表、
+`commands/models.md` 的示例文案）在上一次 `grok-build → grok-4.5` 切换时被 `CHANGELOG.md` `[0.32.0]`
+明确记录为需要同步更新的清单，这次 `4.5 → 4.6` 切换却未被同步改掉——已在 0.58.0 一并修正（见
+`CHANGELOG.md` `[0.58.0]`）。三次独立发现（本 issue 的缓存旁路、outer host wrapper 的独立 pin、
+这三处活文档漂移）指向同一个根问题：**"grok 现在该用哪个模型"这个事实目前没有单一事实来源，
+每次换代都靠人手动找全所有副本，找不全就是静默的部分漂移。**
+
+### 建议方向（非本次决定，供参考）
+
+`resolveVerifiedLatest` 在存在新鲜（未过 `staleAfter`）探测缓存条目时，优先读取缓存里的值，
+静态 `hopperDefault`/`knownGood` 降级为缓存缺失/陈旧时的回退——这正是已关闭 issue「更深的待办」
+一节末尾给出的加固方向，这次登记只是把它从一段散文变成一条可独立跟踪的 issue。是否也要覆盖
+`--check-model` 的 "verified" 判定、是否需要新增一个 verdict 值、以及 outer host wrapper 的
+`GROK_HOST_MODEL` 是否也该接入等价的自愈路径——都留给实现时判断，不在本次登记范围内。
 
 ---

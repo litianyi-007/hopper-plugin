@@ -346,7 +346,7 @@ For quick reference (re-verify quarterly per each adapter's `staleAfter` date):
 | **opencode** | freeform (`<provider>/<model>`) | explicit-only: Hopper `--reasoning` → `--variant`; defaults omitted | ✓ (per-machine session IDs; NOT cross-OS) | ✗ | ✓ |
 | **copilot** | freeform | IGNORED | partial (`--resume` picker; UNCONFIRMED ID arg) | ✗ | ✓ |
 | **agy** | IGNORED | IGNORED | UNCONFIRMED | ✗ (`--log-file` is diagnostic, not answer) | ✓ |
-| **grok** | freeform (`-m`; default `grok-4.5`) | IGNORED (no CLI flag) | ✓ (`-s` / `-r` / `-c`) | ✗ (stdout only) | ✓ (`--output-format streaming-json`) |
+| **grok** | freeform (`-m`; default `grok-4.6`) | IGNORED (no CLI flag) | ✓ (`-s` / `-r` / `-c`) | ✗ (stdout only) | ✓ (`--output-format streaming-json`) |
 | **mimo** | freeform (`<provider>/<model>`) | `minimal \| low \| medium \| high \| xhigh` (`xhigh` -> `max`) | ✓ (`--session <id>` / `--continue`) | ✗ | ✓ (`--format json`) |
 
 **Honest gotchas surfaced by the capability data**:
