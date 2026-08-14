@@ -19,6 +19,56 @@ convention: any user-observable behavior change (new capability, fixed defect,
 changed default) bumps minor; patch is reserved for the rare non-functional
 tweak.
 
+## [0.59.0] - 2026-08-14
+
+### Fixed — `bufferedOutput: true` 只被 `cli/bin/hopper-runner` 遵守，`hopper-dispatch` 实际走的同步路径完全无视它——end-buffered vendor 被 idle watchdog 无条件杀死
+
+`ISSUE-grok-claude-buffered-output-idle-falsekill`（已归档，`docs/archive/ISSUES.md`）当初的
+缓解措施只落在后台路径：`cli/bin/hopper-runner` 早就对声明 `bufferedOutput: true` 的适配器
+（grok、claude——两者的 `--output-format json` 都是进程退出时一次性写完，从不增量输出）跳过
+武装 idle watchdog。但 `hopper-dispatch`（`cli/src/dispatch.js:21` 起 `import { runSubprocessOnce,
+resolveDispatchTimeouts } from './subprocess.js'`）实际调用的同步路径——`executeWithAdapter` →
+`runSubprocessOnce`——从未读过这个标志：`armIdle()` 的武装条件此前只看 `idleMs > 0`，对端缓冲
+vendor 来说派发一启动 idle 计时器就已经在倒数，而 `applyTaskTypeFloor` 为 review 任务类型准备的
+30 分钟 ceiling 地板从未有机会生效，因为 idle watchdog 总是先在 `DEFAULT_IDLE_TIMEOUT_MS`
+（180s）触发。
+
+本项目实测数字：同一条评审任务、同一 vendor（grok-4.6），只改 idle 上限——默认 180s 在
+`180024ms` 被杀，产物 0 字节；`HOPPER_IDLE_TIMEOUT_MS=1500000` 时 `Status: success`，
+`399802ms`（约 6.7 分钟），产物 19883 字节。这条评审真实需要的时间是默认 idle 上限的两倍还多，
+所以每次都会被杀——本项目连续 3 次评审因此丢失。
+
+有意思的地方不是超时数值本身：缓解措施**已经存在、已经写进文档、甚至有专门登记的 issue**，
+只是只实现在两条执行路径里的一条。
+
+修复：`executeWithAdapter` 把 `adapter.bufferedOutput === true` 一起传给 `runSubprocessOnce`，
+`armIdle()` 的跳过条件改为 `!(idleMs > 0) || bufferedOutput || timedOut`，与 hopper-runner 的
+`idlePoll = (idleMs > 0 && !bufferedOutput) ? ... : null` 对齐、可逐行对照审计。新增 6 条测试
+（`tests/unit/subprocess.test.js` 3 条 + 新增 `tests/unit/dispatch-buffered-output.test.js` 3
+条），含贯穿真实 `executeWithAdapter` 的接线级证明——只修 `subprocess.js` 而不接 `dispatch.js`
+的话，后者会保持红。三条场景都覆盖：修复后端缓冲 vendor 静默期不被杀、不加标志时同样的静默期
+仍按 pre-fix 行为被杀（回归基线）、加了标志的真挂起 vendor 仍会被绝对 ceiling 兜底杀掉（标志
+只跳过 idle 武装，不关闭安全网）。
+
+### Known — 同族缺陷未修：mimo 的 `idleHeartbeatRe`（`cli/src/vendors/mimo.js:39`）同样只被
+`hopper-runner` 消费，同步路径读不到
+
+mimo 用的是心跳过滤而非整段跳过——`mimo run --print-logs` 每约 400ms 打一行
+`/session/status` 轮询，`idleHeartbeatRe` 让 `hopper-runner` 只在非心跳行才重置 idle 计时器
+——但消费方仍然只有 `hopper-runner`，同步路径同样没有读取这个字段。一个**在给出答案之后**才
+挂起的 mimo，会被同步路径误判为 `status: 'timeout'`，而已经送达的完整回答躺在 `raw.stdout`
+里未被使用。严重度更低：触发窗口更窄（挂起必须发生在完整答案之后而非本 issue 的"从不产生
+输出"），且 mimo 不在当前产品支持的 vendor 集合内（`codex`/`grok`/`claude`/`kimi`/`pi`，见
+`commands/vendors.md`）。触发机制也不同（心跳过滤 vs 整段跳过 idle 武装），但和上面是同一个
+形状的缺陷——一个 adapter 声明的 idle 相关能力，只被两条执行路径里的一条读取。本版本未修，
+留作已知问题，不在此次范围内静默略过。
+
+**验证**：`npm test` 1424 条，1422 pass / 0 fail / 2 skip（两条既有 skip 与本次无关）；`node
+scripts/sync-vendored-plugin.mjs --check` 退出码 0（直接捕获，非管道）；`npm run sync:plugin`
+已跑，同步了 `cli/bin/hopper-dispatch`（版本水印）与 `.codex-plugin/plugin.json` 两处版本 bump
+后的漂移，`plugins/hopper/kimi.plugin.json`（vendor-only，无主源对应文件，同步脚本不覆盖）手工
+同步 bump。
+
 ## [0.58.0] - 2026-08-13
 
 ### Changed — grok 的两处独立 pin（vendor 派发默认值 + outer host wrapper 默认值）同步移到 `grok-4.6`

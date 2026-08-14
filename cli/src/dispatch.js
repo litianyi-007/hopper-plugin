@@ -1205,6 +1205,18 @@ export async function executeWithAdapter({ resolved, adapter, adapterOpts = {}, 
     stdinInput,
     timeoutMs: ceilingMs,
     idleMs,
+    // ISSUE-grok-claude-buffered-output-idle-falsekill: hopper-runner already skips
+    // arming its idle poll for an adapter that declares `bufferedOutput: true`
+    // (`Boolean(adapter && adapter.bufferedOutput === true)` in cli/bin/hopper-runner);
+    // this sync path (hopper-dispatch -> executeWithAdapter -> runSubprocessOnce) was
+    // the other consumer of the idle timer and silently ignored the same flag, so a
+    // grok/claude dispatch here was unconditionally idle-killed ~idleMs after spawn —
+    // before the end-buffered vendor ever wrote its single trailing blob. Read the
+    // flag off the adapter (already in scope, same as vendorName below) rather than
+    // widening runSubprocessOnce to accept a whole adapter object: subprocess.js stays
+    // a plain-data, adapter-agnostic primitive, and this mirrors hopper-runner's own
+    // resolution point almost verbatim for easy side-by-side audit.
+    bufferedOutput: adapter.bufferedOutput === true,
     logFilePath: logPath,
     vendorName: adapter.name,
     cwd: cwd || undefined,

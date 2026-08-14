@@ -102,6 +102,72 @@ test('runSubprocessOnce times out and kills the process', async () => {
   assert.notEqual(result.exitCode, 0);
 });
 
+// ── bufferedOutput: skip the idle watchdog for end-buffered vendors ──
+// (ISSUE-grok-claude-buffered-output-idle-falsekill.md) grok/claude declare
+// `bufferedOutput: true` (cli/src/vendors/grok.js:85, cli/src/vendors/claude.js:78)
+// because their `--output-format json` writes stdout/stderr exactly ONCE, at
+// process exit — never incrementally. cli/bin/hopper-runner (the background
+// path) already skipped arming its idle poll for such an adapter. This sync
+// primitive (runSubprocessOnce, used by hopper-dispatch's foreground path via
+// cli/src/dispatch.js executeWithAdapter) did NOT: it armed the idle watchdog
+// unconditionally, so a fully end-buffered vendor was idle-killed ~idleMs
+// after spawn — before it ever got a chance to write anything. Three real
+// hopper-dispatch reviews of grok in this project timed out at exactly
+// 180024ms (DEFAULT_IDLE_TIMEOUT_MS=180_000) before this fix.
+test('runSubprocessOnce: bufferedOutput:true is NOT idle-killed during its silent period (the fix)', async () => {
+  const result = await runSubprocessOnce({
+    command: process.execPath,
+    args: [
+      '-e',
+      // Silent for 400ms (no stdout/stderr at all, matching grok/claude's
+      // end-buffered --output-format json shape), THEN writes ONE trailing
+      // blob and exits. idleMs=100 is far shorter than the 400ms silence, so
+      // under the pre-fix behavior this run would have been idle-killed long
+      // before it could write anything.
+      'setTimeout(() => { process.stdout.write("BUFFERED_DONE"); process.exit(0); }, 400)',
+    ],
+    stdinInput: null,
+    idleMs: 100,
+    timeoutMs: 5000,
+    bufferedOutput: true,
+  });
+  assert.equal(result.timedOut, false, 'a bufferedOutput vendor must not be idle-killed while silent');
+  assert.equal(result.exitCode, 0);
+  assert.match(result.stdout, /BUFFERED_DONE/, 'the vendor must live long enough to write its single trailing blob');
+});
+
+test('runSubprocessOnce: without bufferedOutput, the identical silent period IS idle-killed (pre-fix baseline)', async () => {
+  const result = await runSubprocessOnce({
+    command: process.execPath,
+    args: [
+      '-e',
+      'setTimeout(() => { process.stdout.write("BUFFERED_DONE"); process.exit(0); }, 400)',
+    ],
+    stdinInput: null,
+    idleMs: 100,
+    timeoutMs: 5000,
+    // bufferedOutput intentionally omitted — this is the exact pre-fix shape,
+    // and doubles as proof the flag is additive: omitting it must NOT change
+    // existing idle-kill behavior for non-buffered vendors.
+  });
+  assert.equal(result.timedOut, true, 'without the flag, silence for idleMs must still be treated as stuck');
+  assert.equal(result.timeoutReason, 'idle');
+  assert.equal(result.stdout, '', 'the kill must land BEFORE the vendor gets a chance to write — the real-world false-kill this fix corrects');
+});
+
+test('runSubprocessOnce: bufferedOutput:true still respects the absolute ceiling for a genuinely hung vendor', async () => {
+  const result = await runSubprocessOnce({
+    command: process.execPath,
+    args: ['-e', 'setInterval(() => {}, 1000000)'], // never writes, never exits
+    stdinInput: null,
+    idleMs: 100,
+    timeoutMs: 400,
+    bufferedOutput: true,
+  });
+  assert.equal(result.timedOut, true, 'bufferedOutput must not disable the safety net for a truly hung process');
+  assert.equal(result.timeoutReason, 'ceiling', 'with idle-arming skipped, only the ceiling timer can be the cause');
+});
+
 test('runSubprocessOnce timeout arbitration is first-wins and kills the process tree exactly once', { skip: platform() !== 'win32' ? 'taskkill PATH shim is Windows-specific' : false }, async () => {
   const tmp = mkdtempSync(join(tmpdir(), 'hopper-subprocess-timeout-first-wins-'));
   const killCounterFile = join(tmp, 'kill-counter.txt');

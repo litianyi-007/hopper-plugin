@@ -11,7 +11,7 @@ Run the dispatcher's standalone smoke test:
 node "$CLAUDE_PLUGIN_ROOT/cli/bin/hopper-dispatch" --smoke
 ```
 
-Expected output starts with `hopper standalone (CLI v0.58.0)` (or current version). If the binary runs and exits 0, the Claude Code plugin host adapter is functional (Tier B verified).
+Expected output starts with `hopper standalone (CLI v0.59.0)` (or current version). If the binary runs and exits 0, the Claude Code plugin host adapter is functional (Tier B verified).
 
 If the binary is not found, surface the exact error and offer specific debugging steps:
 - `$CLAUDE_PLUGIN_ROOT` is not set or points to wrong directory → plugin install issue

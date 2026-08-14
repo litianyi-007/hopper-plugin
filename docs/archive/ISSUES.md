@@ -18,7 +18,7 @@ Chinese. Historical records are not rewritten here; only this framing is new.
 
 ## Status index
 
-### Open — 10
+### Open — 11
 
 | Issue | Status | Severity |
 |---|---|---|
@@ -27,6 +27,7 @@ Chinese. Historical records are not rewritten here; only this framing is new.
 | [`codex-windows-sandbox-1326`](#codex-windows-sandbox-1326) | open | high on Windows (the codex vendor cannot execute ANY command |
 | [`composeprompt-no-fail-closed-on-empty-spec`](#composeprompt-no-fail-closed-on-empty-spec) | Open — 未修，仅登记 | 低——当前 dispatch.js 已在上游拦住，属纵深防御缺失而非活跃缺陷 |
 | [`mimo-codeimpl-timeout`](#mimo-codeimpl-timeout) | 待 hopper 自查 | 中(有 workaround=改派其它 vendor,但暴露 adapter 真实限制) |
+| [`mimo-idle-heartbeat-ignored-on-sync-path`](#mimo-idle-heartbeat-ignored-on-sync-path) | open — 未修，仅登记（0.59.0 修姊妹 issue 时顺带发现） | 中低——触发窗口更窄且 mimo 非当前支持 vendor，但触发时已送达的完整回答会被当作 timeout 丢弃 |
 | [`monitor-cross-session-crosstalk`](#monitor-cross-session-crosstalk) | open | medium-high (UX correctness: a session is woken/notified by  |
 | [`progress-watch-hang`](#progress-watch-hang) | open — pre-existing, NOT introduced by the governance-fusion change (which never touched the `-- | medium (blocks the full-suite `npm test` gate; has a workaro |
 | [`prompt-artifact-lifecycle-and-windows-permissions`](#prompt-artifact-lifecycle-and-windows-permissions) | open — recorded, not fixed | not a credential leak (this repo's brief discipline forbids  |
@@ -2686,5 +2687,78 @@ follow-up 第一次被独立核实、登记为可跟踪的 issue，而不是继�
 一节末尾给出的加固方向，这次登记只是把它从一段散文变成一条可独立跟踪的 issue。是否也要覆盖
 `--check-model` 的 "verified" 判定、是否需要新增一个 verdict 值、以及 outer host wrapper 的
 `GROK_HOST_MODEL` 是否也该接入等价的自愈路径——都留给实现时判断，不在本次登记范围内。
+
+---
+
+<a id="mimo-idle-heartbeat-ignored-on-sync-path"></a>
+
+## mimo-idle-heartbeat-ignored-on-sync-path
+
+---
+
+## ISSUE：mimo 的 `idleHeartbeatRe` 心跳过滤只被 `hopper-runner` 消费，`hopper-dispatch` 的同步路径读不到——完整回答送达之后才挂起的 mimo 会被误判超时，已送达的输出被当作失败丢弃
+
+- **版本**：hopper 0.59.0（修
+  [`grok-claude-buffered-output-idle-falsekill`](#grok-claude-buffered-output-idle-falsekill)
+  的同步路径分支时，核对"adapter 声明的 idle 相关能力字段各有几处消费方"，顺带发现的同形缺口；
+  登记前已核对行号，见下）
+- **严重度**：中低——触发窗口比姊妹 issue 窄（必须是"完整答案已经送达之后才挂起"，而不是姊妹
+  issue 那种"从不产生任何输出"），且 mimo 当前不在产品支持的 vendor 集合内（`codex`/`grok`/
+  `claude`/`kimi`/`pi`，见 `commands/vendors.md`）；一旦触发，代价是已送达的完整回答被当作失败
+  丢弃，调用方需要自己去 `raw.stdout` 里捞
+- **状态**：**Open — 未修，仅登记**
+- **关联**：`cli/src/vendors/mimo.js:39`（声明处）、`cli/bin/hopper-runner:468`（唯一消费方）、
+  `cli/src/dispatch.js`（`executeWithAdapter`，同步路径，不读取此字段）、`cli/src/subprocess.js`
+  （`runSubprocessOnce`，同步路径的 idle/ceiling 定时器实现）；同形的姊妹 issue，已在 0.59.0 修复
+  的 [`grok-claude-buffered-output-idle-falsekill`](#grok-claude-buffered-output-idle-falsekill)
+
+### 现象
+
+mimo adapter 声明了 `idleHeartbeatRe: /path=\/session\/status\b/`（`cli/src/vendors/mimo.js:39`）
+——`mimo run --print-logs` 会每约 400ms 向日志追加一行 `GET /session/status` 轮询，即使答案已经
+送达也不停，这会让"日志文件大小仍在增长"这种朴素 idle 检测永远判定"活跃"。这个字段存在的目的是
+让判定逻辑跳过心跳行、只在**非**心跳行出现时才重置 idle 计时器（`.test` 逐行匹配，非 global）。
+
+但读取这个字段的代码只有一处：`cli/bin/hopper-runner:468` 的
+`const heartbeatRe = adapter && adapter.idleHeartbeatRe ? adapter.idleHeartbeatRe : null;`——这是
+**后台**派发路径（`hopper-dispatch <id> --background`）的日志轮询循环。`hopper-dispatch` 的
+**同步**路径（`cli/src/dispatch.js` 的 `executeWithAdapter` 调用 `cli/src/subprocess.js` 的
+`runSubprocessOnce`）整条不读取 `idleHeartbeatRe`——全仓搜索确认这个标识符只出现在声明处
+（`mimo.js`）和 `hopper-runner` 消费处这两个地方，`cli/src/dispatch.js`/`cli/src/subprocess.js`
+里都没有第二处引用。`runSubprocessOnce` 的 idle 计时器只认 stdout/stderr 的原始 `'data'` 事件，
+不做任何按行的心跳过滤。
+
+后果：一个 mimo 任务已经把完整答案写进了 stdout（或 `--print-logs` 日志），但进程本身在那之后
+才挂起不退出（例如卡在清理逻辑，或如 [`mimo-codeimpl-timeout`](#mimo-codeimpl-timeout) 记录过的
+这类 agentic 工具本身的已知不稳定表现），同步路径的 idle watchdog 看不到任何"非心跳"信号来
+区分"真的卡住"与"已完成、只是进程还没退出"，会在 idle 窗口耗尽后判定 `status: 'timeout'`——而
+`raw.stdout` 里其实已经躺着完整、可用的回答，`parseResult` 从未被给到机会去认领它。
+
+### 与 `grok-claude-buffered-output-idle-falsekill` 的关系
+
+同一族缺陷的又一个独立实例：**一个 adapter 声明的、专门服务于 idle 判定的字段，只被后台路径
+（`hopper-runner`）消费；`hopper-dispatch` 的同步路径另起一套定时器实现（`runSubprocessOnce`），
+从不读取同一份 adapter 数据。** 姊妹 issue 里 grok/claude 的 `bufferedOutput` 标志是这个形状，
+本条目里 mimo 的 `idleHeartbeatRe` 是同一形状的第二个独立实例——触发机制不同（`bufferedOutput`
+是整段跳过 idle 武装的布尔开关；`idleHeartbeatRe` 是按行过滤、只在非心跳行才重置计时器的正则），
+后果也不同（前者是"从不产生输出就被杀"，本条目是"已产生完整输出、之后才被误杀且输出被丢弃"），
+但根因同构：**adapter 能力字段与消费它的执行路径之间没有任何机制保证两条路径都读到同一份数据。**
+
+`bufferedOutput` 那次的修法是把标志一路传进 `runSubprocessOnce` 并镜像 `hopper-runner` 的判断
+逻辑——直接可复用，因为它只是一个布尔开关。`idleHeartbeatRe` 要复用同一个修法，需要先把
+`runSubprocessOnce` 的 idle 计时器从"纯粹由 stdout/stderr 的 `'data'` 事件驱动"改造成能接受一个
+可选的"忽略匹配这个正则的内容重置"的过滤器——改造面比 `bufferedOutput` 大（后者只需新增一个
+`if` 分支跳过整段武装，前者需要在数据到达时先做正则匹配再决定是否重置计时器），这也是本次连带
+发现时选择只登记、不顺手一并修的原因：mimo 当前也不在产品支持的 vendor 集合内，优先级低于刚
+修完的 grok/claude 同步路径。
+
+### 触发条件的确认程度
+
+与 `grok-claude-buffered-output-idle-falsekill` 不同——那条 issue 有本项目 3 次真实派发超时
+（每次都精确落在 `DEFAULT_IDLE_TIMEOUT_MS` 附近）作为实测证据。本条目登记的是**代码级审计
+发现**：`idleHeartbeatRe` 的消费方只有 `hopper-runner` 一处，这一点是静态可核实的事实；但"mimo
+在完整答案送达之后才挂起不退出"这个前提条件，本项目尚未实际派发复现过。降低了本条目的确信度，
+但不改变结论本身——即使触发概率未知，"同步路径读不到这个字段"是当前源码的确定事实，值得登记而
+不是等实际撞上才处理。
 
 ---
