@@ -1,0 +1,28 @@
+tests/unit/dispatch-flags.test.js
+  s_e8d54b83fa1e9c::t_9bccad9daee8f4 152-190
+cli/src/validation.js
+  s_e8d54b83fa1e9c::t_eaa89393713c3c 95-100
+tests/unit/codex-cli-host.test.js
+  s_e8d54b83fa1e9c::t_7736b1921d9370 81-88
+  s_e8d54b83fa1e9c::t_f683e523609dcc 179-226
+hosts/opencode/README.md
+  s_e8d54b83fa1e9c::t_b2c4c8d05a57fc 62,71-79,82-84
+hosts/codex-cli/README.md
+  s_e8d54b83fa1e9c::t_b25ca0ad3fdc17 64,70,78-86,89-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "56598bb17570ead31e8a8d61743a2d1da1d36298",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+docs/sidequests/web-dashboard/SPEC.md
+  0000019e503abfe7 1-833
+---
+{
+    "schema_version":  "authorship/3.0.0",
+    "git_ai_version":  "1.5.0",
+    "base_commit_sha":  "c27d3ee301633d1512acfe098902e7d5a40ac4ab",
+    "prompts":  {
+                    "0000019e503abfe7":  {
+                                             "agent_id":  {
+                                                              "tool":  "codex",
+                                                              "model":  "gpt-5.5",
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779462488039"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  833,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  833,
+                                             "overriden_lines":  0
+                                         }
+                }
+}

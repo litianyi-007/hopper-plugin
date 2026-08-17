@@ -1,0 +1,144 @@
+README.md
+  s_c587ecf7bbc3e2::t_df8f82260f8e49 87
+  s_c587ecf7bbc3e2::t_3c6a261cc3f0fa 36-40
+plugins/hopper/cli/src/rules.js
+  s_c587ecf7bbc3e2::t_d9c97e8f7cfa4e 151-152
+cli/src/agents.js
+  s_c587ecf7bbc3e2::t_d1b1ec3c0a47bf 31-35,40
+  s_c587ecf7bbc3e2::t_fcc076f17ad777 225-227
+  s_c587ecf7bbc3e2::t_12c343919f62d8 166-168,171-182
+  s_c587ecf7bbc3e2::t_c27b89aa346d41 92,94-98,103
+  s_c587ecf7bbc3e2::t_6ff3e802d1f0ef 127-130
+tests/unit/policy.test.js
+  s_c587ecf7bbc3e2::t_234a3ae4f9b86c 1-140
+.claude-plugin/marketplace.json
+  s_c587ecf7bbc3e2::t_542317c2509ae6 4,48
+cli/src/model-check.js
+  s_c587ecf7bbc3e2::t_47b5943d846ed8 1-173
+tests/unit/rules.test.js
+  s_c587ecf7bbc3e2::t_e027c6f2921564 70-73,75-79
+docs/release/INSTALL-MATRIX.md
+  s_c587ecf7bbc3e2::t_48304455fc832f 472-481
+  s_c587ecf7bbc3e2::t_75d0d1ebebc03e 486-487
+plugins/hopper/skills/hopper/SKILL.md
+  s_c587ecf7bbc3e2::t_4ba5cac45f70ad 38,43
+skills/hopper/SKILL.md
+  s_c587ecf7bbc3e2::t_52e9e2b2bd2552 43
+  s_c587ecf7bbc3e2::t_6db75f93a6ec6f 38
+tests/unit/scaffold.test.js
+  s_c587ecf7bbc3e2::t_c3bcfa52432241 81-88,90-94
+  s_c587ecf7bbc3e2::t_d08d80eb790d34 95-96,124-134,138,140,142-163
+  s_c587ecf7bbc3e2::t_6d58dfc337815e 98-123,135-137,139,141
+  s_c587ecf7bbc3e2::t_4b47feaceab841 16
+  s_c587ecf7bbc3e2::t_57b6fd1543ff8b 97
+cli/src/rules.js
+  s_c587ecf7bbc3e2::t_bc7b827690fe7a 151-152
+plugins/hopper/cli/src/policy.js
+  s_c587ecf7bbc3e2::t_d9c97e8f7cfa4e 1-182
+tests/unit/setup.test.js
+  s_c587ecf7bbc3e2::t_49f8f66beb3faa 151-154
+tests/unit/model-check.test.js
+  s_c587ecf7bbc3e2::t_be4d629049b697 148-163
+  s_c587ecf7bbc3e2::t_0f6cee38f4991b 1-147
+tests/unit/setup-policy-lint.test.js
+  s_c587ecf7bbc3e2::t_30773d4ee2ac85 15,21-24
+  s_c587ecf7bbc3e2::t_a3e08123d3dbe7 1-14,16-20,25-167
+cli/src/scaffold.js
+  s_c587ecf7bbc3e2::t_92eaa15c09e4f6 312-326
+  s_c587ecf7bbc3e2::t_94678ce244895e 212-214
+  s_c587ecf7bbc3e2::t_2a7f68acf2e789 206-207
+  s_c587ecf7bbc3e2::t_f6487c1cfc27b7 216-241,243-244
+  s_c587ecf7bbc3e2::t_26459d1e40eea3 242
+  s_c587ecf7bbc3e2::t_79499cbb0c440d 205,208-211,215
+  s_c587ecf7bbc3e2::t_1269f1d4952515 360-364
+.codex-plugin/plugin.json
+  s_c587ecf7bbc3e2::t_fe20e2c6718eb5 3
+plugins/hopper/cli/src/setup.js
+  s_c587ecf7bbc3e2::t_d9c97e8f7cfa4e 21-24,251-335
+  s_c587ecf7bbc3e2::t_a0c116423f93a6 336
+plugins/hopper/cli/src/scaffold.js
+  s_c587ecf7bbc3e2::t_9d1fa5c6d7d330 205-215,312-326,360-363
+  s_c587ecf7bbc3e2::t_d9c97e8f7cfa4e 216-244
+  s_c587ecf7bbc3e2::t_984c500b178032 364
+plugins/hopper/cli/src/vendors/codex.js
+  s_c587ecf7bbc3e2::t_d9c97e8f7cfa4e 240-247,250
+  s_c587ecf7bbc3e2::t_4ba5cac45f70ad 233-239,248-249,251,260
+tests/unit/dispatch-fallback-chain.test.js
+  s_c587ecf7bbc3e2::t_135894e20f987d 1-170
+cli/src/setup.js
+  s_c587ecf7bbc3e2::t_234e609e067bae 251-336
+  s_c587ecf7bbc3e2::t_d61c308702b915 21-24
+commands/vendors.md
+  s_c587ecf7bbc3e2::t_cda2f9d0dd8391 14
+.claude-plugin/plugin.json
+  s_c587ecf7bbc3e2::t_b30a7d4c581aa5 3
+skills/hopper-models/SKILL.md
+  s_c587ecf7bbc3e2::t_60397bae42afcc 17
+cli/src/vendors/codex.js
+  s_c587ecf7bbc3e2::t_e58713d3e85570 233-239,248-249,251,260
+  s_c587ecf7bbc3e2::t_d4b00410d6f18f 240-247,250
+plugins/hopper/cli/src/model-check.js
+  s_c587ecf7bbc3e2::t_4ba5cac45f70ad 1-173
+commands/smoke.md
+  s_c587ecf7bbc3e2::t_8a5341068cf183 14
+plugins/hopper/cli/src/agents.js
+  s_c587ecf7bbc3e2::t_9d1fa5c6d7d330 225-227
+  s_c587ecf7bbc3e2::t_d9c97e8f7cfa4e 31-35,40,92,94-98,103,127-130,166-168,171-182
+docs/cookbook.md
+  s_c587ecf7bbc3e2::t_3cfe06266ac4ee 280,291-294
+  s_c587ecf7bbc3e2::t_fd78abec755f53 308
+plugins/hopper/skills/hopper-models/SKILL.md
+  s_c587ecf7bbc3e2::t_4ba5cac45f70ad 17
+cli/src/dispatch.js
+  s_c587ecf7bbc3e2::t_b93e4934f39ff4 34-38
+  s_c587ecf7bbc3e2::t_d11b4653864c03 80-84
+  s_c587ecf7bbc3e2::t_edff7f4ef1285e 233-258,262-277
+  s_c587ecf7bbc3e2::t_fcc1abc44532d1 122-123
+  s_c587ecf7bbc3e2::t_5c84cb97213842 309-315,317-342
+  s_c587ecf7bbc3e2::t_5e727f9fd2cfaa 18
+commands/models.md
+  s_c587ecf7bbc3e2::t_0baf31e5060b46 16
+cli/bin/hopper-dispatch
+  s_c587ecf7bbc3e2::t_b040c1aeeccf0b 16
+  s_c587ecf7bbc3e2::t_bf7c995423cf4d 51
+  s_c587ecf7bbc3e2::t_00b63707517293 775-779
+  s_c587ecf7bbc3e2::t_48720e61ef148b 1669-1674,1682-1687,1689-1699
+  s_c587ecf7bbc3e2::t_0d7bdc331f12ea 93
+  s_c587ecf7bbc3e2::t_ab59c827ce37e8 894-899
+  s_c587ecf7bbc3e2::t_098eab389821f6 1675-1681,1688
+  s_c587ecf7bbc3e2::t_1eda7389ef809d 198-215
+  s_c587ecf7bbc3e2::t_c19645aa4c2c92 1891-1933
+  s_c587ecf7bbc3e2::t_01914195146a53 842-848
+  s_c587ecf7bbc3e2::t_455f18d2c34e1b 18
+  s_c587ecf7bbc3e2::t_a18847d9699a3f 600
+package.json
+  s_c587ecf7bbc3e2::t_4f0db52a33a4c4 3
+plugins/hopper/.codex-plugin/plugin.json
+  s_c587ecf7bbc3e2::t_4a25b7d9ae3d33 3
+plugins/hopper/cli/bin/hopper-dispatch
+  s_c587ecf7bbc3e2::t_6840e03db292a9 1675-1681,1688
+  s_c587ecf7bbc3e2::t_d9c97e8f7cfa4e 16,775-779,842-848,894-899,1669-1674,1682-1687,1689-1697
+  s_c587ecf7bbc3e2::t_4ba5cac45f70ad 18,51,93,198-215,600,1698,1891-1931
+  s_c587ecf7bbc3e2::t_143197fa2f9ebf 1699,1932-1933
+cli/src/policy.js
+  s_c587ecf7bbc3e2::t_dc8ca0cf400ce9 26-34
+  s_c587ecf7bbc3e2::t_057f2892eba974 1-25,35-182
+plugins/hopper/cli/src/dispatch.js
+  s_c587ecf7bbc3e2::t_d9c97e8f7cfa4e 18,34-38,80-84,122-123,233-258,262-277,309-315,317-342
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "6fbcf3aeb5cb43fb2978644510b1206044ceac3c",
+  "prompts": {},
+  "sessions": {
+    "s_c587ecf7bbc3e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39f5bf8-f328-41b3-b5fd-eb01a465a399",
+        "model": "claude-fable-5"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

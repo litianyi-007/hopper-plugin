@@ -1,0 +1,35 @@
+package.json
+  s_6b560dd845bbbb::t_6a720709a0b4e2 3
+commands/smoke.md
+  s_6b560dd845bbbb::t_6a720709a0b4e2 14
+plugins/hopper/.codex-plugin/plugin.json
+  s_6b560dd845bbbb::t_6a720709a0b4e2 3
+.codex-plugin/plugin.json
+  s_6b560dd845bbbb::t_6a720709a0b4e2 3
+.claude-plugin/marketplace.json
+  s_6b560dd845bbbb::t_6a720709a0b4e2 4,48
+.claude-plugin/plugin.json
+  s_6b560dd845bbbb::t_6a720709a0b4e2 3
+commands/vendors.md
+  s_6b560dd845bbbb::t_6a720709a0b4e2 14
+cli/bin/hopper-dispatch
+  s_6b560dd845bbbb::t_6a720709a0b4e2 49
+plugins/hopper/cli/bin/hopper-dispatch
+  s_6b560dd845bbbb::t_6a720709a0b4e2 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "3085926bba6a31f3dea167bb0e3f2c9a36ecc063",
+  "prompts": {},
+  "sessions": {
+    "s_6b560dd845bbbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06d808fa-3e8c-4a65-b10b-1be05690e7ab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

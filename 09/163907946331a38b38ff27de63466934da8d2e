@@ -1,0 +1,21 @@
+cli/src/tasks.js
+  s_0f03cb7314737d::t_a14fa60bb23bda 100-101,105,108-116
+tests/unit/tasks.test.js
+  s_0f03cb7314737d::t_a7051a5cba4b1d 129-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "09163907946331a38b38ff27de63466934da8d2e",
+  "prompts": {},
+  "sessions": {
+    "s_0f03cb7314737d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed45f-9db1-7240-a384-80c147010fa3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

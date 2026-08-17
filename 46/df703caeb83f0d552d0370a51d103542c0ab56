@@ -1,0 +1,55 @@
+tests/unit/opencode-plugin-static.test.js
+  0000019f85ddd650 1-85
+tests/unit/opencode-host.test.js
+  0000019f85ddd650 1-199
+docs/cookbook.md
+  0000019f85ddd650 1-323
+dashboard/README.md
+  0000019f85ddd650 1-300
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "46df703caeb83f0d552d0370a51d103542c0ab56",
+  "prompts": {
+    "s_9b9532ed48c3cb::t_0da5201870726f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "s_9b9532ed48c3cb::t_450b40aabbf090": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019f85ddd650": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.6-sol",
+        "id": "ai-thread-codex-gpt-5.6-sol-1784657335888"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 907,
+      "total_deletions": 0,
+      "accepted_lines": 907,
+      "overriden_lines": 0
+    }
+  }
+}

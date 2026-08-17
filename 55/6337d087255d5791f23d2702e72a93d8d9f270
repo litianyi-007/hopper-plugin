@@ -1,0 +1,69 @@
+tests/unit/vendors-contract.test.js
+  s_9b9532ed48c3cb::t_f8d42ac95c4c8d 24-31,100-101
+  s_9b9532ed48c3cb::t_3fb2cda8dc4184 14,80,82-83,96-99
+  s_9b9532ed48c3cb::t_c5a3bd14a5a5d4 32-33,81,222-285,639-640,649,654
+cli/bin/hopper-runner
+  s_9b9532ed48c3cb::t_e7d42393ed3585 23
+  s_9b9532ed48c3cb::t_598c411898717a 81-82,99,106,112,159,178,521,535-536,539-540,549-550,595,608,620,628-629
+plugins/hopper/cli/bin/hopper-runner
+  s_a642927c763f5e::t_ee3afb86f0a673 23
+  s_9b9532ed48c3cb::t_ddf8c6a96234f8 81-82,99,106,112,159,178,521,535-536,539-540,549-550,595,608,620,628-629
+plugins/hopper/cli/src/adapter-diagnostics.js
+  s_a642927c763f5e::t_ee3afb86f0a673 1-39
+cli/src/adapter-diagnostics.js
+  s_9b9532ed48c3cb::t_daddb5d1e754e0 1-39
+cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_cf5ce40b75f9ad 52,889
+cli/src/output.js
+  s_9b9532ed48c3cb::t_f3d36622952b90 25,202-209,287,379
+cli/src/vendors/claude.js
+  s_9b9532ed48c3cb::t_c91f12bfb9caf8 34,184,187,201,208,219,223,268-269
+cli/src/vendors/kimi.js
+  s_9b9532ed48c3cb::t_7ce268a74548c8 26,124,127,133,138,147,149
+cli/src/vendors/opencode.js
+  s_9b9532ed48c3cb::t_2c6da9fd0d9a04 12,125,128,133,136-138,140
+plugins/hopper/cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_5bade65ddb5d81 52,889
+plugins/hopper/cli/src/inventory-contract.js
+  s_9b9532ed48c3cb::t_6b4ab3db939154 73-86
+plugins/hopper/cli/src/output.js
+  s_9b9532ed48c3cb::t_35e18b6ae72f25 25,202-209,287,379
+plugins/hopper/cli/src/vendors/claude.js
+  s_9b9532ed48c3cb::t_0536806b00aeb8 34,184,187,201,208,219,223,268-269
+plugins/hopper/cli/src/vendors/kimi.js
+  s_9b9532ed48c3cb::t_5f55a47c2a06bb 26,124,127,133,138,147,149
+plugins/hopper/cli/src/vendors/opencode.js
+  s_9b9532ed48c3cb::t_c2bee29c58e585 12,125,128,133,136-138,140
+tests/integration/runner-single-spawn.test.js
+  s_9b9532ed48c3cb::t_88c9520377434a 784-792,806,818-820
+tests/unit/lifecycle-regression.test.js
+  s_9b9532ed48c3cb::t_ec2008fbb717ba 143-145,163-165,179-181,194-196
+tests/unit/output-writer.test.js
+  s_9b9532ed48c3cb::t_a0271eca161490 81,83-84,88-90,165,168,171-172,539,541,545-547
+tests/unit/result-full.test.js
+  s_9b9532ed48c3cb::t_3974ed47eb2e62 120,132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "556337d087255d5791f23d2702e72a93d8d9f270",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    },
+    "s_a642927c763f5e": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1784692632907832700",
+        "model": "unknown"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

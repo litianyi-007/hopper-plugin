@@ -1,0 +1,19 @@
+README.md
+  s_6698045187a3c6::t_18ce6b06b61791 88-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "d0df66fae161619ca87b95b4dac66c6ab6ec8099",
+  "prompts": {},
+  "sessions": {
+    "s_6698045187a3c6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed498-a1eb-7a20-8b1b-5b8ac7b89d7f",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

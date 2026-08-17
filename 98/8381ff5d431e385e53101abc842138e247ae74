@@ -1,0 +1,59 @@
+commands/smoke.md
+  s_e8d54b83fa1e9c::t_0a83e580c49f00 14
+cli/src/background.js
+  s_e8d54b83fa1e9c::t_92f69ccd4b2e08 25
+  s_e8d54b83fa1e9c::t_34125bc0b817bc 1-17,19-24,26-341
+  s_e8d54b83fa1e9c::t_1dcd18fac6e643 342
+  s_e8d54b83fa1e9c::t_a44fd1a1f3fd24 18
+docs/research/async-execution/03-other-ai-clis.md
+  s_e8d54b83fa1e9c::t_7b198a7406773c 1-236
+tests/unit/validation.test.js
+  s_e8d54b83fa1e9c::t_3172878a98b8d6 50-51
+tests/unit/background.test.js
+  s_e8d54b83fa1e9c::t_7c04a09ceccda9 1-344
+commands/vendors.md
+  s_e8d54b83fa1e9c::t_9167bafb48f5fe 14
+docs/research/async-execution/SUMMARY.md
+  s_e8d54b83fa1e9c::t_503ad7bb172e89 1-207
+cli/bin/hopper-runner
+  s_e8d54b83fa1e9c::t_46980e15651b55 1-174
+docs/research/async-execution/04-os-fallback.md
+  s_e8d54b83fa1e9c::t_d452cb99a59dab 1-489
+cli/src/validation.js
+  s_e8d54b83fa1e9c::t_f7fc9856099a7d 21
+docs/research/async-execution/01-openai-hosts.md
+  s_e8d54b83fa1e9c::t_9d9eb2ca600ec1 1-108
+docs/research/async-execution/02-opencode.md
+  s_e8d54b83fa1e9c::t_29acf81799db62 1-171
+package.json
+  s_e8d54b83fa1e9c::t_2105a53cd05bec 3
+.claude-plugin/plugin.json
+  s_e8d54b83fa1e9c::t_d58d24732c5f9a 3
+cli/bin/hopper-dispatch
+  s_e8d54b83fa1e9c::t_08876dd9ca00b2 366-552
+  s_e8d54b83fa1e9c::t_c47dd6f9f882a4 43-45,48-50,67-68
+  s_e8d54b83fa1e9c::t_cac4be097076a8 206,211-215
+  s_e8d54b83fa1e9c::t_2965973d9b4c78 226
+  s_e8d54b83fa1e9c::t_b99106bc501a91 33-37
+  s_e8d54b83fa1e9c::t_af725f147b02f3 10,20-30
+  s_e8d54b83fa1e9c::t_1c21990175f278 129-148
+tests/integration/background-e2e.test.js
+  s_e8d54b83fa1e9c::t_f251a93560c52b 4-24,28-31,41-45,48-49,51,53-54,56,61-75,77-92,94-99,102-127,130-137,143-144,146-148,150,152-157,162-163,165-170,172-226
+  s_e8d54b83fa1e9c::t_38a3e3b6d6c8dd 1-3,25-27,32-40,46-47,50,52,55,57-60,76,93,100-101,128-129,138-142,145,149,151,158-161,164,171,227-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "988381ff5d431e385e53101abc842138e247ae74",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+cli/src/vendor-probe/codex.js
+  s_eb82fc70448152::t_78c435619c65e9 138
+  s_eb82fc70448152::t_ac0f58bbacd477 1-3,7-9,14,18-19,24,31,37,44-47,49-56,60-114,116-117,119-128,130-131,133-137,139-142,145-154,156-159,162-176,178-180,184-185,191
+cli/src/vendors/codex.js
+  s_eb82fc70448152::t_ac0f58bbacd477 232-233,254,261
+plugins/hopper/cli/src/vendors/codex.js
+  s_eb82fc70448152::t_5f16ffe90a9af6 232-233,254,261
+plugins/hopper/cli/src/vendor-probe/codex.js
+  s_eb82fc70448152::t_5f16ffe90a9af6 1-3,7-9,14,18-19,24,31,37,44-47,49-56,60-114,116-117,119-128,130-131,133-142,145-154,156-159,162-176,178-180,184-185,191
+tests/unit/vendor-probe.test.js
+  s_eb82fc70448152::t_e10117b84d9e46 216,254,272,289,309,315
+  s_eb82fc70448152::t_f7921f767fa4a9 213-215,217-253,255-271,273-288,290-308,310-314,316-332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "31dbbeaca986b1f3cbd0d7d2c8988bd9f090696d",
+  "prompts": {},
+  "sessions": {
+    "s_eb82fc70448152": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83f9-f273-7f80-b807-ea211009f47f",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

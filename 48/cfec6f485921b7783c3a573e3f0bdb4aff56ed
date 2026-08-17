@@ -1,0 +1,36 @@
+tests/unit/cache.test.js
+  s_9b9532ed48c3cb::t_842f005ec9ea8f 16
+  s_9b9532ed48c3cb::t_4ba3b19c09438e 105-154
+cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_3c54c620d64f00 1306-1307,1369,1584,1633,1635
+cli/src/cache.js
+  s_9b9532ed48c3cb::t_afaedee2a7d7e7 116-117,184-188,195-197,199,205,207-210,212,214,337-344,355-388,462-464
+cli/src/inventory-contract.js
+  s_9b9532ed48c3cb::t_2bce723e290d67 30
+plugins/hopper/cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_52b07c1abc072f 152-156,163,173,1306-1307,1369,1584,1633,1635
+plugins/hopper/cli/src/cache.js
+  s_9b9532ed48c3cb::t_2dc9bf6abcd476 116-117,184-188,195-197,199,205,207-210,212,214,337-344,355-388,462-464
+plugins/hopper/cli/src/handoff-attestation.js
+  s_9b9532ed48c3cb::t_e28cd8eec501c0 454,465,520,537
+plugins/hopper/cli/src/inventory-contract.js
+  s_9b9532ed48c3cb::t_517d832059f9f2 30
+tests/unit/progress-watch.test.js
+  s_9b9532ed48c3cb::t_07b1697760849e 437-452
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "48cfec6f485921b7783c3a573e3f0bdb4aff56ed",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

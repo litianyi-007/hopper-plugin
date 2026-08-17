@@ -1,0 +1,23 @@
+docs/release/INSTALL-MATRIX.md
+  s_e8d54b83fa1e9c::t_7cf8896652d42a 150-241
+README.md
+  s_e8d54b83fa1e9c::t_e61aeb4931891e 8
+docs/release/PASS-RATIONALE.md
+  s_e8d54b83fa1e9c::t_24bc4b9f1760e6 206-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "254d1fee9b704f026919b9032fc1823a41b2929d",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

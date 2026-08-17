@@ -1,0 +1,54 @@
+.hopper/handoffs/T-PLUGIN-00b-output.md
+  s_e8d54b83fa1e9c::t_1f3516243c49e7 1-45
+.hopper/COST-LOG.md
+  s_e8d54b83fa1e9c::t_4f05a433f2bc3e 9-20
+.hopper/tasks/code-review-acceptance.md
+  s_e8d54b83fa1e9c::t_c4ee7063193b92 1-53
+hosts/claude-code/.claude-plugin/plugin.json
+  s_e8d54b83fa1e9c::t_6198e924c2e761 1-42
+.hopper/handoffs/T-PLUGIN-00-output.md
+  s_e8d54b83fa1e9c::t_166426f3a7d2a8 1-47
+cli/bin/hopper-dispatch.cmd
+  s_e8d54b83fa1e9c::t_60d5392c6b0a2f 1-4
+docs/spikes/T-PLUGIN-00-resolved.md
+  s_e8d54b83fa1e9c::t_5f82b4e0a1514c 1-182
+.hopper/tasks/sidecar-polish.md
+  s_e8d54b83fa1e9c::t_a055fd5e7df2b0 1-56
+.hopper/tasks/spec-blindspot-hunt.md
+  s_e8d54b83fa1e9c::t_c5c8e6e661ccd9 1-51
+docs/spikes/T-PLUGIN-00b-vendors.md
+  s_e8d54b83fa1e9c::t_32140b0ce85ae8 1-279
+.hopper/tasks/spec-write.md
+  s_e8d54b83fa1e9c::t_98dffb6eaf5430 1-47
+cli/bin/hopper-dispatch
+  s_e8d54b83fa1e9c::t_9b18777a2eb6f8 1-81
+package.json
+  s_e8d54b83fa1e9c::t_9a76bd8120fb7c 1-23
+.hopper/tasks/code-impl.md
+  s_e8d54b83fa1e9c::t_66c548a04bbe42 1-55
+.hopper/queue.md
+  s_e8d54b83fa1e9c::t_0bdf1d62398cff 19-21
+  s_e8d54b83fa1e9c::t_24aaf02044275d 48-53
+.hopper/tasks/code-review-adversarial.md
+  s_e8d54b83fa1e9c::t_f94d137a36b622 1-46
+.hopper/handoffs/T-PLUGIN-00.5-output.md
+  s_e8d54b83fa1e9c::t_9b0f50ef99bf16 1-43
+hosts/claude-code/README.md
+  s_e8d54b83fa1e9c::t_41e8b22f88d8a9 1-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "dc7883627de72d416766b2cb81b27a7e2c1f01fe",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

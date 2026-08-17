@@ -1,0 +1,42 @@
+tests/unit/output-writer.test.js
+  s_e8d54b83fa1e9c::t_a156575fc0493b 14-15
+  s_e8d54b83fa1e9c::t_c0094276fe7972 331-379
+commands/dispatch.md
+  s_e8d54b83fa1e9c::t_61bc764faf2cbd 7-74
+.hopper/MANIFEST.md
+  s_e8d54b83fa1e9c::t_c99f67ed8f15aa 75-76
+  s_e8d54b83fa1e9c::t_5d954397ea9b82 11,13,15-18,20,26-29
+commands/status.md
+  s_e8d54b83fa1e9c::t_fea58aaaf652da 6-16
+commands/smoke.md
+  s_e8d54b83fa1e9c::t_570f06da5653f5 2-19
+hosts/claude-code/README.md
+  s_e8d54b83fa1e9c::t_05500f05062e98 27-48,52,69-70,92,126
+commands/vendors.md
+  s_e8d54b83fa1e9c::t_437620f6bb90b4 14
+  s_e8d54b83fa1e9c::t_1345166a477362 6-7
+package.json
+  s_e8d54b83fa1e9c::t_2e6937a701f648 3
+cli/src/output.js
+  s_e8d54b83fa1e9c::t_183949b499c63d 21
+  s_e8d54b83fa1e9c::t_b645da14b7804d 55-56,63-69,72,74-79,87-97
+  s_e8d54b83fa1e9c::t_3fd4b7268589ce 100,105-112
+tests/unit/claude-code-host.test.js
+  s_e8d54b83fa1e9c::t_4f5cef182da9d9 2,4-6,13,18-19,21,32-38,45,70,77,81,85,97-117,122,125-126,132-137,142-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "2b76c614650c102f2731f4842fbf8b53abde9008",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

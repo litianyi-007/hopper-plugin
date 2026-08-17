@@ -1,0 +1,23 @@
+tests/unit/queue.test.js
+  s_0f03cb7314737d::t_85c58d858a024a 150-170
+cli/src/queue.js
+  s_0f03cb7314737d::t_6e719b64e708ad 98,142,144
+cli/src/types.js
+  s_0f03cb7314737d::t_dfd38f94d3bec6 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "c7352e220d5d1cde3f4cb2cb648efc5b044cbe8e",
+  "prompts": {},
+  "sessions": {
+    "s_0f03cb7314737d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed45f-9db1-7240-a384-80c147010fa3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

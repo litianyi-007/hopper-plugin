@@ -1,0 +1,19 @@
+ISSUE-monitor-cross-session-crosstalk.md
+  s_6b560dd845bbbb::t_173b3e93756884 1-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "98020a66429d21c170d0146265ac7a9bc947144c",
+  "prompts": {},
+  "sessions": {
+    "s_6b560dd845bbbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06d808fa-3e8c-4a65-b10b-1be05690e7ab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

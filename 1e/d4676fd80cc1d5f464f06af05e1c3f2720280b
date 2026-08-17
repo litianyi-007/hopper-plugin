@@ -1,0 +1,117 @@
+tests/unit/handoff-attestation.test.js
+  s_9b9532ed48c3cb::t_ef05713ef3c254 3-3,8-8,11-11,13-15,223-240,242-371,384-394
+  s_9b9532ed48c3cb::t_4caf26cf31e842 241-241
+  s_9b9532ed48c3cb::t_fe3a84f7d1955f 372-383,395-405
+tests/unit/background.test.js
+  s_9b9532ed48c3cb::t_ef05713ef3c254 1-156,162-164,169-504
+tests/unit/progress-cli.test.js
+  s_9b9532ed48c3cb::t_ef05713ef3c254 1-31,34-35,40-164,167-167,170-170,172-172,174-175,177-183,189-189,192-198
+tests/unit/result-full.test.js
+  s_9b9532ed48c3cb::t_ef05713ef3c254 1-6,9-80,83-83,86-87,89-90
+  s_9b9532ed48c3cb::t_bad570976ea853 7-7,88-88,91-93
+  s_9b9532ed48c3cb::t_b4e5fa38043a57 94-94
+cli/src/background.js
+  s_9b9532ed48c3cb::t_dcaa7d130043cf 1-60,81-82,84-93,97-109,111-113,115-115,117-117,120-121,123-393,395-518,521-574,577-692,694-713,720-727,742-758,764-774,780-790,797-800,811-812
+  s_9b9532ed48c3cb::t_2871ae21c9336e 74-80
+cli/src/handoff-attestation.js
+  s_9b9532ed48c3cb::t_a955b32bc90af7 5-6,10-10,12-19
+  s_9b9532ed48c3cb::t_8af0bc993ef52c 113-147,151-355
+  s_9b9532ed48c3cb::t_b44918724a2003 148-150
+cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_613657e4ea32cf 1-18,20-35,38-40,42-47,49-711,713-754,783-826,828-830,833-880,916-972,974-1015,1018-1050,1054-1226,1230-1237,1241-1253,1257-1260,1262-1264,1269-1456,1476-1551,1554-2112
+  s_9b9532ed48c3cb::t_fe3a84f7d1955f 48-48
+  s_9b9532ed48c3cb::t_e1fea996b70408 1227-1229,1238-1240,1254-1256,1261-1261,1265-1268
+  s_9b9532ed48c3cb::t_3607b95d4cd085 1457-1474,1552-1553
+  s_9b9532ed48c3cb::t_bad570976ea853 1475-1475
+plugins/hopper/cli/bin/hopper-dispatch
+  0000019f85a15006 1-2112
+plugins/hopper/cli/src/background.js
+  0000019f85a15006 1-812
+plugins/hopper/cli/src/handoff-attestation.js
+  0000019f85a15006 1-485
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "1ed4676fd80cc1d5f464f06af05e1c3f2720280b",
+  "prompts": {
+    "s_9b9532ed48c3cb::t_ef05713ef3c254": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 921,
+      "total_deletions": 0,
+      "accepted_lines": 921,
+      "overriden_lines": 0
+    },
+    "s_9b9532ed48c3cb::t_dcaa7d130043cf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 730,
+      "total_deletions": 0,
+      "accepted_lines": 730,
+      "overriden_lines": 0
+    },
+    "s_9b9532ed48c3cb::t_a955b32bc90af7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 11,
+      "total_deletions": 0,
+      "accepted_lines": 11,
+      "overriden_lines": 0
+    },
+    "s_9b9532ed48c3cb::t_613657e4ea32cf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 1999,
+      "total_deletions": 0,
+      "accepted_lines": 1999,
+      "overriden_lines": 0
+    },
+    "s_673bbf3fd6ac64::t_7f5118e8907938": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1784653368515635900",
+        "model": "unknown"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019f85a15006": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.6-sol",
+        "id": "ai-thread-codex-gpt-5.6-sol-1784653369350"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 3409,
+      "total_deletions": 0,
+      "accepted_lines": 3409,
+      "overriden_lines": 0
+    }
+  }
+}

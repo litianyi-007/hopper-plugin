@@ -1,0 +1,249 @@
+.claude-plugin/marketplace.json
+  0000019e4d51e88d 1-22
+.codex-plugin/plugin.json
+  0000019e4d51e88d 1-43
+.hopper/handoffs/leader-tasklist.md
+  0000019e4d51e88d 1-351
+.hopper/queue.md
+  0000019e4d51e88d 1-90
+docs/sidequests/web-dashboard/handoffs/T-WEB-02-output.md
+  0000019e4d51e88d 1-138
+docs/sidequests/web-dashboard/handoffs/T-WEB-03-output.md
+  0000019e4d51e88d 1-148
+docs/sidequests/web-dashboard/handoffs/T-WEB-04-output.md
+  0000019e4d51e88d 1-146
+docs/sidequests/web-dashboard/handoffs/T-WEB-05-output.md
+  0000019e4d51e88d 1-162
+docs/sidequests/web-dashboard/handoffs/T-WEB-06-output.md
+  0000019e4d51e88d 1-149
+.hopper/handoffs/T-AUDIT-PH6C-V3-kimi-output.md
+  0000019e4d51e88d 1-38
+.hopper/handoffs/T-AUDIT-PH6C-V3-mimo-output.md
+  0000019e4d51e88d 1-159
+docs/sidequests/web-dashboard/handoffs/T-WEB-01-REVIEW-claude-output.md
+  0000019e4d51e88d 1-287
+docs/sidequests/web-dashboard/handoffs/T-WEB-01-REVIEW-vendor-output.template.md
+  0000019e4d51e88d 1-319
+docs/sidequests/web-dashboard/handoffs/T-WEB-01-output.template.md
+  0000019e4d51e88d 1-240
+docs/sidequests/web-dashboard/handoffs/T-WEB-02-REVIEW-claude-output.md
+  0000019e4d51e88d 1-263
+docs/sidequests/web-dashboard/handoffs/T-WEB-03-REVIEW-claude-output.md
+  0000019e4d51e88d 1-289
+docs/sidequests/web-dashboard/handoffs/T-WEB-04-REVIEW-claude-output.md
+  0000019e4d51e88d 1-290
+docs/sidequests/web-dashboard/handoffs/T-WEB-04.5-REVIEW-claude-output.md
+  0000019e4d51e88d 1-202
+docs/sidequests/web-dashboard/handoffs/T-WEB-05-REVIEW-claude-output.md
+  0000019e4d51e88d 1-293
+docs/sidequests/web-dashboard/handoffs/T-WEB-06-REVIEW-claude-output.md
+  0000019e4d51e88d 1-323
+docs/sidequests/web-dashboard/handoffs/T-WEB-07-screenshot.png
+  0000019e4d51e88d 1-286
+docs/sidequests/web-dashboard/handoffs/T-WEB-07-output.md
+  0000019e4d51e88d 1-110
+docs/sidequests/web-dashboard/handoffs/T-WEB-07-output.log
+  0000019e4d51e88d 1-146
+---
+{
+    "schema_version":  "authorship/3.0.0",
+    "git_ai_version":  "1.5.0",
+    "base_commit_sha":  "89ebe5f2cf13f4634a132d6888cd39138d114c8b",
+    "prompts":  {
+                    "0000019e4d4f43fd":  {
+                                             "agent_id":  {
+                                                              "model":  "gpt-5.5",
+                                                              "tool":  "codex",
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779413500925"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  0,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  0,
+                                             "overriden_lines":  0
+                                         },
+                    "0000019e4d503bb9":  {
+                                             "agent_id":  {
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779413564345",
+                                                              "tool":  "codex",
+                                                              "model":  "gpt-5.5"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  0,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  0,
+                                             "overriden_lines":  0
+                                         },
+                    "0000019e4d506798":  {
+                                             "agent_id":  {
+                                                              "model":  "gpt-5.5",
+                                                              "tool":  "codex",
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779413575576"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  0,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  0,
+                                             "overriden_lines":  0
+                                         },
+                    "0000019e4d506a75":  {
+                                             "agent_id":  {
+                                                              "model":  "gpt-5.5",
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779413576309",
+                                                              "tool":  "codex"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  0,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  0,
+                                             "overriden_lines":  0
+                                         },
+                    "0000019e4d506a6c":  {
+                                             "agent_id":  {
+                                                              "model":  "gpt-5.5",
+                                                              "tool":  "codex",
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779413576300"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  0,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  0,
+                                             "overriden_lines":  0
+                                         },
+                    "0000019e4d506c4c":  {
+                                             "agent_id":  {
+                                                              "model":  "gpt-5.5",
+                                                              "tool":  "codex",
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779413576780"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  0,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  0,
+                                             "overriden_lines":  0
+                                         },
+                    "0000019e4d50b04d":  {
+                                             "agent_id":  {
+                                                              "model":  "gpt-5.5",
+                                                              "tool":  "codex",
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779413594189"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  0,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  0,
+                                             "overriden_lines":  0
+                                         },
+                    "0000019e4d518676":  {
+                                             "agent_id":  {
+                                                              "model":  "gpt-5.5",
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779413649014",
+                                                              "tool":  "codex"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  0,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  0,
+                                             "overriden_lines":  0
+                                         },
+                    "0000019e4d518739":  {
+                                             "agent_id":  {
+                                                              "tool":  "codex",
+                                                              "model":  "gpt-5.5",
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779413649209"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  0,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  0,
+                                             "overriden_lines":  0
+                                         },
+                    "0000019e4d5189bc":  {
+                                             "agent_id":  {
+                                                              "model":  "gpt-5.5",
+                                                              "tool":  "codex",
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779413649852"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  0,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  0,
+                                             "overriden_lines":  0
+                                         },
+                    "0000019e4d51bffa":  {
+                                             "agent_id":  {
+                                                              "model":  "gpt-5.5",
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779413663738",
+                                                              "tool":  "codex"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  0,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  0,
+                                             "overriden_lines":  0
+                                         },
+                    "0000019e4d51e7b6":  {
+                                             "agent_id":  {
+                                                              "tool":  "codex",
+                                                              "model":  "gpt-5.5",
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779413673910"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  0,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  0,
+                                             "overriden_lines":  0
+                                         },
+                    "0000019e4d51e7d1":  {
+                                             "agent_id":  {
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779413673937",
+                                                              "tool":  "codex",
+                                                              "model":  "gpt-5.5"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  0,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  0,
+                                             "overriden_lines":  0
+                                         },
+                    "0000019e4d51e7e3":  {
+                                             "agent_id":  {
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779413673955",
+                                                              "tool":  "codex",
+                                                              "model":  "gpt-5.5"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  0,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  0,
+                                             "overriden_lines":  0
+                                         },
+                    "0000019e4d51e88d":  {
+                                             "agent_id":  {
+                                                              "tool":  "codex",
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779413674125",
+                                                              "model":  "gpt-5.5"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  4494,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  4494,
+                                             "overriden_lines":  0
+                                         }
+                }
+}

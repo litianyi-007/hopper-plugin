@@ -1,0 +1,114 @@
+cli/src/vendor-probe/codex.js
+  s_321a549937a161::t_ed44124f420be6 1-3,7-9,14,18-19,24,31,37,44-47,49-56,60-114,116-117,119-128,130-133,135-140,143
+  s_9b9532ed48c3cb::t_457f7683977606 141-142,144,147-156,158-161,164-178,180-182,186-187,193
+tests/integration/runner-single-spawn.test.js
+  s_9b9532ed48c3cb::t_a8f933b37f576a 51,69-71
+  s_9b9532ed48c3cb::t_a6ad6fc3698d0a 129,141,264-296,370,377-378,490-491,503-504,878-907
+tests/integration/subject-root-sandbox-exec.test.js
+  s_321a549937a161::t_ed44124f420be6 1-111
+cli/bin/hopper-runner
+  s_9b9532ed48c3cb::t_e1f2e1800abb56 14,24
+  s_9b9532ed48c3cb::t_5156be4752c75f 151-163,208,224-225,261-266,278-282,518-519,643-644
+plugins/hopper/cli/bin/hopper-runner
+  s_321a549937a161::t_ed44124f420be6 14,24
+  s_9b9532ed48c3cb::t_77c95ddf6cbc16 151-163,208,224-225,261-266,278-282,518-519,643-644
+plugins/hopper/cli/src/vendor-probe/codex.js
+  s_321a549937a161::t_ed44124f420be6 1-3,7-9,14,18-19,24,31,37,44-47,49-56,60-114,116-117,119-128,130-133,135-140,143
+  s_9b9532ed48c3cb::t_b7a59569af36a2 141-142,144,147-156,158-161,164-178,180-182,186-187,193
+cli/src/subject-root-guard.js
+  s_321a549937a161::t_ed44124f420be6 1-118
+plugins/hopper/cli/src/subject-root-guard.js
+  s_321a549937a161::t_ed44124f420be6 1-118
+tests/unit/subject-root-guard.test.js
+  s_321a549937a161::t_ed44124f420be6 1-103
+.claude-plugin/marketplace.json
+  s_9b9532ed48c3cb::t_022b3c6092f9e7 4,48
+.claude-plugin/plugin.json
+  s_9b9532ed48c3cb::t_db02317c80df5f 3
+.codex-plugin/plugin.json
+  s_9b9532ed48c3cb::t_2908ef2c3d6848 3
+CHANGELOG.md
+  s_9b9532ed48c3cb::t_012c83031b58e9 22-41
+cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_90647e2dd22e32 54,60,96,138,606,629,1001-1006,1105,1560-1561
+cli/src/background.js
+  s_9b9532ed48c3cb::t_b073c8515beced 395,564
+cli/src/dispatch.js
+  s_9b9532ed48c3cb::t_f40b3071d899a7 21,450-456,540-541
+cli/src/rules.js
+  s_9b9532ed48c3cb::t_d936f1cf4c07c1 154
+cli/src/subprocess.js
+  s_9b9532ed48c3cb::t_b4991d46902cd6 15,186-188,201-203,207-210,214
+cli/src/types.js
+  s_9b9532ed48c3cb::t_cf037f528120c5 55
+cli/src/validation.js
+  s_9b9532ed48c3cb::t_f85a886b0c9b21 26
+cli/src/vendors/codex.js
+  s_9b9532ed48c3cb::t_a8e506b5eb3f54 232-233,254,261
+cli/src/vendors/grok.js
+  s_9b9532ed48c3cb::t_ce4295c66eefed 182-196,205-209,211-216,249,253-265,267-270,273-280,282,284,286-308
+commands/dispatch.md
+  s_9b9532ed48c3cb::t_428a8f63034b83 4,29,42
+commands/smoke.md
+  s_9b9532ed48c3cb::t_5e70009b7b6308 14
+commands/vendors.md
+  s_9b9532ed48c3cb::t_7c7b0080bdd858 14
+package.json
+  s_9b9532ed48c3cb::t_71546d5646703d 3
+plugins/hopper/.codex-plugin/plugin.json
+  s_9b9532ed48c3cb::t_6bdfb581d4513c 3
+plugins/hopper/cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_1ba3fdd9dd1f2a 54,60,96,138,606,629,1001-1006,1105,1560-1561
+plugins/hopper/cli/src/background.js
+  s_9b9532ed48c3cb::t_3c934469de6c98 395,564
+plugins/hopper/cli/src/dispatch.js
+  s_9b9532ed48c3cb::t_15de02d88961ec 21,450-456,540-541
+plugins/hopper/cli/src/rules.js
+  s_9b9532ed48c3cb::t_d9b49c65bb34c0 154
+plugins/hopper/cli/src/subprocess.js
+  s_9b9532ed48c3cb::t_830a684236bcd0 15,186-188,201-203,207-210,214
+plugins/hopper/cli/src/types.js
+  s_9b9532ed48c3cb::t_ac2af375049965 55
+plugins/hopper/cli/src/validation.js
+  s_9b9532ed48c3cb::t_3985a83e20190f 26
+plugins/hopper/cli/src/vendors/codex.js
+  s_9b9532ed48c3cb::t_e14edcd50c154b 232-233,254,261
+plugins/hopper/cli/src/vendors/grok.js
+  s_9b9532ed48c3cb::t_0738a87e9131ba 182-196,205-209,211-216,249,253-265,267-270,273-280,282,284,286-308
+plugins/hopper/skills/hopper-dispatch/SKILL.md
+  s_9b9532ed48c3cb::t_28fb7ebc785845 15-18,25
+skills/hopper-dispatch/SKILL.md
+  s_9b9532ed48c3cb::t_6d3dbd33e1ca03 15-18,25
+tests/integration/execute-dispatch-e2e.test.js
+  s_9b9532ed48c3cb::t_bac67e1c7128a5 256-277
+tests/unit/dispatch-flags.test.js
+  s_9b9532ed48c3cb::t_12de3437f16e3c 165-166,289-310,487,493
+tests/unit/vendor-preset-fixes.test.js
+  s_9b9532ed48c3cb::t_bdd2d3b90e8f15 74-107
+tests/unit/vendor-probe.test.js
+  s_9b9532ed48c3cb::t_0364f59f762eef 365-490
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "5a3fbd9f5881baaa6d99dd6d2423acd25a5e9c38",
+  "prompts": {},
+  "sessions": {
+    "s_321a549937a161": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1784711932065870800",
+        "model": "unknown"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    },
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

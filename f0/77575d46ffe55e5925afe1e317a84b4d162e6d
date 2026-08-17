@@ -1,0 +1,42 @@
+plugins/hopper/.codex-plugin/plugin.json
+  s_6b560dd845bbbb::t_0307259b14cfcc 3
+.codex-plugin/plugin.json
+  s_6b560dd845bbbb::t_0307259b14cfcc 3
+docs/specs/vendor-io-protocol-current-vs-target.md
+  s_6b560dd845bbbb::t_be543d30b74ae2 99-100,102-105
+plugins/hopper/cli/bin/hopper-dispatch
+  s_6b560dd845bbbb::t_0307259b14cfcc 49
+.claude-plugin/plugin.json
+  s_6b560dd845bbbb::t_0307259b14cfcc 3
+cli/bin/hopper-dispatch
+  s_6b560dd845bbbb::t_0307259b14cfcc 49
+docs/release/INSTALL-MATRIX.md
+  s_6b560dd845bbbb::t_aa7014f898bb98 269
+package.json
+  s_6b560dd845bbbb::t_0307259b14cfcc 3
+commands/smoke.md
+  s_6b560dd845bbbb::t_0307259b14cfcc 14
+.claude-plugin/marketplace.json
+  s_6b560dd845bbbb::t_0307259b14cfcc 4,48
+tests/unit/prompt-delivery.test.js
+  s_6b560dd845bbbb::t_0de3894703b49d 27
+  s_6b560dd845bbbb::t_f3949e37a0812c 183-202
+commands/vendors.md
+  s_6b560dd845bbbb::t_0307259b14cfcc 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "f077575d46ffe55e5925afe1e317a84b4d162e6d",
+  "prompts": {},
+  "sessions": {
+    "s_6b560dd845bbbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06d808fa-3e8c-4a65-b10b-1be05690e7ab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

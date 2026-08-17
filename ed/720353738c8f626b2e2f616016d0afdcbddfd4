@@ -1,0 +1,23 @@
+tests/unit/lifecycle-regression.test.js
+  s_9b9532ed48c3cb::t_b7a58844c20d84 145-150,170-175,191-196
+tests/unit/phase6c.test.js
+  s_9b9532ed48c3cb::t_fbb646804fd856 243,251
+tests/unit/vendor-preset-fixes.test.js
+  s_9b9532ed48c3cb::t_0f2cae4fa50aa3 70-71,92-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "ed720353738c8f626b2e2f616016d0afdcbddfd4",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

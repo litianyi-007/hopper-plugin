@@ -1,0 +1,144 @@
+tests/unit/model-attestation-contract.test.js
+  s_9b9532ed48c3cb::t_595fd5969b47b9 1-4,14-14,98-104,203-203,278-278
+  s_9b9532ed48c3cb::t_8e02ab7e74c49a 5-13,15-97,105-165,172-177,179-191,197-202,204-277
+  s_9b9532ed48c3cb::t_fefd37f56338dd 166-171,178-178,192-196
+cli/src/model-attestation.js
+  s_9b9532ed48c3cb::t_9e57602a59d0d2 1-1,4-4,246-246,252-252,317-317
+  s_9b9532ed48c3cb::t_cb0d6eedada935 2-3,5-32,34-68,71-79,82-88,90-90,96-147,149-152,155-245,247-251,253-316
+  s_9b9532ed48c3cb::t_5a584152d830e4 33-33,69-70,80-81,89-89,91-95
+  s_9b9532ed48c3cb::t_4012d2ac8af00c 148-148,153-154
+tests/unit/model-normalize.test.js
+  s_9b9532ed48c3cb::t_6ebfa25aa612ad 1-143,145-174
+tests/unit/model-check.test.js
+  s_9b9532ed48c3cb::t_6ebfa25aa612ad 1-15,17-21,23-32,34-44,46-49,51-56,58-120,122-126,128-171
+cli/src/model-normalize.js
+  s_9b9532ed48c3cb::t_94c99875314e33 1-101,104-109,111-116,120-126,128-130,132-133,135-139,142-152,155-155,157-199
+cli/src/model-check.js
+  s_9b9532ed48c3cb::t_4012d2ac8af00c 1-89,96-96,98-100,102-182
+  s_9b9532ed48c3cb::t_d5bf7f21d85334 90-95
+cli/src/dispatch.js
+  s_9b9532ed48c3cb::t_d5bf7f21d85334 1-229,233-254,257-264,266-284,286-290,292-513
+cli/src/types.js
+  s_9b9532ed48c3cb::t_d5bf7f21d85334 1-41,44-45,47-68,74-82,86-90,94-119,121-125
+plugins/hopper/cli/src/dispatch.js
+  0000019f85762d37 1-513
+plugins/hopper/cli/src/model-attestation.js
+  0000019f85762d37 1-317
+plugins/hopper/cli/src/model-check.js
+  0000019f85762d37 1-183
+plugins/hopper/cli/src/model-normalize.js
+  0000019f85762d37 1-199
+plugins/hopper/cli/src/types.js
+  0000019f85762d37 1-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "12a2c7352a355ad9338a96cfa631706b566910d9",
+  "prompts": {
+    "s_9b9532ed48c3cb::t_595fd5969b47b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 14,
+      "total_deletions": 0,
+      "accepted_lines": 14,
+      "overriden_lines": 0
+    },
+    "s_9b9532ed48c3cb::t_9e57602a59d0d2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 0,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    },
+    "s_9b9532ed48c3cb::t_6ebfa25aa612ad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 336,
+      "total_deletions": 0,
+      "accepted_lines": 336,
+      "overriden_lines": 0
+    },
+    "s_9b9532ed48c3cb::t_94c99875314e33": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 185,
+      "total_deletions": 0,
+      "accepted_lines": 185,
+      "overriden_lines": 0
+    },
+    "s_9b9532ed48c3cb::t_4012d2ac8af00c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 177,
+      "total_deletions": 0,
+      "accepted_lines": 177,
+      "overriden_lines": 0
+    },
+    "s_9b9532ed48c3cb::t_d5bf7f21d85334": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 621,
+      "total_deletions": 0,
+      "accepted_lines": 621,
+      "overriden_lines": 0
+    },
+    "s_c13350c1872c0d::t_23b13781133a99": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1784650540999885900",
+        "model": "unknown"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019f85762d37": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.6-sol",
+        "id": "ai-thread-codex-gpt-5.6-sol-1784650542391"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 1337,
+      "total_deletions": 0,
+      "accepted_lines": 1337,
+      "overriden_lines": 0
+    }
+  }
+}

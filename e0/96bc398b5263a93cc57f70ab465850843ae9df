@@ -1,0 +1,27 @@
+cli/src/agents.js
+  s_e8d54b83fa1e9c::t_d9a73bc42cc3dc 136-140
+  s_e8d54b83fa1e9c::t_a1a3953d8ba77d 153-159
+.hopper/MANIFEST.md
+  s_e8d54b83fa1e9c::t_db8d159f10f568 26-30
+  s_e8d54b83fa1e9c::t_74e9ea962b15a2 11,13,15-22
+tests/unit/subprocess-spawn-count.test.js
+  s_e8d54b83fa1e9c::t_bcb4c41c9a7107 1-113
+tests/integration/real-fixtures.test.js
+  s_e8d54b83fa1e9c::t_3ff417f0f05559 1-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "e096bc398b5263a93cc57f70ab465850843ae9df",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

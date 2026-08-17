@@ -1,0 +1,23 @@
+tests/unit/scaffold-governance.test.js
+  s_6698045187a3c6::t_b41462b18332a4 1-42
+cli/src/scaffold.js
+  s_6698045187a3c6::t_dae5b7311db14b 16,19,92-147
+cli/bin/hopper-dispatch
+  s_6698045187a3c6::t_3fdb595a443188 13,69,182-208,375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "12783ec623152d2defabe5dae91350e3b57161bb",
+  "prompts": {},
+  "sessions": {
+    "s_6698045187a3c6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed498-a1eb-7a20-8b1b-5b8ac7b89d7f",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

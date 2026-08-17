@@ -1,0 +1,29 @@
+cli/src/vendors/agy.js
+  s_0e66f0023c6708::t_3efec5a3a30699 176
+  s_0e66f0023c6708::t_febafef6dc468b 154,157-160,184
+tests/unit/vendors-agy-quirks.test.js
+  s_0e66f0023c6708::t_febafef6dc468b 114-129
+  s_0e66f0023c6708::t_3efec5a3a30699 75-87
+tests/unit/extra-hosts.test.js
+  s_0e66f0023c6708::t_ca156e64b5bc19 6,10,146-171
+  s_0e66f0023c6708::t_d827fe860b2d35 22
+hosts/copilot-cli/bin/hopper-copilot
+  s_0e66f0023c6708::t_011c1f5cb32d1f 138,140,143
+  s_0e66f0023c6708::t_62af62f298988c 142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c9efabc0bf02edf1eafc37da43bf8490f34deefe",
+  "prompts": {},
+  "sessions": {
+    "s_0e66f0023c6708": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "360c5de5-a858-4a26-b416-f0b6ac717573",
+        "model": "gpt-5-mini"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

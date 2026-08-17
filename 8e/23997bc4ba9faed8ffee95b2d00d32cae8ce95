@@ -1,0 +1,40 @@
+tests/unit/output-vendor-section.test.js
+  s_89f8d891ea22a6::t_7ec064e0cb2303 21-29,35,39
+  s_9b9532ed48c3cb::t_6f3fbc8c3e3019 30-34,36-38,40-44,54,56,58-60
+cli/bin/hopper-runner
+  s_89f8d891ea22a6::t_7ec064e0cb2303 23
+  s_9b9532ed48c3cb::t_32d5975951a383 59-63,550,564,567-570,580-583,586-594,627-628,635-640
+tests/integration/runner-single-spawn.test.js
+  s_89f8d891ea22a6::t_7ec064e0cb2303 52,68
+  s_9b9532ed48c3cb::t_f0e106c5d60c9d 69-70,72,136,154,158,893-950,985-986
+cli/src/output.js
+  s_9b9532ed48c3cb::t_58cb46ae8d73ac 52,56,312-313,320,322-324,328-333,337-345,349,351,353
+tests/integration/vendor-output-capture.test.js
+  s_9b9532ed48c3cb::t_f576c4985e1fa6 73
+tests/unit/output-preview-cap.test.js
+  s_9b9532ed48c3cb::t_a15874031aac0b 33,35-36,46,49,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "8e23997bc4ba9faed8ffee95b2d00d32cae8ce95",
+  "prompts": {},
+  "sessions": {
+    "s_89f8d891ea22a6": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1784790257704955300",
+        "model": "unknown"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    },
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

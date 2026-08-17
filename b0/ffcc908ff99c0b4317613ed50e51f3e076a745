@@ -1,0 +1,44 @@
+.codex-plugin/plugin.json
+  s_606be523ead021::t_cec06caa8dca73 3
+.claude-plugin/marketplace.json
+  s_606be523ead021::t_cec06caa8dca73 4,48
+cli/src/background.js
+  s_606be523ead021::t_ac8799dfc11f4b 86-109,112-113,124,130
+  s_606be523ead021::t_8b83c27d058ec6 85
+package.json
+  s_606be523ead021::t_cec06caa8dca73 3
+commands/smoke.md
+  s_606be523ead021::t_cec06caa8dca73 14
+commands/vendors.md
+  s_606be523ead021::t_cec06caa8dca73 14
+plugins/hopper/cli/bin/hopper-dispatch
+  s_606be523ead021::t_cec06caa8dca73 50
+cli/bin/hopper-dispatch
+  s_606be523ead021::t_cec06caa8dca73 50
+tests/unit/background.test.js
+  s_606be523ead021::t_60cce855a8a294 168-224
+  s_606be523ead021::t_8a460dc6c646fb 11
+.claude-plugin/plugin.json
+  s_606be523ead021::t_cec06caa8dca73 3
+plugins/hopper/cli/src/background.js
+  s_606be523ead021::t_53165129fb25db 86-109,112-113,124,130
+  s_606be523ead021::t_114072d03877dd 85
+plugins/hopper/.codex-plugin/plugin.json
+  s_606be523ead021::t_cec06caa8dca73 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b0ffcc908ff99c0b4317613ed50e51f3e076a745",
+  "prompts": {},
+  "sessions": {
+    "s_606be523ead021": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c9d8cca-2cc8-42ac-8e72-999c8cbe8f59",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

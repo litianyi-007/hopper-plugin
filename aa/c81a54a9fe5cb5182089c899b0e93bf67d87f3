@@ -1,0 +1,63 @@
+plugins/hopper/cli/src/vendors/grok.js
+  s_31a7823b34e020::t_fd3d4d157d4e13 182-196,205-209,211-216,249,253-265,267-270,273-280,282,284,286-308
+plugins/hopper/cli/bin/hopper-dispatch
+  s_31a7823b34e020::t_fd3d4d157d4e13 52,1492-1493
+commands/smoke.md
+  s_eb82fc70448152::t_ec7d73bfff979f 14
+cli/src/vendors/grok.js
+  s_eb82fc70448152::t_dc120abe53bb3b 182-183,205-209,249,279,290
+  s_eb82fc70448152::t_ec7d73bfff979f 184-196,211-216,273-278,280
+  s_eb82fc70448152::t_de0ef1f4790acd 253-265,267-270,282,284,286-289,291-308
+cli/bin/hopper-dispatch
+  s_eb82fc70448152::t_ec7d73bfff979f 52
+  s_eb82fc70448152::t_437cd2aa805927 1492-1493
+package.json
+  s_eb82fc70448152::t_ec7d73bfff979f 3
+tests/integration/runner-single-spawn.test.js
+  s_eb82fc70448152::t_9b2fccbea7682d 352
+  s_eb82fc70448152::t_48cc41d0457ec3 359-360
+  s_eb82fc70448152::t_ec7d73bfff979f 418,428-429,583-607
+  s_eb82fc70448152::t_e7073a09d8af04 608-610
+  s_eb82fc70448152::t_8b4b22653e2e82 611-612
+commands/vendors.md
+  s_eb82fc70448152::t_ec7d73bfff979f 14
+.claude-plugin/plugin.json
+  s_eb82fc70448152::t_ec7d73bfff979f 3
+.codex-plugin/plugin.json
+  s_eb82fc70448152::t_ec7d73bfff979f 3
+.claude-plugin/marketplace.json
+  s_eb82fc70448152::t_ec7d73bfff979f 4,48
+CHANGELOG.md
+  s_eb82fc70448152::t_996ffc84cd7970 33
+  s_eb82fc70448152::t_dc120abe53bb3b 28-32
+  s_eb82fc70448152::t_ec7d73bfff979f 22-27,34-41
+tests/unit/vendor-preset-fixes.test.js
+  s_eb82fc70448152::t_de0ef1f4790acd 84-93
+  s_eb82fc70448152::t_ec7d73bfff979f 74-83,94-107
+plugins/hopper/.codex-plugin/plugin.json
+  s_31a7823b34e020::t_fd3d4d157d4e13 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "aac81a54a9fe5cb5182089c899b0e93bf67d87f3",
+  "prompts": {},
+  "sessions": {
+    "s_31a7823b34e020": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1784702247684835000",
+        "model": "unknown"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    },
+    "s_eb82fc70448152": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83f9-f273-7f80-b807-ea211009f47f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

@@ -1,0 +1,202 @@
+.codex-plugin/plugin.json
+  s_cfbe4b9b2a0583::t_83802343c4c3b3 3,26
+cli/src/validation.js
+  s_cfbe4b9b2a0583::t_a3f412db716cab 24,45-54,135-141
+cli/bin/hopper-dispatch
+  s_cfbe4b9b2a0583::t_83802343c4c3b3 39
+  s_cfbe4b9b2a0583::t_32cc4bdf578706 74-75,77,1200-1201,1203
+  s_cfbe4b9b2a0583::t_05b7f2c01e59cf 162-164
+  s_cfbe4b9b2a0583::t_535dbbff68cf16 393-394,1199,1206
+  s_cfbe4b9b2a0583::t_0c30b97e8af953 8,18,54,78-79,276,288,414-418,434,514,518-519,561,577
+plugins/hopper/cli/src/types.js
+  s_cfbe4b9b2a0583::t_9fca00d56848e7 28,44,88
+  s_cfbe4b9b2a0583::t_612ffc983dd1e8 43
+plugins/hopper/cli/src/vendors/index.js
+  s_cfbe4b9b2a0583::t_9fca00d56848e7 11-14,27-31
+plugins/hopper/cli/src/dispatch.js
+  s_cfbe4b9b2a0583::t_612ffc983dd1e8 19,23-25,104-138,177,205
+tests/integration/runner-single-spawn.test.js
+  s_cfbe4b9b2a0583::t_c3be31f7e299d0 9-12,44,57,75-76,91,118,122-124
+  s_cfbe4b9b2a0583::t_c23b39a5f70545 321-322
+cli/src/vendors/copilot.js
+  s_cfbe4b9b2a0583::t_21eb1eb61f131f 44,54-58
+commands/smoke.md
+  s_cfbe4b9b2a0583::t_83802343c4c3b3 14
+skills/hopper-vendors/SKILL.md
+  s_cfbe4b9b2a0583::t_7c52ae2dcdd8fc 14
+skills/hopper-dispatch/SKILL.md
+  s_cfbe4b9b2a0583::t_bd36e0737c8824 15
+hosts/cursor-cli/README.md
+  s_cfbe4b9b2a0583::t_1778962eb9efa4 50,53
+plugins/hopper/cli/src/vendors/agy.js
+  s_cfbe4b9b2a0583::t_612ffc983dd1e8 76,79
+docs/release/INSTALL-MATRIX.md
+  s_cfbe4b9b2a0583::t_61307f17be4148 338,350,354-355,448
+  s_cfbe4b9b2a0583::t_702518375903da 357
+  s_cfbe4b9b2a0583::t_0f6915e0becee4 450
+  s_cfbe4b9b2a0583::t_11b641b124b1a7 452,455
+  s_cfbe4b9b2a0583::t_83802343c4c3b3 45-46,76,288
+plugins/hopper/cli/src/vendors/mimo.js
+  s_cfbe4b9b2a0583::t_dc92f59ba9cc68 1-165
+hosts/copilot-cli/README.md
+  s_cfbe4b9b2a0583::t_17ebc505efee6c 50,53
+commands/dispatch.md
+  s_cfbe4b9b2a0583::t_8523f13051cf38 33-34,36
+  s_cfbe4b9b2a0583::t_136418f807164f 4,28,32,35,51
+  s_cfbe4b9b2a0583::t_11978795aec323 27
+hosts/grok-cli/bin/hopper-grok
+  s_cfbe4b9b2a0583::t_9108df31983fc2 11,20,81-93,95
+  s_cfbe4b9b2a0583::t_d6bfd85169de19 18
+tests/unit/discovery.test.js
+  s_cfbe4b9b2a0583::t_aeeb34cf5f757a 272
+  s_cfbe4b9b2a0583::t_53a2f685a3806c 207,262-263,281-285
+plugins/hopper/.codex-plugin/plugin.json
+  s_cfbe4b9b2a0583::t_83802343c4c3b3 3,26
+hosts/claude-code/README.md
+  s_cfbe4b9b2a0583::t_6129cf69ff2969 25,139-141
+  s_cfbe4b9b2a0583::t_83802343c4c3b3 93
+  s_cfbe4b9b2a0583::t_05b7f2c01e59cf 115-118
+  s_cfbe4b9b2a0583::t_f553185f1c39b0 22,142-143,145
+cli/src/vendor-probe/kimi.js
+  s_cfbe4b9b2a0583::t_4d27ee0797ab59 1,4-7,10,14-17,60-118,125-175,223-225,237,239
+.claude-plugin/plugin.json
+  s_cfbe4b9b2a0583::t_83802343c4c3b3 3-4
+cli/src/vendors/codex.js
+  s_cfbe4b9b2a0583::t_bbdb95902d819e 48,55-57,59
+cli/src/vendors/kimi.js
+  s_cfbe4b9b2a0583::t_556dbd800e8cce 6,13-15,18,37,42,47-48,50,57-62,110
+cli/src/dispatch.js
+  s_cfbe4b9b2a0583::t_4f66bba4efd84a 19,23-25,104-138,177,205
+tests/unit/dispatch-flags.test.js
+  s_cfbe4b9b2a0583::t_34d7ac30afd12f 19,23,25-28,52,60,64-66,113-114,122-165,194-205,253-286,291-292,322,326
+tests/unit/progress-watch.test.js
+  s_cfbe4b9b2a0583::t_05b7f2c01e59cf 10,161-214
+cli/src/vendors/agy.js
+  s_cfbe4b9b2a0583::t_288e6276c63b9b 76,79
+cli/src/vendors/grok.js
+  s_cfbe4b9b2a0583::t_c5ab68f3d67638 63,66-69,80
+docs/release/PASS-RATIONALE.md
+  s_cfbe4b9b2a0583::t_b69cf6695ea1e0 21,27-28,79,82-83,90
+  s_cfbe4b9b2a0583::t_583c2185d610b7 95
+  s_cfbe4b9b2a0583::t_696e74352ef1f0 136
+tests/unit/vendor-probe.test.js
+  s_cfbe4b9b2a0583::t_bedc89ac00eaaa 115,166,250-266
+  s_cfbe4b9b2a0583::t_c7e88c6c71f381 28-38,41-107,110-112,332-347
+  s_cfbe4b9b2a0583::t_6646f0d65d3a95 123
+  s_cfbe4b9b2a0583::t_14a64269f94bd3 39-40,108-109
+plugins/hopper/skills/hopper-probe/SKILL.md
+  s_cfbe4b9b2a0583::t_9fca00d56848e7 13
+hosts/opencode/README.md
+  s_cfbe4b9b2a0583::t_6d57dae3725e90 62,78-80,82,89
+cli/src/types.js
+  s_cfbe4b9b2a0583::t_a89adb1ab12f1d 28,44,88
+  s_cfbe4b9b2a0583::t_f9c0775668a5a9 43
+cli/src/vendors/index.js
+  s_cfbe4b9b2a0583::t_505848016e8267 11-14,27-31
+plugins/hopper/cli/src/vendors/copilot.js
+  s_cfbe4b9b2a0583::t_612ffc983dd1e8 44,54-58
+commands/probe.md
+  s_cfbe4b9b2a0583::t_8c318a9ed9d683 12,23,39
+plugins/hopper/cli/src/validation.js
+  s_cfbe4b9b2a0583::t_612ffc983dd1e8 24,45-54,135-141
+plugins/hopper/cli/src/vendor-probe/kimi.js
+  s_cfbe4b9b2a0583::t_d8ecf416a74cf0 1,4-7,10,14-17,60-118,125-175,223-225,237,239
+hosts/codex-cli/bin/hopper-codex
+  s_cfbe4b9b2a0583::t_d6bfd85169de19 30
+  s_cfbe4b9b2a0583::t_ec4614753390e2 24,32,67,102-114,116
+tests/integration/real-fixtures.test.js
+  s_cfbe4b9b2a0583::t_fb3d769c0ef54d 43
+skills/hopper-probe/SKILL.md
+  s_cfbe4b9b2a0583::t_abd14e1ddea0f5 13
+tests/integration/background-e2e.test.js
+  s_cfbe4b9b2a0583::t_a2ced7eecdbd0d 48-53,86-88,99,140,173,186-187,280,299,320-321
+tests/unit/codex-cli-host.test.js
+  s_cfbe4b9b2a0583::t_6f64a4633e8876 81,85,87,213-226
+hosts/codex-cli/README.md
+  s_cfbe4b9b2a0583::t_d85e1152ad8e0f 64,85-87,89,96
+  s_cfbe4b9b2a0583::t_d6bfd85169de19 79
+cli/src/vendor-probe/mimo.js
+  s_cfbe4b9b2a0583::t_6114782184e098 1-106
+plugins/hopper/cli/src/vendors/kimi.js
+  s_cfbe4b9b2a0583::t_d8ecf416a74cf0 6,13-15,18,37,42,47-48,50,57-62,110
+tests/unit/vendors-contract.test.js
+  s_cfbe4b9b2a0583::t_90ae88f7c1cd82 231-240
+  s_cfbe4b9b2a0583::t_1e96f742b3d321 121-122,129-132
+  s_cfbe4b9b2a0583::t_7382528570245d 4,14,16,167-205
+  s_cfbe4b9b2a0583::t_7dfe1764f8741d 102,106-108,143,145-146,253-254,268-270
+hosts/cursor-cli/bin/hopper-cursor
+  s_cfbe4b9b2a0583::t_d6bfd85169de19 18
+  s_cfbe4b9b2a0583::t_90f5a7716e13b5 11,20,81-93,95
+plugins/hopper/cli/src/vendors/codex.js
+  s_cfbe4b9b2a0583::t_612ffc983dd1e8 48,55-57,59
+tests/unit/extra-hosts.test.js
+  s_cfbe4b9b2a0583::t_25aae29e798d7d 69
+skills/hopper-models/SKILL.md
+  s_cfbe4b9b2a0583::t_abd14e1ddea0f5 13
+docs/cookbook.md
+  s_cfbe4b9b2a0583::t_ba05d78b4978e3 16,46
+  s_cfbe4b9b2a0583::t_a66a3cd983a910 306
+  s_cfbe4b9b2a0583::t_11789226227db5 177,242
+hosts/copilot-cli/bin/hopper-copilot
+  s_cfbe4b9b2a0583::t_d6bfd85169de19 21
+  s_cfbe4b9b2a0583::t_38505805b40bae 14,23,84-96,98
+commands/vendors.md
+  s_cfbe4b9b2a0583::t_576f8e29d63bf8 2
+  s_cfbe4b9b2a0583::t_83802343c4c3b3 14
+plugins/hopper/cli/src/vendor-probe/mimo.js
+  s_cfbe4b9b2a0583::t_dc92f59ba9cc68 1-106
+plugins/hopper/cli/src/vendors/grok.js
+  s_cfbe4b9b2a0583::t_612ffc983dd1e8 63,66-69,80
+cli/src/vendors/mimo.js
+  s_cfbe4b9b2a0583::t_9759ebe3a541bd 1-165
+plugins/hopper/skills/hopper-dispatch/SKILL.md
+  s_cfbe4b9b2a0583::t_612ffc983dd1e8 15
+plugins/hopper/skills/hopper-vendors/SKILL.md
+  s_cfbe4b9b2a0583::t_9fca00d56848e7 14
+.claude-plugin/marketplace.json
+  s_cfbe4b9b2a0583::t_83802343c4c3b3 4,48
+plugins/hopper/cli/bin/hopper-dispatch
+  s_cfbe4b9b2a0583::t_539559f5e30748 162-164
+  s_cfbe4b9b2a0583::t_83802343c4c3b3 39
+  s_cfbe4b9b2a0583::t_d8ecf416a74cf0 393-394,1199,1206
+  s_cfbe4b9b2a0583::t_612ffc983dd1e8 8,18,54,78-79,276,288,414-418,434,514,518-519,561,577
+  s_cfbe4b9b2a0583::t_9fca00d56848e7 74-75,77,1200-1201,1203
+commands/models.md
+  s_cfbe4b9b2a0583::t_5363c5303b7ce2 19,44,51
+hosts/grok-cli/README.md
+  s_cfbe4b9b2a0583::t_7b325c2884ebfc 50,53
+README.md
+  s_cfbe4b9b2a0583::t_4fd30450aae148 14
+  s_cfbe4b9b2a0583::t_4f2c4bb5c2b96d 47-48
+tests/unit/opencode-host.test.js
+  s_cfbe4b9b2a0583::t_5f0e60d0aa13df 122-123
+hosts/opencode/bin/hopper-opencode
+  s_cfbe4b9b2a0583::t_d6bfd85169de19 28
+  s_cfbe4b9b2a0583::t_5776967b97fdef 22,30,61,96-108,110
+plugins/hopper/cli/src/vendors/opencode.js
+  s_cfbe4b9b2a0583::t_612ffc983dd1e8 45,63-66
+package.json
+  s_cfbe4b9b2a0583::t_83802343c4c3b3 3
+tests/unit/phase6c.test.js
+  s_cfbe4b9b2a0583::t_ae1f26741a12bb 307,309,311,323-324
+cli/src/vendors/opencode.js
+  s_cfbe4b9b2a0583::t_0b1e6404e00b66 45,63-66
+plugins/hopper/skills/hopper-models/SKILL.md
+  s_cfbe4b9b2a0583::t_9fca00d56848e7 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "6f64b7b8d72a1afc4e37880db4bf559906a80da7",
+  "prompts": {},
+  "sessions": {
+    "s_cfbe4b9b2a0583": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eb4b5-c7b2-7833-8b2f-927362136ea7",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+tests/unit/codex-cli-host.test.js
+  s_e8d54b83fa1e9c::t_d97dc38a81d950 51-72
+  s_e8d54b83fa1e9c::t_381b2ae97ec2fc 154-170
+hosts/codex-cli/bin/hopper-codex
+  s_e8d54b83fa1e9c::t_4484fad4b2ef1b 76-96,101
+  s_e8d54b83fa1e9c::t_1878dc8b3a8a97 136-138
+  s_e8d54b83fa1e9c::t_fb8962b18527ad 46-47,52-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "78a78427f6f2758035e805b82eddf66e66b7d7d2",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

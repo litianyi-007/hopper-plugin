@@ -1,0 +1,40 @@
+plugins/hopper/skills/hopper-models/SKILL.md
+  s_6b560dd845bbbb::t_613e1202dd890b 12
+skills/hopper-models/SKILL.md
+  s_6b560dd845bbbb::t_c9ea58644e0a35 12
+skills/hopper-setup/SKILL.md
+  s_6b560dd845bbbb::t_95cd3ac47dc2cf 1-27
+plugins/hopper/skills/hopper-probe/SKILL.md
+  s_6b560dd845bbbb::t_613e1202dd890b 12
+plugins/hopper/skills/hopper/SKILL.md
+  s_6b560dd845bbbb::t_613e1202dd890b 3,39,42
+plugins/hopper/skills/hopper-setup/SKILL.md
+  s_6b560dd845bbbb::t_613e1202dd890b 1-27
+skills/hopper-probe/SKILL.md
+  s_6b560dd845bbbb::t_9498dae870fa0f 12
+tests/unit/codex-plugin.test.js
+  s_6b560dd845bbbb::t_b1e41b5e96a07a 25
+skills/hopper-vendors/SKILL.md
+  s_6b560dd845bbbb::t_23c6561172338d 12
+plugins/hopper/skills/hopper-vendors/SKILL.md
+  s_6b560dd845bbbb::t_613e1202dd890b 12
+skills/hopper/SKILL.md
+  s_6b560dd845bbbb::t_f839932d69f9b4 3
+  s_6b560dd845bbbb::t_b080ca126d9cfc 39,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "1d328779a5129b0780f0253b52c18a5159f2d113",
+  "prompts": {},
+  "sessions": {
+    "s_6b560dd845bbbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06d808fa-3e8c-4a65-b10b-1be05690e7ab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

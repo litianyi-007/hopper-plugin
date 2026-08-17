@@ -1,0 +1,53 @@
+commands/dispatch.md
+  s_9b9532ed48c3cb::t_fb8f4a83df2d56 41
+.claude-plugin/marketplace.json
+  s_9b9532ed48c3cb::t_fe32842f8c8d52 4,48
+.claude-plugin/plugin.json
+  s_9b9532ed48c3cb::t_5f1ddd507cf4b6 3
+.codex-plugin/plugin.json
+  s_9b9532ed48c3cb::t_42854861959167 3
+CHANGELOG.md
+  s_9b9532ed48c3cb::t_181bdaf7f8009f 22-32
+cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_113d2cc9956526 60,1001-1013
+cli/src/dispatch.js
+  s_9b9532ed48c3cb::t_783b28bbba5043 400-405
+cli/src/rules.js
+  s_9b9532ed48c3cb::t_ddbfb78d5d120f 153
+commands/smoke.md
+  s_9b9532ed48c3cb::t_406a94aceb9ce2 14
+commands/vendors.md
+  s_9b9532ed48c3cb::t_fcbb9da6b4d0b1 14
+package.json
+  s_9b9532ed48c3cb::t_64b0ddf4f9d171 3
+plugins/hopper/.codex-plugin/plugin.json
+  s_9b9532ed48c3cb::t_5015c41288ec8c 3
+plugins/hopper/cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_61c9fb64c94e88 60,1001-1013
+plugins/hopper/cli/src/dispatch.js
+  s_9b9532ed48c3cb::t_10499fcaa2eff6 400-405
+plugins/hopper/cli/src/rules.js
+  s_9b9532ed48c3cb::t_feab401e804839 153
+plugins/hopper/skills/hopper-dispatch/SKILL.md
+  s_9b9532ed48c3cb::t_6e2908ab2dac54 26
+skills/hopper-dispatch/SKILL.md
+  s_9b9532ed48c3cb::t_3e8c842d4ecae2 26
+tests/unit/dispatch-flags.test.js
+  s_9b9532ed48c3cb::t_a997c236153ee1 487-518
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "febf2a2b521010fe4c1d59bb6459fe18d69e6587",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

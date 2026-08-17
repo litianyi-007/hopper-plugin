@@ -1,0 +1,34 @@
+hosts/claude-code/.claude-plugin/plugin.json
+  s_e8d54b83fa1e9c::t_89104577aa129e 2-8,11
+hosts/claude-code/commands/vendors.md
+  s_e8d54b83fa1e9c::t_6fa7fe160f86c2 1-23
+hosts/claude-code/commands/smoke.md
+  s_e8d54b83fa1e9c::t_83ca4c01d407c3 1-19
+hosts/claude-code/README.md
+  s_e8d54b83fa1e9c::t_40a14efbc7fac9 1,5,9,11,13-16,18,20-33,36-45,48-50,57,59,65-82,84,86,88,90-95,97,99,101-108
+.hopper/queue.md
+  s_e8d54b83fa1e9c::t_36bcc780984558 32-33
+  s_e8d54b83fa1e9c::t_d3201bab9262cb 43-46
+tests/unit/claude-code-host.test.js
+  s_e8d54b83fa1e9c::t_2384ea7d55735c 1-132
+hosts/claude-code/commands/status.md
+  s_e8d54b83fa1e9c::t_51031d4d7a711e 1-14
+hosts/claude-code/commands/dispatch.md
+  s_e8d54b83fa1e9c::t_e3fa36f42939e0 1-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "d9780fa1d21593689d8a8d24608d399965409410",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

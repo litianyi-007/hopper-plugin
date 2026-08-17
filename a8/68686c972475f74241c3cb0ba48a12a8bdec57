@@ -1,0 +1,20 @@
+hosts/opencode/plugins/hopper-async.ts
+  s_e8d54b83fa1e9c::t_c8e2b100aed7ce 75-77
+  s_e8d54b83fa1e9c::t_7d952ccd1f7716 116-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "a868686c972475f74241c3cb0ba48a12a8bdec57",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

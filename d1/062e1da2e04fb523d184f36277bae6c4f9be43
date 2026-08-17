@@ -1,0 +1,78 @@
+tests/unit/model-attestation-parser.test.js
+  s_9b9532ed48c3cb::t_68bf93d613d131 1-127
+cli/src/vendors/claude.js
+  s_9b9532ed48c3cb::t_94b76951d1325d 1-32,35-50,54-180,182-184,198-198,201-219,222-224,226-292,295-296,298-344,346-346
+cli/src/vendors/opencode.js
+  s_9b9532ed48c3cb::t_94b76951d1325d 1-10,13-26,30-121,123-127,138-148,150-167,172-201,203-209,212-217,293-340
+cli/src/vendors/kimi.js
+  s_9b9532ed48c3cb::t_94b76951d1325d 1-140,144-146,149-156
+cli/src/types.js
+  s_9b9532ed48c3cb::t_94b76951d1325d 1-41,44-45,50-68,74-77,96-98,101-118,122-126
+plugins/hopper/cli/src/types.js
+  0000019f857ea13e 1-126
+plugins/hopper/cli/src/vendors/claude.js
+  0000019f857ea13e 1-347
+plugins/hopper/cli/src/vendors/kimi.js
+  0000019f857ea13e 1-156
+plugins/hopper/cli/src/vendors/opencode.js
+  0000019f857ea13e 1-340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "d1062e1da2e04fb523d184f36277bae6c4f9be43",
+  "prompts": {
+    "s_9b9532ed48c3cb::t_68bf93d613d131": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 127,
+      "total_deletions": 0,
+      "accepted_lines": 127,
+      "overriden_lines": 0
+    },
+    "s_9b9532ed48c3cb::t_94b76951d1325d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 802,
+      "total_deletions": 0,
+      "accepted_lines": 802,
+      "overriden_lines": 0
+    },
+    "s_7b611443d8ad6e::t_6f001c33ffabac": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1784651095112187700",
+        "model": "unknown"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019f857ea13e": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.6-sol",
+        "id": "ai-thread-codex-gpt-5.6-sol-1784651096382"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 969,
+      "total_deletions": 0,
+      "accepted_lines": 969,
+      "overriden_lines": 0
+    }
+  }
+}

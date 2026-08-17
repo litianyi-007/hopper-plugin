@@ -1,0 +1,30 @@
+docs/spikes/T-PLUGIN-00b-vendors.md
+  s_e8d54b83fa1e9c::t_4c35ce17c03614 330
+  s_e8d54b83fa1e9c::t_70efa377f5a1a9 312-316
+tests/unit/schema-validation.test.js
+  s_e8d54b83fa1e9c::t_a1f9dc8633c2ae 102-155
+README.md
+  s_e8d54b83fa1e9c::t_063a4c8ccda37d 48
+  s_e8d54b83fa1e9c::t_0e8a2ed6a966e8 10
+docs/release/PASS-RATIONALE.md
+  s_e8d54b83fa1e9c::t_f73f5320a19051 211
+  s_e8d54b83fa1e9c::t_016ab53f9141a3 30
+  s_e8d54b83fa1e9c::t_1613cd02d9725d 10
+  s_e8d54b83fa1e9c::t_356304a5ec3223 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "87e43fdeacd311cca98110a8dbdea96019a064fb",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

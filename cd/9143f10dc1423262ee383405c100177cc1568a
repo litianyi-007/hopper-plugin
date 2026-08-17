@@ -1,0 +1,37 @@
+cli/src/validation.js
+  s_e8d54b83fa1e9c::t_36366c63561d56 20,23-39
+  s_e8d54b83fa1e9c::t_99ee2248bd4915 82,93-111
+cli/bin/hopper-dispatch
+  s_e8d54b83fa1e9c::t_8d8517b5851cde 247,249-252,254
+  s_e8d54b83fa1e9c::t_3fa9f02ea4e6dc 30-46
+  s_e8d54b83fa1e9c::t_3af5598241f713 136-147,157-159,165-224
+  s_e8d54b83fa1e9c::t_8d19000dc3efe8 12-19
+tests/unit/dispatch-flags.test.js
+  s_e8d54b83fa1e9c::t_7ead16923c0e36 1-151
+commands/dispatch.md
+  s_e8d54b83fa1e9c::t_928206113d8da4 37,40,42-44
+  s_e8d54b83fa1e9c::t_b1e1d19293ed5d 4
+  s_e8d54b83fa1e9c::t_1a51a1dabaf884 24-28,31-33
+hosts/opencode/bin/hopper-opencode
+  s_e8d54b83fa1e9c::t_88f089f62dae01 22,25-29,34
+  s_e8d54b83fa1e9c::t_a37bd296df9698 59-61,63-64,66-93,96
+hosts/codex-cli/bin/hopper-codex
+  s_e8d54b83fa1e9c::t_ede27b852ea532 24,27-31,36-37
+  s_e8d54b83fa1e9c::t_47374246ccab89 65-67,69-70,72-99,102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "cd9143f10dc1423262ee383405c100177cc1568a",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

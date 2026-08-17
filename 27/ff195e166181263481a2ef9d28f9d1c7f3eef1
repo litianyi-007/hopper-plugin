@@ -1,0 +1,36 @@
+.gitignore
+  0000019e86cb53d6 1-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "27ff195e166181263481a2ef9d28f9d1c7f3eef1",
+  "prompts": {
+    "s_ddf609abda26c2::t_480d0c0bccb149": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "948adb54-4b9e-47da-a6be-5cdb4856edcb",
+        "model": "gpt-5-mini"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e86cb53d6": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780377932758",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 60,
+      "total_deletions": 0,
+      "accepted_lines": 60,
+      "overriden_lines": 0
+    }
+  }
+}

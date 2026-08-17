@@ -1,0 +1,57 @@
+.hopper/COST-LOG.md
+  s_e8d54b83fa1e9c::t_bcedde2938d9c4 32-45
+cli/src/subprocess.js
+  s_e8d54b83fa1e9c::t_d47378ac8ee353 1-12,16-143
+  s_e8d54b83fa1e9c::t_d7766fa973bb60 13-15
+cli/src/tasks.js
+  s_e8d54b83fa1e9c::t_7d7844fc9fa923 1-94
+.hopper/handoffs/T-PLUGIN-04.5-output.md
+  s_e8d54b83fa1e9c::t_4f409d3500ceec 1-41
+package.json
+  s_e8d54b83fa1e9c::t_8b8320c06f54ae 11-15
+cli/bin/hopper-dispatch
+  s_e8d54b83fa1e9c::t_fc0c52f6f030df 2,5-6,8-11,13-14,20-21,23,27,30-34,36-94,96-97,101-129,131-135
+cli/src/queue.js
+  s_e8d54b83fa1e9c::t_7b59638ea84d84 1-183
+tests/unit/queue.test.js
+  s_e8d54b83fa1e9c::t_459f868e4c039d 1-149
+tests/unit/tasks.test.js
+  s_e8d54b83fa1e9c::t_8a795c79e53a50 1-128
+tests/unit/agents.test.js
+  s_e8d54b83fa1e9c::t_a58944ec932849 1-128
+tests/unit/subprocess.test.js
+  s_e8d54b83fa1e9c::t_5c5228bbe20f50 1-160
+.hopper/handoffs/T-PLUGIN-01-output.md
+  s_e8d54b83fa1e9c::t_e1d61676836687 1-46
+.hopper/queue.md
+  s_e8d54b83fa1e9c::t_af7a4d127bb7f0 22-26
+  s_e8d54b83fa1e9c::t_24aa50a9c2bac8 55-60
+.hopper/handoffs/T-PLUGIN-04-output.md
+  s_e8d54b83fa1e9c::t_207ad7b836a6a3 1-38
+.hopper/handoffs/T-PLUGIN-02-output.md
+  s_e8d54b83fa1e9c::t_0271894c4461ab 1-37
+cli/src/types.js
+  s_e8d54b83fa1e9c::t_fe5a2aa89f99c2 1-96
+cli/src/dispatch.js
+  s_e8d54b83fa1e9c::t_86b68064fce8b1 1-94
+cli/src/agents.js
+  s_e8d54b83fa1e9c::t_243fb535aabcb7 1-199
+.hopper/handoffs/T-PLUGIN-03-output.md
+  s_e8d54b83fa1e9c::t_91b4259336dac7 1-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "a038b9fcec9163c80e36d4b03fa8e2e822476477",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

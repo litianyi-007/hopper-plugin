@@ -1,0 +1,32 @@
+.hopper/MANIFEST.md
+  s_e8d54b83fa1e9c::t_62c6c24ffe1505 81
+  s_e8d54b83fa1e9c::t_18ef87df04fe5f 28-32
+  s_e8d54b83fa1e9c::t_163742beee990b 11
+.hopper/queue.md
+  s_e8d54b83fa1e9c::t_878d7777b2436e 37
+docs/release/PASS-RATIONALE.md
+  s_e8d54b83fa1e9c::t_4454748bd00820 25,27-28,30-31
+  s_e8d54b83fa1e9c::t_65a1ca52f3bf9c 76
+  s_e8d54b83fa1e9c::t_7eda98c45473e9 88,90-91,93-94
+  s_e8d54b83fa1e9c::t_54a955d9f1c892 183
+  s_e8d54b83fa1e9c::t_97a05041f4174c 194
+README.md
+  s_e8d54b83fa1e9c::t_6c4c6b8f7e2342 5,7-12
+  s_e8d54b83fa1e9c::t_c22cd8be2c6633 57-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "6be28958f08f1ef9bd4410bd443bc4d249c6308c",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

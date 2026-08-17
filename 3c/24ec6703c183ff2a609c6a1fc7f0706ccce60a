@@ -1,0 +1,20 @@
+docs/specs/vendor-io-protocol-current-vs-target.md
+  s_6b560dd845bbbb::t_b6d1ef0ab0d333 129
+  s_6b560dd845bbbb::t_1fa32b4de318ca 114-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "3c24ec6703c183ff2a609c6a1fc7f0706ccce60a",
+  "prompts": {},
+  "sessions": {
+    "s_6b560dd845bbbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06d808fa-3e8c-4a65-b10b-1be05690e7ab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+docs/superpowers/specs/2026-07-21-model-selector-attestation-design.md
+  s_9b9532ed48c3cb::t_25474f874a9a8f 410,413,420,423,425,428
+  s_9b9532ed48c3cb::t_d82b72c8c11b30 190
+  s_9b9532ed48c3cb::t_9b1082b611a5fc 311
+  s_9b9532ed48c3cb::t_3d5697f5e5c41e 69,194,197,244,412
+  s_9b9532ed48c3cb::t_860b6f003e1bf1 159,179-182,188
+  s_9b9532ed48c3cb::t_3d37ff33e36f67 245
+  s_9b9532ed48c3cb::t_85a42299006738 221,223,225-233,235
+  s_9b9532ed48c3cb::t_052897a2c4a242 121-140
+  s_9b9532ed48c3cb::t_5163f026b9e6a4 366
+  s_9b9532ed48c3cb::t_86f1d35af7376b 400
+  s_9b9532ed48c3cb::t_e0ae984c6a1056 173-178
+  s_9b9532ed48c3cb::t_d34e530c76e5a9 330-332
+  s_9b9532ed48c3cb::t_910a16bfe6b77e 348-349,378,380,382-383
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "d1372e31af516e48dfdeaf295007b4ada1f2cc0f",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

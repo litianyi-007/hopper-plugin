@@ -1,0 +1,32 @@
+commands/result.md
+  s_9b9532ed48c3cb::t_fb2629e45b36ea 2,7,14-15
+  s_9b9532ed48c3cb::t_cd5848a4a4839f 44,50-52,62,68,70-72,75,79
+tests/unit/result-full.test.js
+  s_9b9532ed48c3cb::t_77619fb69e2177 18-22,33
+  s_9b9532ed48c3cb::t_54a2a6c602ee8e 15-17,48-50,107-128
+tests/unit/jobs-recovered-output.test.js
+  s_9b9532ed48c3cb::t_77619fb69e2177 1-47,49-64
+  s_9b9532ed48c3cb::t_c06fbc59579d40 48
+cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_46f207d431316e 103,1140-1146,1149-1165,1167-1172,1296-1300,1475,1510,1525,1531-1533,1535-1536,1544-1547,1553
+plugins/hopper/skills/hopper-result/SKILL.md
+  s_9b9532ed48c3cb::t_c5a205c36cf526 8,15,22-23
+skills/hopper-result/SKILL.md
+  s_9b9532ed48c3cb::t_53c30aa6957150 8,15,22-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "6ba21f9dae779f0a7e56ec7b1aad8e505d31b64b",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

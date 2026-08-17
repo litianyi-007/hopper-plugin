@@ -1,0 +1,24 @@
+tests/unit/output-writer.test.js
+  s_e8d54b83fa1e9c::t_4a20fb97c18a83 12
+  s_e8d54b83fa1e9c::t_21f60f97aa94e5 269-415
+  s_e8d54b83fa1e9c::t_f06d6f5e21352d 47,50-73
+  s_e8d54b83fa1e9c::t_c9f1e7db79a011 76,82-83,85,95,98,101-102,104-105
+cli/src/output.js
+  s_e8d54b83fa1e9c::t_cdc0f666b24351 12-19,22-25,29-30,38,49-51,55-63,76-85,90,98-112,115-122,124,127-132,134,138,140,142,144,146,148,150,152-153,155,157,159,161,163,165,167,169,171,173,175,177-220,259,263-301,311-313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "7b8624ce1c8ed2b98107783fda82a16d8e9d87a7",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+README.md
+  s_e8d54b83fa1e9c::t_c24fc94cc84c34 5-12
+scripts/cross-host-verify.sh
+  s_e8d54b83fa1e9c::t_5449c6eadb021a 1-195
+docs/release/PASS-RATIONALE.md
+  s_e8d54b83fa1e9c::t_edd724759e7f9d 1-209
+docs/release/INSTALL-MATRIX.md
+  s_e8d54b83fa1e9c::t_a00f64baef2104 1-162
+.hopper/queue.md
+  s_e8d54b83fa1e9c::t_4dd1bfd3c30d26 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "03b34255815808ae27e4e7ae9d9044def796133b",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

@@ -1,0 +1,3277 @@
+docs/sidequests/hopper-plugin-retrospective-2026-06-04.md
+  0000019e96b1e290 1-484
+docs/specs/background-progress-notification-dogfood-C-LOG.md
+  0000019e96b1e290 1-11
+.codex-plugin/plugin.json
+  0000019e96b1e290 1-50
+tests/unit/codex-plugin.test.js
+  0000019e96b1e290 1-152
+.agents/plugins/marketplace.json
+  0000019e96b1e290 1-21
+skills/hopper/SKILL.md
+  0000019e96b1e290 1-48
+plugins/hopper/.codex-plugin/plugin.json
+  0000019e96b1e290 1-46
+plugins/hopper/skills/hopper/SKILL.md
+  0000019e96b1e290 1-48
+plugins/hopper/cli/bin/hopper-dashboard
+  0000019e96b1e290 1-83
+plugins/hopper/cli/bin/hopper-dashboard.cmd
+  0000019e96b1e290 1-3
+plugins/hopper/cli/bin/hopper-dispatch
+  0000019e96b1e290 1-1241
+plugins/hopper/cli/bin/hopper-dispatch.cmd
+  0000019e96b1e290 1-5
+plugins/hopper/cli/bin/hopper-runner
+  0000019e96b1e290 1-373
+plugins/hopper/cli/src/agents.js
+  0000019e96b1e290 1-208
+plugins/hopper/cli/src/background.js
+  0000019e96b1e290 1-587
+plugins/hopper/cli/src/cache.js
+  0000019e96b1e290 1-206
+plugins/hopper/cli/src/dispatch.js
+  0000019e96b1e290 1-191
+plugins/hopper/cli/src/notify.js
+  0000019e96b1e290 1-178
+plugins/hopper/cli/src/output.js
+  0000019e96b1e290 1-348
+plugins/hopper/cli/src/path-resolve.js
+  0000019e96b1e290 1-175
+plugins/hopper/cli/src/progress.js
+  0000019e96b1e290 1-123
+plugins/hopper/cli/src/queue.js
+  0000019e96b1e290 1-189
+plugins/hopper/cli/src/subprocess.js
+  0000019e96b1e290 1-240
+plugins/hopper/cli/src/tasks.js
+  0000019e96b1e290 1-109
+plugins/hopper/cli/src/types.js
+  0000019e96b1e290 1-101
+plugins/hopper/cli/src/validation.js
+  0000019e96b1e290 1-169
+plugins/hopper/cli/src/vendor-probe/agy.js
+  0000019e96b1e290 1-38
+plugins/hopper/cli/src/vendor-probe/codex.js
+  0000019e96b1e290 1-125
+plugins/hopper/cli/src/vendor-probe/copilot.js
+  0000019e96b1e290 1-108
+plugins/hopper/cli/src/vendor-probe/grok.js
+  0000019e96b1e290 1-33
+plugins/hopper/cli/src/vendor-probe/kimi.js
+  0000019e96b1e290 1-131
+plugins/hopper/cli/src/vendor-probe/opencode.js
+  0000019e96b1e290 1-121
+plugins/hopper/cli/src/vendors/agy.js
+  0000019e96b1e290 1-204
+plugins/hopper/cli/src/vendors/codex.js
+  0000019e96b1e290 1-112
+plugins/hopper/cli/src/vendors/copilot.js
+  0000019e96b1e290 1-121
+plugins/hopper/cli/src/vendors/grok.js
+  0000019e96b1e290 1-173
+plugins/hopper/cli/src/vendors/index.js
+  0000019e96b1e290 1-135
+plugins/hopper/cli/src/vendors/kimi.js
+  0000019e96b1e290 1-144
+plugins/hopper/cli/src/vendors/opencode.js
+  0000019e96b1e290 1-175
+plugins/hopper/skills/hopper-dispatch/SKILL.md
+  0000019e96b1e290 1-25
+plugins/hopper/skills/hopper-models/SKILL.md
+  0000019e96b1e290 1-24
+plugins/hopper/skills/hopper-probe/SKILL.md
+  0000019e96b1e290 1-24
+plugins/hopper/skills/hopper-progress/SKILL.md
+  0000019e96b1e290 1-25
+plugins/hopper/skills/hopper-result/SKILL.md
+  0000019e96b1e290 1-24
+plugins/hopper/skills/hopper-smoke/SKILL.md
+  0000019e96b1e290 1-22
+plugins/hopper/skills/hopper-status/SKILL.md
+  0000019e96b1e290 1-22
+plugins/hopper/skills/hopper-vendors/SKILL.md
+  0000019e96b1e290 1-22
+skills/hopper-dispatch/SKILL.md
+  0000019e96b1e290 1-25
+skills/hopper-models/SKILL.md
+  0000019e96b1e290 1-24
+skills/hopper-probe/SKILL.md
+  0000019e96b1e290 1-24
+skills/hopper-progress/SKILL.md
+  0000019e96b1e290 1-25
+skills/hopper-result/SKILL.md
+  0000019e96b1e290 1-24
+skills/hopper-smoke/SKILL.md
+  0000019e96b1e290 1-22
+skills/hopper-status/SKILL.md
+  0000019e96b1e290 1-22
+skills/hopper-vendors/SKILL.md
+  0000019e96b1e290 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "d4e74a162b13590fc53f805efff87ba7ffe129ac",
+  "prompts": {
+    "0000019e967b4447": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641121351",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967b49d9": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641122777"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967b4aff": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641123071",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967b4d4e": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641123662"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967b4def": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641123823",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967b4ebd": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641124029"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967bd456": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641158230",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967bd563": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641158499",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967bd7c4": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641159108",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967bda5c": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641159772",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967bdcdb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641160411",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967cdd35": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641226037"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967cdd8d": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641226125",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967ce12b": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641227051",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967ce359": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641227609",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967ce539": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641228089",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967d71d2": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641264082",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967d7302": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641264386",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967d7588": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641265032"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967d7786": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641265542"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967dedf2": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641295858",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967df13b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641296699",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967df45a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641297498",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967df604": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641297924",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967e8278": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641333880",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967e87ff": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641335295",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967e99b2": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641339826",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967f96c5": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641404613",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967f97f5": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641404917"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967f9ad0": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641405648",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967f9bee": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641405934",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967f9c42": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641406018",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e967fa05f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641407071",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968078f6": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641462518",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96807b08": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641463048",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96807b96": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641463190",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9680f3a0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641493920",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9680f7aa": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641494954",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9680f8a8": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641495208"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9680fa16": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641495574"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9682b568": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641609064",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9682b70c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641609484",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96835de9": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641652201",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96835f1a": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641652506",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968360e7": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641652967",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9683617f": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641653119"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968368da": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641655002",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9683ad49": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641672521",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9683ae10": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641672720",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9683b216": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641673750",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96841d70": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641701232",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96841fa1": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641701793",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96846639": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641719865",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96846818": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641720344"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9684cde0": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641746400",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9684d5a9": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641748393",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9684d786": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641748870"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9684d9c1": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641749441"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968570af": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641788079",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9685718a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641788298",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968572b2": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641788594",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96873fde": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780641906654"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9687452e": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641908014",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96874795": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641908629",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9687482d": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641908781",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96874933": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641909043",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96874a3b": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641909307",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9687a916": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780641933590",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9687aa28": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641933864"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9687ac34": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641934388",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968886d2": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641990354"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96888817": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641990679"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96888942": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780641990978",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9688e05b": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642013275"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968972dd": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642050781",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968974c4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642051268",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968974f0": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642051312",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968976fa": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642051834",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9689f344": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642083652",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9689f41f": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642083871",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9689f671": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642084465",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9689f6b6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642084534",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968a79b8": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642118072",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968a7b7e": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642118526"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968a7c11": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642118673"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968b216a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642161002",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968b2406": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642161670",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968b24c4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642161860",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968b952f": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642190639",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968b9c3f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642192447",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968c0d2a": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642221354",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968c0dbb": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642221499",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968c0df6": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642221558"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968c101d": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642222109"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968c93c4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642255812",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968c956e": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642256238",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968d55c2": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642305474",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968d57f9": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642306041"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968de8f5": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642343157",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968de98c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642343308",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968deb70": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642343792",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968ded15": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642344213",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968e679a": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642375578",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968e689d": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642375837",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968f872c": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642449196",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e968fd5b8": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642469304",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9690bf9b": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642529179",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9690c1c0": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642529728",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9690c25e": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642529886"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969145ca": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642563530",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969145d7": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642563543"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9691e4c5": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642604229",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9691e64f": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642604623",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9691e88f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642605199",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9692945e": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642649182"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96929767": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642649959",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96929817": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642650135",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9693935a": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642714458",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96939467": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642714727",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969395da": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642715098"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969396db": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642715355",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9694472a": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642760490"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9694486a": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642760810",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969449ac": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642761132"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96944a0f": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642761231"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9694c7de": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642793438"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9694c88d": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642793613",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9694ca8a": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642794122"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9695768e": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642838158",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969576b8": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642838200",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96964f65": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642893669"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9696501d": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642893853"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96965259": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780642894425"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9696530d": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642894605",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969780f8": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642971896"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9697820f": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780642972175",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96978244": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780642972228",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9698625b": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643029595"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9698640e": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643030030"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969865b8": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643030456"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969866c8": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643030728"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9698d05e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643057758",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9698d236": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643058230",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9698d2aa": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643058346",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9698d46a": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643058794",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96995d9e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643093918",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96995fca": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643094474",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9699629b": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643095195",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969963cc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643095500",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9699faad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643134125",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9699fad0": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643134160",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e9699fcf4": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643134708",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969ad9d2": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643191250",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969ae5cc": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643194316"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969bf77b": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643264379"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969c95d1": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643304913"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969c9726": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643305254",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969c98c2": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643305666"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969c9a47": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643306055",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969d09a1": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643334561",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969d0f4f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643336015",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969d6ca3": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643359907",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969d6fdd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643360733",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969d7052": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643360850"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969d72a1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643361441",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969dc04d": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643381325",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969e1c02": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643404802",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969e1cba": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643404986"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969e1d90": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643405200"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969e7950": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643428688"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969e79f3": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643428851"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969e7ada": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643429082"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969e7d24": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643429668"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969f342e": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643476526",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e969f34a4": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643476644",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a00c53": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643531859",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a00fb4": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643532724",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a37d45": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643757381"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a3800e": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643758094"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a38608": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643759624",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a386ce": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643759822",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a46c4b": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643818571"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a46f51": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643819345",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a46f80": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643819392"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a4b582": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643837314",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a4b5e9": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643837417",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a4b823": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643837987",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a52573": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643865971"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a5266a": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643866218"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a59cdb": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643896539",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a59fd7": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643897303"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a6137c": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643926908",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a61429": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643927081"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a61591": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643927441"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a61674": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643927668",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a677da": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643952602",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a679f7": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643953143"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a67af8": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643953400",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a6e11c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780643979548",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a6e20d": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643979789"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a6e4c8": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780643980488",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a6e67e": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780643980926",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a75b49": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780644010825",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a75b4e": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780644010830",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a75c58": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780644011096",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a75dec": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780644011500",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a75f0e": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780644011790",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a76077": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780644012151"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a7beb6": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780644036278",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a7c089": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780644036745",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a845bf": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780644070847",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a84737": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780644071223"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96a84878": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780644071544",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96ab2d9d": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780644261277",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96ab308d": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780644262029"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96abce5a": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780644302426"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96abd75f": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780644304735",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96abd7bc": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780644304828",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96abe3d0": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780644307920"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96ac42d0": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780644332240",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96ac4619": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780644333081",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96ac47ef": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780644333551"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96acd284": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780644369028",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96ad93ae": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780644418478"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96ad93cd": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780644418509",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96ad9730": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780644419376"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96ad97d1": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780644419537",
+        "tool": "codex",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96ae3307": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780644459271",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96ae339d": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780644459421"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96ae3677": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780644460151",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96ae37b5": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780644460469"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96af6b26": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780644539174",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96af6b3d": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780644539197"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96b03100": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780644589824",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96b0357b": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780644590971"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96b03653": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "ai-thread-codex-gpt-5.5-1780644591187",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96b0378a": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780644591498",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96b0cd89": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780644629897"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96b1675f": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780644669279",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96b16907": {
+      "agent_id": {
+        "id": "ai-thread-codex-gpt-5.5-1780644669703",
+        "model": "gpt-5.5",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96b1703e": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780644671550"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96b17569": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780644672873"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e96b1e290": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780644700816"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 7385,
+      "total_deletions": 0,
+      "accepted_lines": 7385,
+      "overriden_lines": 0
+    }
+  }
+}

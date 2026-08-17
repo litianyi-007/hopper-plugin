@@ -1,0 +1,37 @@
+tests/unit/vendors-agy-edge-cases.test.js
+  s_e8d54b83fa1e9c::t_f0e5c40e3e9dcb 1-34,38-49,52-94
+  s_e8d54b83fa1e9c::t_124385da807658 50-51
+  s_e8d54b83fa1e9c::t_89b0abb301373c 35-37
+cli/src/dispatch.js
+  s_e8d54b83fa1e9c::t_941783c637ecaa 118-120,122-133,135,146,150,153,157,161,171
+cli/src/vendors/opencode.js
+  s_e8d54b83fa1e9c::t_73a9b4928534ba 28-29,34-35,37-40,43,45-46
+tests/unit/vendors-contract.test.js
+  s_e8d54b83fa1e9c::t_3090df3255ce3c 119-122,125,128,132-134,138
+cli/src/vendors/codex.js
+  s_e8d54b83fa1e9c::t_81113d2d7db8d1 29-39
+tests/integration/execute-dispatch-e2e.test.js
+  s_e8d54b83fa1e9c::t_d9c43b724f9d80 1-173
+cli/src/vendors/agy.js
+  s_e8d54b83fa1e9c::t_62960aca4b331d 89-90,102-103,105-106,108-109,113,117,125,129,142,149
+cli/src/vendors/kimi.js
+  s_e8d54b83fa1e9c::t_f4bf2041de6322 28-35,37-41
+cli/src/vendors/copilot.js
+  s_e8d54b83fa1e9c::t_09c19d05bd72ff 23-25,28,30-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "18307bc81cecbc475074f7a0be41255764fb775e",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+tests/integration/runner-single-spawn.test.js
+  s_52eb9ef375cc7f::t_867a27b7cf0180 769-770
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "afff20a413d5f09f1c720968b216a625993a4a5d",
+  "prompts": {},
+  "sessions": {
+    "s_52eb9ef375cc7f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7b77-6615-7383-88a8-14da095bd32a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

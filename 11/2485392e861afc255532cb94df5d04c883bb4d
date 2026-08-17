@@ -1,0 +1,26 @@
+cli/bin/hopper-dispatch
+  s_e8d54b83fa1e9c::t_3f36b36f52bf3f 22-31
+  s_e8d54b83fa1e9c::t_4f17611d0ed8b8 11,16
+  s_e8d54b83fa1e9c::t_4e5f8ea0924191 127-129
+  s_e8d54b83fa1e9c::t_f3d09c0586e929 152,197-214
+tests/unit/output-writer.test.js
+  s_e8d54b83fa1e9c::t_5572ce14704f7b 1-251
+cli/src/output.js
+  s_e8d54b83fa1e9c::t_febbd94487f821 1-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "112485392e861afc255532cb94df5d04c883bb4d",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

@@ -1,0 +1,74 @@
+cli/bin/hopper-runner
+  0000019f856635d6 1-666
+cli/src/background.js
+  0000019f856635d6 1-771
+cli/src/progress.js
+  0000019f856635d6 1-167
+cli/src/subprocess.js
+  0000019f856635d6 1-397
+cli/src/types.js
+  0000019f856635d6 1-104
+cli/src/vendors/claude.js
+  0000019f856635d6 1-273
+cli/src/vendors/opencode.js
+  0000019f856635d6 1-287
+plugins/hopper/cli/bin/hopper-runner
+  0000019f856635d6 1-666
+plugins/hopper/cli/src/background.js
+  0000019f856635d6 1-771
+plugins/hopper/cli/src/progress.js
+  0000019f856635d6 1-167
+plugins/hopper/cli/src/subprocess.js
+  0000019f856635d6 1-397
+plugins/hopper/cli/src/types.js
+  0000019f856635d6 1-104
+plugins/hopper/cli/src/vendors/claude.js
+  0000019f856635d6 1-273
+plugins/hopper/cli/src/vendors/opencode.js
+  0000019f856635d6 1-287
+tests/integration/process-tree-posix.test.js
+  0000019f856635d6 1-55
+tests/integration/runner-single-spawn.test.js
+  0000019f856635d6 1-839
+tests/unit/lifecycle-regression.test.js
+  0000019f856635d6 1-266
+tests/unit/stop-job.test.js
+  0000019f856635d6 1-216
+tests/unit/subprocess.test.js
+  0000019f856635d6 1-329
+tests/unit/vendors-contract.test.js
+  0000019f856635d6 1-577
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "31ae76376acfc527954fdf9bf6a1aecde52c2628",
+  "prompts": {
+    "s_27f77513e12f08::t_4058f5b6d849dc": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1784649494193097100",
+        "model": "unknown"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019f856635d6": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.6-sol",
+        "id": "ai-thread-codex-gpt-5.6-sol-1784649496022"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 7612,
+      "total_deletions": 0,
+      "accepted_lines": 7612,
+      "overriden_lines": 0
+    }
+  }
+}

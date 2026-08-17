@@ -1,0 +1,47 @@
+commands/dispatch.md
+  s_e8d54b83fa1e9c::t_8c21e632fdac40 61-64
+  s_e8d54b83fa1e9c::t_aee153f6b2d203 12
+docs/release/INSTALL-MATRIX.md
+  s_e8d54b83fa1e9c::t_6fb2038aefa793 146
+hosts/codex-cli/bin/hopper-codex
+  s_e8d54b83fa1e9c::t_b701e4b539c404 140-146
+cli/src/output.js
+  s_e8d54b83fa1e9c::t_6c5e2a7d03c87b 263-267,269-273,277
+.hopper/queue.md
+  s_e8d54b83fa1e9c::t_5b802fd8805103 36
+tests/unit/schema-validation.test.js
+  s_e8d54b83fa1e9c::t_b18d172bcab072 1-114
+cli/src/queue.js
+  s_e8d54b83fa1e9c::t_e74556ba62f083 120-125,127
+tests/integration/execute-dispatch-e2e.test.js
+  s_e8d54b83fa1e9c::t_4f0242abc9fc87 1,4-12
+tests/unit/output-writer.test.js
+  s_e8d54b83fa1e9c::t_c1f5ddf2c78f92 122,124-125,137,140
+.hopper/MANIFEST.md
+  s_e8d54b83fa1e9c::t_5e68a957e27473 13
+  s_e8d54b83fa1e9c::t_6f55f55634afcd 11
+cli/src/tasks.js
+  s_e8d54b83fa1e9c::t_663139faf3e34b 12-13
+  s_e8d54b83fa1e9c::t_bddaa98694e9c9 24-27,29-37
+cli/src/validation.js
+  s_e8d54b83fa1e9c::t_a4da63dd4a68ef 74-98
+  s_e8d54b83fa1e9c::t_6fd9fa10eb54d5 24-45
+docs/release/PASS-RATIONALE.md
+  s_e8d54b83fa1e9c::t_34324b11821d56 141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "c9f5adeeba3cd63fff6e5fbac9db2a8fd1af78d7",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

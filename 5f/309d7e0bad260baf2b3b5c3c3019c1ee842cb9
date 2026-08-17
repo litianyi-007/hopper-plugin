@@ -1,0 +1,19 @@
+tests/unit/dashboard-queue.test.js
+  s_6698045187a3c6::t_4d4217113417d6 84,94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "5f309d7e0bad260baf2b3b5c3c3019c1ee842cb9",
+  "prompts": {},
+  "sessions": {
+    "s_6698045187a3c6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed498-a1eb-7a20-8b1b-5b8ac7b89d7f",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

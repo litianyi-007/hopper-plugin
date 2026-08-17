@@ -1,0 +1,38 @@
+tests/integration/execute-dispatch-e2e.test.js
+  s_9b9532ed48c3cb::t_7079067713c6ef 16-17,19,54-109,123-124,139,156
+  s_9b9532ed48c3cb::t_2579860d9f0455 110-122,125-138,140-155,157-158
+cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_f6d404fae8b78d 8,1004
+cli/bin/hopper-runner
+  s_9b9532ed48c3cb::t_ba04aea2f05ffd 424-425,451-457
+cli/src/dispatch.js
+  s_9b9532ed48c3cb::t_cdf4d4853306e7 390-404,448
+cli/src/vendors/kimi.js
+  s_9b9532ed48c3cb::t_39f836bf06f5f2 70
+plugins/hopper/cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_7e7fed26d0a206 8,1004
+plugins/hopper/cli/bin/hopper-runner
+  s_9b9532ed48c3cb::t_6d8fb635908593 424-425,451-457
+plugins/hopper/cli/src/dispatch.js
+  s_9b9532ed48c3cb::t_c7b9d784646845 390-404,448
+plugins/hopper/cli/src/vendors/kimi.js
+  s_9b9532ed48c3cb::t_8e002ea723e537 70
+tests/unit/lifecycle-regression.test.js
+  s_9b9532ed48c3cb::t_2ad9033ea82281 264-270,290,330-339,353-354
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f293c694a4bd1d2d056ecd2bffdc6e668b184524",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

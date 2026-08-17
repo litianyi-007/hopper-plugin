@@ -1,0 +1,23 @@
+.hopper/MANIFEST.md
+  s_e8d54b83fa1e9c::t_9fb344358b083a 11,13
+  s_e8d54b83fa1e9c::t_f2d676fdd09190 27-28
+  s_e8d54b83fa1e9c::t_d5106bace6a3f7 76
+docs/spikes/T-PLUGIN-00-resolved.md
+  s_e8d54b83fa1e9c::t_7035973dd22990 126-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "1b0e8512ab6726503de6bf0e8dd29c660cf5a385",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

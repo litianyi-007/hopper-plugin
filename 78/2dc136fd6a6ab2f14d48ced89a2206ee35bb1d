@@ -1,0 +1,19 @@
+docs/spikes/T-PLUGIN-00b-vendors.md
+  s_e8d54b83fa1e9c::t_828d3a56093e1a 322,324-326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "782dc136fd6a6ab2f14d48ced89a2206ee35bb1d",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

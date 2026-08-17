@@ -1,0 +1,24 @@
+docs/superpowers/plans/2026-06-17-hopper-governance-fusion.md
+  s_6b560dd845bbbb::t_e633e18880b699 1-880
+docs/superpowers/specs/2026-06-17-fable-hopper-governance-fusion-design.md
+  s_6b560dd845bbbb::t_33b5e38d7945dc 59-67
+  s_6b560dd845bbbb::t_07322cb15f8743 151-156
+  s_6b560dd845bbbb::t_0f79cbf2008db8 119-128
+  s_6b560dd845bbbb::t_ce938341bd44bd 1-58,68-118,129-150,157-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "e58fa5f1703d5fef57538829e4fbb106f37cf091",
+  "prompts": {},
+  "sessions": {
+    "s_6b560dd845bbbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06d808fa-3e8c-4a65-b10b-1be05690e7ab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

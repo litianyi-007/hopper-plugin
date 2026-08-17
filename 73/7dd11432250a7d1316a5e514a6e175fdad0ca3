@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-07-23-vendor-guide-intake-design.md
+  s_9b9532ed48c3cb::t_f9a88ac548d0ff 1-391
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "737dd11432250a7d1316a5e514a6e175fdad0ca3",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+tests/unit/dispatch-flags.test.js
+  s_9b9532ed48c3cb::t_adcc6eaa3bcaf0 12
+  s_9b9532ed48c3cb::t_f145cc120133a7 53,64,79,85-89
+  s_9b9532ed48c3cb::t_ee69df2ce7d8e7 61
+  s_9b9532ed48c3cb::t_9d22b7c236da44 90-110,414-464
+tests/unit/lifecycle-regression.test.js
+  s_9b9532ed48c3cb::t_86d05fe3e42e53 7,10,13,17-53,55,275,342
+  s_9b9532ed48c3cb::t_20440107165209 6,54,56,249-274,276-341,343-344
+cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_6db9c162f90114 63-70,876,982,1023-1027
+cli/bin/hopper-runner
+  s_9b9532ed48c3cb::t_c38812bb5084b5 380-385,403,424-425
+cli/src/vendors/kimi.js
+  s_9b9532ed48c3cb::t_08dacf8ac700a7 48-56,68-71
+plugins/hopper/cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_8622e359cebfe9 63-70,876,982,1023-1027
+plugins/hopper/cli/bin/hopper-runner
+  s_9b9532ed48c3cb::t_b40ba5105051ed 380-385,403,424-425
+plugins/hopper/cli/src/vendors/kimi.js
+  s_9b9532ed48c3cb::t_1e96f5ba625ccd 48-56,68-71
+tests/unit/progress.test.js
+  s_9b9532ed48c3cb::t_83178d3180351e 176-208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "5f3621e4aa12f586309236c6d8349355a7693793",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

@@ -1,0 +1,76 @@
+.hopper/handoffs/T-PROG-R14-RESEARCH-output.md
+  0000019e5037b518 1-39
+.hopper/handoffs/T-PROG-R14-REVIEW-kimi-output.md
+  0000019e5037b518 1-179
+docs/sidequests/web-dashboard/handoffs/T-WEB-01-REVIEW-claude-output.md
+  0000019e5037b518 1-287
+docs/sidequests/web-dashboard/handoffs/T-WEB-01-REVIEW-vendor-output.template.md
+  0000019e5037b518 1-319
+docs/sidequests/web-dashboard/handoffs/T-WEB-01-output.template.md
+  0000019e5037b518 1-240
+docs/sidequests/web-dashboard/handoffs/T-WEB-02-REVIEW-claude-output.md
+  0000019e5037b518 1-263
+docs/sidequests/web-dashboard/handoffs/T-WEB-03-REVIEW-claude-output.md
+  0000019e5037b518 1-289
+docs/sidequests/web-dashboard/handoffs/T-WEB-04-REVIEW-claude-output.md
+  0000019e5037b518 1-290
+docs/sidequests/web-dashboard/handoffs/T-WEB-04.5-REVIEW-claude-output.md
+  0000019e5037b518 1-202
+docs/sidequests/web-dashboard/handoffs/T-WEB-05-REVIEW-claude-output.md
+  0000019e5037b518 1-293
+docs/sidequests/web-dashboard/handoffs/T-WEB-06-REVIEW-claude-output.md
+  0000019e5037b518 1-323
+docs/sidequests/web-dashboard/handoffs/T-WEB-07-REVIEW-claude-output.md
+  0000019e5037b518 1-338
+docs/sidequests/web-dashboard/handoffs/T-WEB-08-REVIEW-claude-output.md
+  0000019e5037b518 1-393
+docs/specs/background-progress-notification-v1.1-should-N1-REVIEW.md
+  0000019e5037b518 1-326
+docs/specs/background-progress-notification-v1.1-should-N2-dashboard1-REVIEW.md
+  0000019e5037b518 1-245
+dashboard/client/src/components/TaskDrawer.tsx
+  0000019e5037b518 1-218
+dashboard/client/src/lib/api.ts
+  0000019e5037b518 1-50
+dashboard/client/src/lib/types.ts
+  0000019e5037b518 1-107
+tests/unit/dashboard-sse.test.js
+  0000019e5037b518 1-218
+tests/unit/dashboard-task.test.js
+  0000019e5037b518 1-318
+dashboard/client/src/components/ProgressTimeline.tsx
+  0000019e5037b518 1-105
+---
+{
+    "schema_version":  "authorship/3.0.0",
+    "git_ai_version":  "1.5.0",
+    "base_commit_sha":  "3c544d2edbb84f5d28d6bf4da45caba2e005708d",
+    "prompts":  {
+                    "0000019e50352802":  {
+                                             "agent_id":  {
+                                                              "tool":  "codex",
+                                                              "model":  "gpt-5.5",
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779462121474"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  0,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  0,
+                                             "overriden_lines":  0
+                                         },
+                    "0000019e5037b518":  {
+                                             "agent_id":  {
+                                                              "model":  "gpt-5.5",
+                                                              "id":  "ai-thread-codex-gpt-5.5-1779462288664",
+                                                              "tool":  "codex"
+                                                          },
+                                             "human_author":  "litianyi",
+                                             "messages":  [],
+                                             "total_additions":  5042,
+                                             "total_deletions":  0,
+                                             "accepted_lines":  5042,
+                                             "overriden_lines":  0
+                                         }
+                }
+}

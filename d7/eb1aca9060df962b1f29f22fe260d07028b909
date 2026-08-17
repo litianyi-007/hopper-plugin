@@ -1,0 +1,29 @@
+commands/dispatch.md
+  s_e8d54b83fa1e9c::t_6a531eb618056c 112
+  s_e8d54b83fa1e9c::t_2eba2f732ead35 35,37-41,51-95
+  s_e8d54b83fa1e9c::t_dec30e621cb973 2,4
+  s_e8d54b83fa1e9c::t_f0a54785941d3a 131,136-137
+  s_e8d54b83fa1e9c::t_98ce40fae46f5f 25
+hosts/opencode/plugins/hopper-async.ts
+  s_e8d54b83fa1e9c::t_2f5779e691ba98 1-296
+tests/unit/opencode-plugin-static.test.js
+  s_e8d54b83fa1e9c::t_4dd45ca230f309 1-94
+hosts/opencode/plugins/README.md
+  s_e8d54b83fa1e9c::t_ac17eab17d7110 1-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "d7eb1aca9060df962b1f29f22fe260d07028b909",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

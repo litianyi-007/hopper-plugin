@@ -1,0 +1,21 @@
+cli/src/dispatch.js
+  s_0f03cb7314737d::t_d21abe34c764e3 15,61-64
+tests/unit/dispatch-governance.test.js
+  s_0f03cb7314737d::t_1991368076930b 1-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "7c63e4344e54e5093e616e1d7e0f969aaa2066ea",
+  "prompts": {},
+  "sessions": {
+    "s_0f03cb7314737d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed45f-9db1-7240-a384-80c147010fa3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

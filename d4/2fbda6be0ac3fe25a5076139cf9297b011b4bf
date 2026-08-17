@@ -1,0 +1,155 @@
+AGENTS.md
+  0000019e86a0fe1f 1-40
+.github/instructions/hopper-state.instructions.md
+  0000019e86a0fe1f 1-11
+.github/instructions/dashboard.instructions.md
+  0000019e86a0fe1f 1-14
+cli/src/vendors/opencode.js
+  0000019e86a0fe1f 1-174
+cli/bin/hopper-dispatch
+  0000019e86a0fe1f 1-1235
+tests/unit/vendors-contract.test.js
+  0000019e86a0fe1f 1-277
+cli/src/vendors/grok.js
+  0000019e86a0fe1f 1-172
+cli/src/vendor-probe/grok.js
+  0000019e86a0fe1f 1-32
+cli/src/subprocess.js
+  0000019e86a0fe1f 1-239
+cli/src/dispatch.js
+  0000019e86a0fe1f 1-187
+cli/bin/hopper-runner
+  0000019e86a0fe1f 1-369
+tests/unit/subprocess.test.js
+  0000019e86a0fe1f 1-184
+README.md
+  0000019e86a0fe1f 1-141
+docs/cookbook.md
+  0000019e86a0fe1f 1-269
+commands/dispatch.md
+  0000019e86a0fe1f 1-137
+cli/src/types.js
+  0000019e86a0fe1f 1-100
+tests/unit/dispatch-flags.test.js
+  0000019e86a0fe1f 1-201
+.hopper/AGENTS.md
+  0000019e86a0fe1f 1-68
+.hopper/MANIFEST.md
+  0000019e86a0fe1f 1-82
+package.json
+  0000019e86a0fe1f 1-65
+.claude-plugin/plugin.json
+  0000019e86a0fe1f 1-12
+.codex-plugin/plugin.json
+  0000019e86a0fe1f 1-57
+.claude-plugin/marketplace.json
+  0000019e86a0fe1f 1-86
+commands/smoke.md
+  0000019e86a0fe1f 1-21
+commands/vendors.md
+  0000019e86a0fe1f 1-16
+hosts/claude-code/README.md
+  0000019e86a0fe1f 1-159
+docs/release/INSTALL-MATRIX.md
+  0000019e86a0fe1f 1-495
+package-lock.json
+  0000019e86a0fe1f 1-3752
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d42fbda6be0ac3fe25a5076139cf9297b011b4bf",
+  "prompts": {
+    "s_ddf609abda26c2::t_0751a3e586ec53": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "948adb54-4b9e-47da-a6be-5cdb4856edcb",
+        "model": "gpt-5-mini"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "s_ddf609abda26c2::t_efe3634e841598": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "948adb54-4b9e-47da-a6be-5cdb4856edcb",
+        "model": "gpt-5-mini"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "s_ddf609abda26c2::t_4deb3a58efa524": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "948adb54-4b9e-47da-a6be-5cdb4856edcb",
+        "model": "gpt-5-mini"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "s_ddf609abda26c2::t_a866a77ae66a03": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "948adb54-4b9e-47da-a6be-5cdb4856edcb",
+        "model": "gpt-5-mini"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "s_ddf609abda26c2::t_f0ad729d2fc41c": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "948adb54-4b9e-47da-a6be-5cdb4856edcb",
+        "model": "gpt-5-mini"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "s_ddf609abda26c2::t_35e8acf755d880": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "948adb54-4b9e-47da-a6be-5cdb4856edcb",
+        "model": "gpt-5-mini"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e86a0fe1f": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780375158303",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 8595,
+      "total_deletions": 0,
+      "accepted_lines": 8595,
+      "overriden_lines": 0
+    }
+  }
+}

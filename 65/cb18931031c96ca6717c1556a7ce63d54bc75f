@@ -1,0 +1,19 @@
+ISSUE-codex-bypass-flag-missing-from-argv.md
+  s_6b560dd845bbbb::t_1b0c2558817f38 1-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "65cb18931031c96ca6717c1556a7ce63d54bc75f",
+  "prompts": {},
+  "sessions": {
+    "s_6b560dd845bbbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06d808fa-3e8c-4a65-b10b-1be05690e7ab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

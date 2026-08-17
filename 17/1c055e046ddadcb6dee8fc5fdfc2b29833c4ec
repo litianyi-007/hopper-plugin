@@ -1,0 +1,67 @@
+cli/src/scaffold.js
+  s_c587ecf7bbc3e2::t_5a954eaa3e2a01 199
+tests/unit/vendor-probe.test.js
+  s_c587ecf7bbc3e2::t_4f0fdfa39eb123 399-565
+tests/unit/dispatch-fallback-chain.test.js
+  s_c587ecf7bbc3e2::t_990908aa82118f 119-122
+tests/unit/vendor-model-auth.test.js
+  s_c587ecf7bbc3e2::t_a554aefe0af964 87-93
+commands/models.md
+  s_c587ecf7bbc3e2::t_fd255b2233b384 52
+package.json
+  s_c587ecf7bbc3e2::t_d3c93fac978b54 3
+tests/unit/vendors-contract.test.js
+  s_c587ecf7bbc3e2::t_c521596a15e5e1 388-390
+.claude-plugin/plugin.json
+  s_c587ecf7bbc3e2::t_564969e88da3e6 3
+.codex-plugin/plugin.json
+  s_c587ecf7bbc3e2::t_e78d1a666fcf27 3
+.claude-plugin/marketplace.json
+  s_c587ecf7bbc3e2::t_04873bc2e351af 4,48
+docs/release/INSTALL-MATRIX.md
+  s_c587ecf7bbc3e2::t_ef8f4ceb221404 452,455
+  s_c587ecf7bbc3e2::t_478a0bb840e783 349
+commands/smoke.md
+  s_c587ecf7bbc3e2::t_5a4e4c5573126c 14
+plugins/hopper/cli/src/vendor-probe/grok.js
+  s_c587ecf7bbc3e2::t_78631282923e3e 1,4-30,32,34,37-92,95-96,100-151,153,156-157,159
+ISSUE-grok-model-line-rotation-stale-knownGood.md
+  s_c587ecf7bbc3e2::t_373b5562c3e62a 1-96
+plugins/hopper/cli/src/scaffold.js
+  s_c587ecf7bbc3e2::t_78631282923e3e 199
+cli/src/vendors/grok.js
+  s_c587ecf7bbc3e2::t_c9e40a2dd78296 34-41
+  s_c587ecf7bbc3e2::t_d9dbfbf745c797 64-76,81
+CHANGELOG.md
+  s_c587ecf7bbc3e2::t_ddf91c0a667572 1-87
+plugins/hopper/cli/bin/hopper-dispatch
+  s_c587ecf7bbc3e2::t_9ab9f878ff6eac 51
+  s_c587ecf7bbc3e2::t_78631282923e3e 1976-1978,1984
+plugins/hopper/cli/src/vendors/grok.js
+  s_c587ecf7bbc3e2::t_78631282923e3e 34-41,64-76,81
+cli/bin/hopper-dispatch
+  s_c587ecf7bbc3e2::t_31ef8b70ad6238 51
+  s_c587ecf7bbc3e2::t_f6f6e616efae30 1976-1978,1984
+cli/src/vendor-probe/grok.js
+  s_c587ecf7bbc3e2::t_cd82aef6af2ba6 1,4-30,32,34,37-92,95-96,100-151,153,156-157,159
+commands/vendors.md
+  s_c587ecf7bbc3e2::t_579f7848157ff0 14
+plugins/hopper/.codex-plugin/plugin.json
+  s_c587ecf7bbc3e2::t_78631282923e3e 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "171c055e046ddadcb6dee8fc5fdfc2b29833c4ec",
+  "prompts": {},
+  "sessions": {
+    "s_c587ecf7bbc3e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39f5bf8-f328-41b3-b5fd-eb01a465a399",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

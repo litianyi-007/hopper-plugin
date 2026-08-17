@@ -1,0 +1,39 @@
+.hopper/MANIFEST.md
+  s_e8d54b83fa1e9c::t_eed179a14d2913 13
+  s_e8d54b83fa1e9c::t_1ae82d392d1032 28-30
+  s_e8d54b83fa1e9c::t_c743fc58a1358b 78
+  s_e8d54b83fa1e9c::t_0d0844e56cb40b 11
+cli/src/validation.js
+  s_e8d54b83fa1e9c::t_fb2a80b22f2cad 1-50
+cli/bin/hopper-dispatch
+  s_e8d54b83fa1e9c::t_95d6fa0b96ffd5 12
+  s_e8d54b83fa1e9c::t_afeca025b88b06 128-142
+.hopper/handoffs/T-PLUGIN-08a-output.md
+  s_e8d54b83fa1e9c::t_1a87dd9722d4d5 1-49
+README.md
+  s_e8d54b83fa1e9c::t_b55e89080dec4d 5
+  s_e8d54b83fa1e9c::t_adf62ddfd8faa4 25-43,46
+cli/src/output.js
+  s_e8d54b83fa1e9c::t_adb407a418060b 130-132,135
+  s_e8d54b83fa1e9c::t_2f313f3c1e421c 23
+tests/unit/validation.test.js
+  s_e8d54b83fa1e9c::t_640c37a7e7d765 1-83
+.hopper/handoffs/T-PLUGIN-08b-output.md
+  s_e8d54b83fa1e9c::t_dd38a572024da6 1-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "311c50b80907b2199fe6581eff0dcf17df266191",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

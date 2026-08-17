@@ -1,0 +1,45 @@
+hosts/opencode/bin/hopper-opencode
+  s_e8d54b83fa1e9c::t_b11248280516f4 60,65,96,102-103
+hosts/opencode/plugins/hopper-async.ts
+  s_e8d54b83fa1e9c::t_207c85b7760251 114-125
+cli/bin/hopper-dispatch
+  s_e8d54b83fa1e9c::t_9807e43e4b9cdd 481-487
+cli/bin/hopper-runner
+  s_e8d54b83fa1e9c::t_53e2f840e1f033 14
+  s_e8d54b83fa1e9c::t_01f9f642d4f39d 128-162,165-169,180,183-184,190,198-199
+hosts/codex-cli/bin/hopper-codex
+  s_e8d54b83fa1e9c::t_48e7be3917a287 66,71,102,108-109
+tests/integration/runner-single-spawn.test.js
+  s_e8d54b83fa1e9c::t_7c894a8570f975 183-233,236,240-243,245,247,254-256
+  s_e8d54b83fa1e9c::t_23ef5871e8907c 9-24
+  s_e8d54b83fa1e9c::t_25bd6f74cad75b 257
+  s_e8d54b83fa1e9c::t_69cd46779afa6f 234-235,237-239,244,246,248-253
+  s_e8d54b83fa1e9c::t_5d43460c79348e 1-8,25-129,131-156,158-182,258-282
+  s_e8d54b83fa1e9c::t_29076f8c94c726 130
+  s_e8d54b83fa1e9c::t_e6c38f77b15a32 157
+hosts/opencode/plugins/README.md
+  s_e8d54b83fa1e9c::t_1c727c5d78dc5f 16
+cli/src/background.js
+  s_e8d54b83fa1e9c::t_24616d4987b1e2 18,20
+  s_e8d54b83fa1e9c::t_52c8f7d288d933 84-89,102,107-143
+  s_e8d54b83fa1e9c::t_f09fed44f7e78a 248-251
+README.md
+  s_e8d54b83fa1e9c::t_42a9c8ea7638ce 49
+  s_e8d54b83fa1e9c::t_8195dd0f179bb1 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "e45969b48859aecdad7bfcc17d71818a1614f8f5",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

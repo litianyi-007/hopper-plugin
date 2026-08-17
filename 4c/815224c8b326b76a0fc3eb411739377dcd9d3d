@@ -1,0 +1,173 @@
+tests/unit/cache.test.js
+  s_9b9532ed48c3cb::t_2b69cdc68625a2 1-5,7-7,10-10,19-32,34-56,60-60,62-62,64-66,68-78,80-80,82-99,122-131,210-226,228-230,232-245,248-254,257-265,284-285,288-288,290-296,300-300,302-328,332-343,345-348,351-357,360-530
+  s_9b9532ed48c3cb::t_1fdd01650fd1d4 12-14,16-18,132-147
+  s_9b9532ed48c3cb::t_d6b8017adeeb24 15-15
+  s_9b9532ed48c3cb::t_fd9cb77112199e 103-121
+  s_9b9532ed48c3cb::t_8c4ee9274c6089 151-194
+  s_9b9532ed48c3cb::t_37781c6a5bf285 195-209,266-283
+cli/src/cache.js
+  s_9b9532ed48c3cb::t_aed7d2fa2a4247 1-31,34-56,58-58,63-64,66-66,68-68,72-73,78-79,82-82,85-85,88-88,90-90,94-95,97-102,104-118,120-183,185-190,193-218,220-222,237-237,244-296,298-330,332-337,340-362,364-364,367-367,371-374,376-376,378-383,385-430,432-432,436-445,447-472
+  s_9b9532ed48c3cb::t_70236733919cdc 184-184,223-234,236-236
+  s_9b9532ed48c3cb::t_e29d3932f8dc3f 235-235,238-243
+  s_9b9532ed48c3cb::t_cbd5ee9ee9b37d 297-297
+  s_9b9532ed48c3cb::t_b0abc1f8107ece 365-366
+tests/unit/model-attestation-contract.test.js
+  s_9b9532ed48c3cb::t_035cbf6cfe228c 14-14,280-334,355-355
+  s_9b9532ed48c3cb::t_98166ea3df670d 15-15,335-354
+cli/src/inventory-contract.js
+  s_9b9532ed48c3cb::t_d98a299bc81687 1-94
+cli/bin/hopper-dispatch
+  s_9b9532ed48c3cb::t_b8552299bf167e 1-10,12-19,21-36,39-41,48-48,50-59,63-80,82-184,195-249,255-737,739-780,809-852,854-856,859-906,942-998,1000-1041,1044-1076,1080-1252,1256-1263,1267-1279,1283-1286,1288-1290,1295-1482,1502-1577,1580-1680,1690-1932,1934-1948,1950-1953,1955-1963,1995-2034,2036-2041,2045-2045,2058-2064,2087-2125,2132-2147,2159-2172
+  s_9b9532ed48c3cb::t_e29d3932f8dc3f 11-11
+  s_9b9532ed48c3cb::t_767042bd354603 185-194,250-254
+  s_9b9532ed48c3cb::t_079c7dd1c28ec7 1681-1689,1933-1933,1964-1994,2126-2131,2148-2158
+  s_9b9532ed48c3cb::t_2fc29be9b554f3 1949-1949,1954-1954,2035-2035
+  s_9b9532ed48c3cb::t_148c93ce74c200 2042-2044,2046-2057,2065-2086
+cli/src/vendor-probe/claude.js
+  s_9b9532ed48c3cb::t_ad3e065d4494e4 1-48,54-55,59-59,61-66,69-78,85-85,87-92
+cli/src/vendor-probe/opencode.js
+  s_9b9532ed48c3cb::t_ad3e065d4494e4 1-54,59-60,64-64,66-71,74-85,88-89,93-94,105-111
+cli/src/vendor-probe/kimi.js
+  s_9b9532ed48c3cb::t_ad3e065d4494e4 1-122,126-150,158-162,172-233,238-240,243-248
+  s_9b9532ed48c3cb::t_e29d3932f8dc3f 123-125,165-171
+cli/src/setup.js
+  s_9b9532ed48c3cb::t_2df6e12de28937 1-17,19-339
+plugins/hopper/cli/bin/hopper-dispatch
+  0000019f85bb0ec7 1-2172
+plugins/hopper/cli/src/cache.js
+  0000019f85bb0ec7 1-472
+plugins/hopper/cli/src/inventory-contract.js
+  0000019f85bb0ec7 1-94
+plugins/hopper/cli/src/setup.js
+  0000019f85bb0ec7 1-339
+plugins/hopper/cli/src/vendor-probe/claude.js
+  0000019f85bb0ec7 1-95
+plugins/hopper/cli/src/vendor-probe/kimi.js
+  0000019f85bb0ec7 1-251
+plugins/hopper/cli/src/vendor-probe/opencode.js
+  0000019f85bb0ec7 1-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "4c815224c8b326b76a0fc3eb411739377dcd9d3d",
+  "prompts": {
+    "s_9b9532ed48c3cb::t_2b69cdc68625a2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 371,
+      "total_deletions": 0,
+      "accepted_lines": 371,
+      "overriden_lines": 0
+    },
+    "s_9b9532ed48c3cb::t_aed7d2fa2a4247": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 401,
+      "total_deletions": 0,
+      "accepted_lines": 401,
+      "overriden_lines": 0
+    },
+    "s_9b9532ed48c3cb::t_035cbf6cfe228c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 57,
+      "total_deletions": 0,
+      "accepted_lines": 57,
+      "overriden_lines": 0
+    },
+    "s_9b9532ed48c3cb::t_d98a299bc81687": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 94,
+      "total_deletions": 0,
+      "accepted_lines": 94,
+      "overriden_lines": 0
+    },
+    "s_9b9532ed48c3cb::t_b8552299bf167e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 1936,
+      "total_deletions": 0,
+      "accepted_lines": 1936,
+      "overriden_lines": 0
+    },
+    "s_9b9532ed48c3cb::t_ad3e065d4494e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 383,
+      "total_deletions": 0,
+      "accepted_lines": 383,
+      "overriden_lines": 0
+    },
+    "s_9b9532ed48c3cb::t_2df6e12de28937": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 338,
+      "total_deletions": 0,
+      "accepted_lines": 338,
+      "overriden_lines": 0
+    },
+    "s_acf81d175aef93::t_c9715f3ea225ed": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1784655055890286200",
+        "model": "unknown"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019f85bb0ec7": {
+      "agent_id": {
+        "tool": "codex",
+        "model": "gpt-5.6-sol",
+        "id": "ai-thread-codex-gpt-5.6-sol-1784655056583"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 3537,
+      "total_deletions": 0,
+      "accepted_lines": 3537,
+      "overriden_lines": 0
+    }
+  }
+}

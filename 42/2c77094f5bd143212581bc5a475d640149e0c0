@@ -1,0 +1,24 @@
+docs/superpowers/specs/2026-07-21-model-selector-attestation-design.md
+  s_9b9532ed48c3cb::t_102b0334724c56 213,228,252
+  s_9b9532ed48c3cb::t_d3ec70d73014d9 111,119,121
+  s_9b9532ed48c3cb::t_1d321475d57a0c 134,138,145
+  s_9b9532ed48c3cb::t_78501208ba81aa 271,301-302
+  s_9b9532ed48c3cb::t_5e5d8835c06900 314,316,318-319,334-337,346,355-356,358,360,363,367
+  s_9b9532ed48c3cb::t_ac41dca3bf2da4 253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "422c77094f5bd143212581bc5a475d640149e0c0",
+  "prompts": {},
+  "sessions": {
+    "s_9b9532ed48c3cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f829e-39fc-7e93-a464-c73aba41ebea",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

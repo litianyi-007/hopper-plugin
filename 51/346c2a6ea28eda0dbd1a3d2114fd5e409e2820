@@ -1,0 +1,23 @@
+.hopper/queue.md
+  s_6b560dd845bbbb::t_d0872ddb4558f6 56
+ISSUE-progress-watch-hang.md
+  s_6b560dd845bbbb::t_cc780da5adcf5e 1-42
+.hopper/handoffs/leader-tasklist.md
+  s_6b560dd845bbbb::t_05adbbbb78e70e 494-534
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "51346c2a6ea28eda0dbd1a3d2114fd5e409e2820",
+  "prompts": {},
+  "sessions": {
+    "s_6b560dd845bbbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06d808fa-3e8c-4a65-b10b-1be05690e7ab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

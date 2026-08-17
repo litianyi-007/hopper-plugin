@@ -1,0 +1,27 @@
+.hopper/MANIFEST.md
+  s_e8d54b83fa1e9c::t_c96c1a174c7d2b 26-32
+  s_e8d54b83fa1e9c::t_26c2354b3ab037 68-69
+  s_e8d54b83fa1e9c::t_f37b9f5493c146 11,13,15,19-24
+.hopper/queue.md
+  s_e8d54b83fa1e9c::t_aac2c31c6fc51d 1,5-11,17-36,42,44-45
+.hopper/handoffs/strategy-2026-05-20-T-PLUGIN-00-dispatch.md
+  s_e8d54b83fa1e9c::t_13861ca0fd882b 1,5-6,9,13-17,19,25-30,32,40-45,49-54,58-103,109-110,113-115,117-120,126-130,138-144,151,153,156-161,168,171,174,176,183-187,191,195-199,205-209,221-229,233,235,237,241,245
+.hopper/AGENTS.md
+  s_e8d54b83fa1e9c::t_a91e3f8ddb8aa8 1,4-13,17-25,27,29,31,33-44,46-52,56-57,60-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "0b3cb74147885749ecf8c0652f7dbea6b7667453",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

@@ -1,0 +1,56 @@
+docs/sidequests/web-dashboard/handoffs/T-WEB-01-REVIEW-claude-output.md
+  0000019e86c631a9 1-280
+docs/sidequests/web-dashboard/handoffs/T-WEB-01-REVIEW-vendor-output.template.md
+  0000019e86c631a9 1-316
+docs/sidequests/web-dashboard/handoffs/T-WEB-01-output.template.md
+  0000019e86c631a9 1-232
+docs/sidequests/web-dashboard/handoffs/T-WEB-02-REVIEW-claude-output.md
+  0000019e86c631a9 1-259
+docs/sidequests/web-dashboard/handoffs/T-WEB-03-REVIEW-claude-output.md
+  0000019e86c631a9 1-282
+docs/sidequests/web-dashboard/handoffs/T-WEB-04-REVIEW-claude-output.md
+  0000019e86c631a9 1-285
+docs/sidequests/web-dashboard/handoffs/T-WEB-04.5-REVIEW-claude-output.md
+  0000019e86c631a9 1-200
+docs/sidequests/web-dashboard/handoffs/T-WEB-05-REVIEW-claude-output.md
+  0000019e86c631a9 1-287
+docs/sidequests/web-dashboard/handoffs/T-WEB-06-REVIEW-claude-output.md
+  0000019e86c631a9 1-317
+docs/sidequests/web-dashboard/handoffs/T-WEB-07-REVIEW-claude-output.md
+  0000019e86c631a9 1-333
+docs/sidequests/web-dashboard/handoffs/T-WEB-08-REVIEW-claude-output.md
+  0000019e86c631a9 1-388
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7f04e258445549ec59852df145bb20707b12a6b9",
+  "prompts": {
+    "s_3986c2f5f8543f::t_2b39c9dcd208dd": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1780377595795403100",
+        "model": "unknown"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019e86c631a9": {
+      "agent_id": {
+        "model": "gpt-5.5",
+        "id": "ai-thread-codex-gpt-5.5-1780377596329",
+        "tool": "codex"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 3179,
+      "total_deletions": 0,
+      "accepted_lines": 3179,
+      "overriden_lines": 0
+    }
+  }
+}

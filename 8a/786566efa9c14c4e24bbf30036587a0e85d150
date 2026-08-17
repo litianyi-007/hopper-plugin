@@ -1,0 +1,21 @@
+tests/unit/governance.test.js
+  s_0f03cb7314737d::t_f168ac86009a5d 69-128
+cli/src/governance.js
+  s_0f03cb7314737d::t_38651b20312363 87-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "8a786566efa9c14c4e24bbf30036587a0e85d150",
+  "prompts": {},
+  "sessions": {
+    "s_0f03cb7314737d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed45f-9db1-7240-a384-80c147010fa3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

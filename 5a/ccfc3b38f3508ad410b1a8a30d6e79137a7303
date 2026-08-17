@@ -1,0 +1,46 @@
+plugins/hopper/cli/bin/hopper-dispatch
+  0000019ed49f43e3 1-1470
+plugins/hopper/cli/src/dispatch.js
+  0000019ed49f43e3 1-257
+plugins/hopper/cli/src/queue.js
+  0000019ed49f43e3 1-190
+plugins/hopper/cli/src/scaffold.js
+  0000019ed49f43e3 1-313
+plugins/hopper/cli/src/tasks.js
+  0000019ed49f43e3 1-117
+plugins/hopper/cli/src/types.js
+  0000019ed49f43e3 1-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "5accfc3b38f3508ad410b1a8a30d6e79137a7303",
+  "prompts": {
+    "s_cc8f98d334747e::t_99773c68e7eab4": {
+      "agent_id": {
+        "tool": "mock_ai",
+        "id": "ai-thread-1781683667914416600",
+        "model": "unknown"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "0000019ed49f43e3": {
+      "agent_id": {
+        "tool": "claude",
+        "model": "claude-opus-4-8",
+        "id": "ai-thread-claude-claude-opus-4-8-1781683667939"
+      },
+      "human_author": "litianyi",
+      "messages": [],
+      "total_additions": 2449,
+      "total_deletions": 0,
+      "accepted_lines": 2449,
+      "overriden_lines": 0
+    }
+  }
+}

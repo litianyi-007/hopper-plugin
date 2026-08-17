@@ -1,0 +1,21 @@
+hosts/claude-code/README.md
+  s_e8d54b83fa1e9c::t_752e58b31d08ad 73,77,80
+.claude-plugin/marketplace.json
+  s_e8d54b83fa1e9c::t_255aefde9abe6b 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "8569169c7c0e473c74dc1024476c74ab8006e989",
+  "prompts": {},
+  "sessions": {
+    "s_e8d54b83fa1e9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a2345-e5c0-4fd5-9bac-72fcaf673568",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}

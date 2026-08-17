@@ -1,0 +1,23 @@
+scripts/sync-vendored-plugin.mjs
+  s_7a2020daad2c48::t_ed822aa67cddf7 1-75
+tests/unit/vendored-plugin-sync.test.js
+  s_7a2020daad2c48::t_f228367870b487 1-22
+package.json
+  s_7a2020daad2c48::t_99360563b95f1c 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "b30fe650e68ee1ee3e8b5dad29dbb497beb4520b",
+  "prompts": {},
+  "sessions": {
+    "s_7a2020daad2c48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ddaa5ae4-b7cd-4c8e-a30f-538acc2301b3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "litianyi <litianyi@corp.netease.com>"
+    }
+  }
+}
