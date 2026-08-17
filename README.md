@@ -4,8 +4,8 @@
 
 > Vendor-neutral background dispatch for AI agents
 
-![License](https://img.shields.io/badge/license-Apache--2.0-blue)
-![Version](https://img.shields.io/badge/version-0.45.2-3DDC97)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Version](https://img.shields.io/badge/version-0.59.0-3DDC97)
 ![Tests](https://img.shields.io/badge/tests-passing-3DDC97)
 ![Hosts](https://img.shields.io/badge/hosts-7-111827)
 
@@ -35,6 +35,28 @@ vendor CLI。状态全部落在 `.hopper/` 下的 markdown 与 JSONL 文件里�
 `codex` → openai、`grok` → xai、`kimi` → moonshot;`copilot` / `opencode` / `mimo` / `agy`
 是多后端路由器,刻意不归族。族相同就拒绝派发,防止一个宿主把任务转派回自己同一账号体系。
 后台任务由 `hopper-runner` 拉起,dashboard 是同一份 `.hopper/` 状态的只读消费者。
+
+## 什么时候用它 / 什么时候别用
+
+**Hopper 对结果负责，不对过程负责。** 它是单次 spawn、无重试、无 fallback；vendor 在
+独立进程里跑，不共享你的上下文，中途无法转向——追问就是一次新的派发。
+
+派发前问两个问题，任一不过就自己做：
+
+1. **这个答案你自己能算出来吗？** 能——自己做。源码摘要、提交记录、文件检索、版本号
+   都是确定性查询，走一次派发要花几分钟和几美元，换回来一个**更不可靠**的答案。
+   （实测：一次评审派发 5m16s / 153 万 token / $0.74；被它对比的那条 `git log` 是 40ms。）
+2. **现在能不能把整个问题说完？** 不能——那是探索性工作，而探索需要的引导正是
+   单次派发给不了的。
+
+两问都过，再看**独立性是不是价值来源**：你要的是一个不共享你的上下文、先验和错误的答案吗？
+
+判据是**交付物**，不是主题。代码评审**必须**读源码——那是手段，交付物是判断，该派发；
+「这个模块干了什么」也读源码，但交付物是你自己就能产出的数据，不该派发。
+
+**「不该派发」的那些场景没有对应的 task-type，这就是执行面**——不需要任何东西去猜你
+brief 的意图。完整论述见 [`docs/WHEN-TO-USE.md`](docs/WHEN-TO-USE.md)，
+`hopper-dispatch --task-types` 会按类型打印同样的「用于/不用于」。
 
 ## 两层 vendor 控制
 
@@ -155,6 +177,7 @@ hopper-dispatch --result   T-PROG-AUDIT
 |---|---|---|---|
 | codex | `-m` | ✓ | **只认裸名字**:`gpt-5.5`、`gpt-5.4-mini`、`gpt-5.3-codex-spark`。带 provider 前缀的 id(`openai-codex/…`)在 ChatGPT 账号下会被拒绝。 |
 | grok | `-m` | ✓ | 枚举 low/med/high;`xhigh` 会被 clamp 到 `high`。 |
+| pi | `--model <model>` 或 `<provider>/<model>` | ✓ | `--thinking` 枚举是 off/minimal/low/medium/high/xhigh/max——hopper 五档的**超集**,所以 `xhigh` **不会被 clamp**,是唯一原样透传的 vendor。多 provider 路由:能用哪些模型取决于**这台机器**登录了谁(`--probe pi` 读 `pi --list-models` 的实时目录)。不传 `--model` 时回落到 `~/.pi/agent/settings.json` 的 `defaultProvider`/`defaultModel`。**⚠ `openai` 与 `openai-codex` 是两个不同的 provider**,gpt-5.6 系列在 `openai-codex`(ChatGPT 订阅 OAuth)下,不在 `openai`(API key)下——写错前缀会直接 `No API key found`。详见下方「pi 的模型怎么写」。 |
 | mimo | `--model` | ✓ | `xhigh` → `--variant max`。**不在产品支持范围**(2026-07-31 决策)——见下文。 |
 | copilot | `--model` | ✓ | 枚举 low/med/high;`xhigh` 会被 clamp 到 `high`。原始覆盖值:`HOPPER_COPILOT_EFFORT`。**不在产品支持范围**(2026-07-31 决策)——见下文。 |
 | opencode | `--model <provider/model>` | 仅显式传入才生效 | 调用方传的 `--reasoning high` 会变成 `--variant high`;Hopper 故意不给 OpenCode 发默认的 `xhigh`,以保持 provider 兼容。`HOPPER_OPENCODE_VARIANT=<v>` 可以原样覆盖它。**不在产品支持范围**(2026-07-31 决策)——见下文。 |
@@ -171,6 +194,45 @@ hopper-dispatch --capabilities codex    # 单个 vendor 的 model/effort/perms �
 hopper-dispatch --probe codex           # 你这个账号的实时 model 目录
 hopper-dispatch --check-model codex gpt-5.5   # 派发前断言一个模型:verified(0) | catalog-only(2) | not-found(1)
 ```
+
+### pi 的模型怎么写
+
+pi 是多 provider 路由,`--model` 有三种写法:裸名字、`provider/id`、`id:<thinking>`。
+**pi 官方文档没有写它的解析算法**,所以下面是 2026-08-10 在 pi 0.84.1 上实测的行为。
+
+先记住这一条,它是唯一真会咬人的地方:
+
+> **`openai` 和 `openai-codex` 是两个不同的 provider。** `openai` 走 API key(`OPENAI_API_KEY`),
+> `openai-codex` 走 ChatGPT 订阅的 OAuth。**gpt-5.6 系列(terra / sol / luna)挂在
+> `openai-codex` 下**。在一台 `openai-codex` 已登录的机器上,`--model openai/gpt-5.6-terra`
+> 会直接 `exit 1` 并报 `No API key found for openai.`——前缀一旦写出来就**钉死** provider,
+> 不会再回退去找别的 provider。
+
+hopper 会替你兜住其中一部分。对**已在 `knownGood` 里**的模型,三种写法都会被规范化到同一个值:
+
+| 你写的 | hopper 实际发给 pi |
+|---|---|
+| `gpt-5.6-terra`(裸) | `openai-codex/gpt-5.6-terra` |
+| `openai-codex/gpt-5.6-terra` | 原样 |
+| `openai/gpt-5.6-terra`(前缀写错) | `openai-codex/gpt-5.6-terra` ← **自动纠正** |
+| `GPT 5.6 Terra`(松散拼写) | `openai-codex/gpt-5.6-terra` |
+
+**但对不在 `knownGood` 里的模型(比如刚发布的新模型),hopper 原样透传**——这时
+`openai/gpt-5.7-xxx` 就会带着错前缀直达 pi 并硬失败。这个不对称是唯一的坑,派发前用
+`--check-model` 挡一下即可:
+
+```bash
+# 想知道 hopper 到底会发什么给 pi:看 --json 的 normalized 字段
+hopper-dispatch --check-model pi "openai/gpt-5.6-terra" --json
+#   {"model":"openai/gpt-5.6-terra","normalized":"openai-codex/gpt-5.6-terra","verdict":"verified",...}
+
+hopper-dispatch --check-model pi openai/gpt-5.7-xxx   # → not-found,exit 1
+hopper-dispatch --probe pi                            # 看这台机器实际登录了哪些 provider
+pi auth check --provider openai-codex --json          # 单独确认某个 provider 的登录状态
+```
+
+不传 `--model` 时,pi 回落到 `~/.pi/agent/settings.json` 里的 `defaultProvider` /
+`defaultModel`(不是 `pi --help` 写的 `google`——那只在完全没有配置时才生效)。
 
 用环境变量调优:
 
@@ -258,13 +320,14 @@ hopper-opencode T-PROG-REVIEW --background
 **7 类宿主**都能发起 dispatch:Claude Code、Codex CLI、OpenCode、Copilot CLI、Grok Build、
 Cursor CLI,以及一个 standalone shell。
 
-**8 个 vendor adapter** 已注册,但产品实际建议使用的只有其中 4 个:
+**9 个 vendor adapter** 已注册,但产品实际建议使用的只有其中 5 个:
 
-> **产品支持的 vendor 集合(2026-07-31 决策):`codex` / `grok` / `claude` / `kimi`。**
+> **产品支持的 vendor 集合:`codex` / `grok` / `claude` / `kimi`(2026-07-31 决策)
+> \+ `pi`(2026-08-10 新增)。**
 > `agy` / `copilot` / `mimo` / `opencode` **不在支持范围内**——这是一次产品决策,收窄
 > 主动维护的使用范围,不是代码层面的限制。它们的 adapter 文件**没有被删除**(删掉会破坏
-> 现有测试与历史记录);它们仍然注册着,`--vendors` 仍会列出全部 8 家,代码里也没有任何地方
-> 硬编码"只认这 4 家"(那样会和真正的执行点重复,甚至可能打架)。对某个**具体项目**能派发给
+> 现有测试与历史记录);它们仍然注册着,`--vendors` 仍会列出全部 9 家,代码里也没有任何地方
+> 硬编码"只认这 5 家"(那样会和真正的执行点重复,甚至可能打架)。对某个**具体项目**能派发给
 > 谁的执行点,是那个项目 `.hopper/AGENTS.md` 里的 **`Approved Vendors`** 表——fail-closed:
 > 这一节缺失,或者某个 vendor 不在表里 / 不是 `yes`,一律拒绝派发,**包括显式的 `--vendor`
 > 覆盖**。
@@ -364,4 +427,4 @@ probe、清理陈旧任务,以及多 vendor 评审这些场景的完整用法。
 - v1.1(dashboard 集成 + 系统 toast + 文档):GA
 - v1.2(pipe+tee + stream-parser + 更多 provider):规划中
 
-许可:Apache-2.0。见 [LICENSE](LICENSE)。
+许可:MIT。见 [LICENSE](LICENSE)。

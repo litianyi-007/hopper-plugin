@@ -1,6 +1,6 @@
 {
   "name": "hopper",
-  "version": "0.45.2",
+  "version": "0.59.0",
   "description": "Vendor-neutral background dispatch for AI agent tasks using the llm-hopper file protocol.",
   "author": {
     "name": "litianyi-007 (litianyi)",
@@ -8,7 +8,7 @@
   },
   "homepage": "https://github.com/litianyi-007/hopper-plugin",
   "repository": "https://github.com/litianyi-007/hopper-plugin",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "keywords": [
     "llm",
     "multi-llm",

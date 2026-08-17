@@ -1,7 +1,7 @@
 {
   "$schema": "https://catalog.deva.msh.team/schemas/kimi.plugin.schema.json",
   "name": "hopper",
-  "version": "0.45.2",
+  "version": "0.59.0",
   "description": "Vendor-neutral background dispatch for AI agents. Thin plugin layer over the llm-hopper file-based protocol: dispatches task-typed work to vendor CLI subprocesses (codex, kimi, opencode, copilot, agy, grok, mimo, claude). State lives in plain markdown and JSONL under .hopper/.",
   "keywords": [
     "hopper",
@@ -18,7 +18,7 @@
   ],
   "author": "litianyi-007",
   "homepage": "https://github.com/litianyi-007/hopper-plugin",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "skills": "./skills/",
   "skillInstructions": "Use the hopper skills when the user wants to dispatch work to external vendor CLIs (codex, kimi, opencode, copilot, agy, grok, mimo, claude) as background jobs through the llm-hopper file-based protocol. hopper is the entry skill; hopper-dispatch submits tasks; hopper-status and hopper-progress inspect running jobs; hopper-result collects outputs; hopper-setup initializes .hopper/ state; hopper-smoke verifies vendor CLIs; hopper-models and hopper-vendors list catalogs and routing; hopper-probe checks connectivity. All state lives in plain markdown and JSONL under .hopper/. Follow each skill's SKILL.md exactly; do not invent vendor availability when a probe or smoke check fails.",
   "interface": {

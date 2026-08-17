@@ -297,4 +297,4 @@ tests/unit/dashboard-cost.test.js       # cost parser + aggregation + route
 
 ## License
 
-Inherits `LICENSE` from the project root (Apache-2.0).
+Inherits `LICENSE` from the project root (MIT).

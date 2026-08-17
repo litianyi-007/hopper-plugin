@@ -8,6 +8,7 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { applyTaskTypeFloor } from '../subprocess.js';
+import { diagnosticSignal } from '../vendor-signal.js';
 
 function reasoningVariant(reasoning) {
   if (!reasoning) return null;
@@ -40,6 +41,9 @@ export const mimoAdapter = {
   capabilities: {
     modelArg: {
       accepted: 'freeform',
+      // Same value the sentinel already inferred from knownGood[0] — declared
+      // explicitly so the intent survives a future reordering of the catalog.
+      hopperDefault: 'mimo/mimo-auto',
       knownGood: ['mimo/mimo-auto', 'xiaomi/mimo-v2.5-pro', 'xiaomi/mimo-v2.5-pro-ultraspeed'],
       sourceNote: 'MiMoCode `mimo run -m, --model <provider/model>` accepts provider/model identifiers. Run `mimo models` for the account-local catalog.',
     },
@@ -127,7 +131,11 @@ export const mimoAdapter = {
       }
       return { text: parsed.text || raw.stdout, status: 'timeout', error: `mimo run timed out after ${raw.durationMs}ms` };
     }
-    if (raw.exitCode === 127 || /not found|command not found/i.test(raw.stderr || '')) {
+    // Exit 127 is the shell's own verdict and is proof. The `not found` substring
+    // test that used to sit beside it was not: in background mode the runner hands
+    // over one interleaved transcript, so it matched the assistant's own prose.
+    // A binary that is missing cannot also have produced output.
+    if (raw.exitCode === 127) {
       return {
         text: '',
         status: 'permission-fail',
@@ -135,8 +143,10 @@ export const mimoAdapter = {
       };
     }
 
-    const signal = `${raw.stdout || ''}\n${raw.stderr || ''}`;
-    if (/unauthoriz|invalid.*api|api key|credential|not logged in|\b401\b|\b403\b/i.test(signal)) {
+    const { text: signal } = diagnosticSignal(raw);
+    if (raw.exitCode !== 0
+      && (/unauthoriz|invalid\s+(?:api[\s-]*key|credential)|api[\s-]*key\s*(?:is\s*)?(?:invalid|expired|missing|not set)|not logged in|credential(?:s)?\s*(?:invalid|expired|missing|not found)/i.test(signal)
+        || /\bHTTP\s*(?:401|403)\b|\bstatus(?:\s*code)?[:=]?\s*(?:401|403)\b/i.test(signal))) {
       return {
         text: '',
         status: 'auth-fail',

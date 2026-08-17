@@ -4,7 +4,7 @@
 // Cache entries may retain future/additive fields. Public inventory must not
 // forward them: this module is the sole input contract for renderers.
 
-const DECLARED_VENDORS = new Set(['agy', 'claude', 'codex', 'copilot', 'grok', 'kimi', 'mimo', 'opencode']);
+const DECLARED_VENDORS = new Set(['agy', 'claude', 'codex', 'copilot', 'grok', 'kimi', 'mimo', 'opencode', 'pi']);
 const BINARY_BASENAMES = new Map([
   ['agy', 'agy'],
   ['claude', 'claude'],
@@ -14,6 +14,7 @@ const BINARY_BASENAMES = new Map([
   ['opencode', 'opencode'],
   ['kimi', 'kimi'],
   ['mimo', 'mimo'],
+  ['pi', 'pi'],
 ]);
 const DIAGNOSTIC_CODES = new Set([
   'none',
@@ -46,6 +47,9 @@ function sourcePair(vendor, sourceKind) {
   }
   if (vendor === 'opencode' && sourceKind === 'cli-catalog') {
     return { sourceKind, sourceLabel: 'opencode-cli-catalog' };
+  }
+  if (vendor === 'pi' && sourceKind === 'cli-catalog') {
+    return { sourceKind, sourceLabel: 'pi-cli-catalog' };
   }
   if (vendor === 'kimi' && sourceKind === 'config') {
     return { sourceKind, sourceLabel: 'kimi-configured-aliases' };
@@ -132,7 +136,7 @@ export function renderSafeInventory(inventory) {
       : 'unknown',
     sourceLabel: typeof value.sourceLabel === 'string' && [
       'adapter-static-selectors', 'unavailable', 'claude-selector-metadata',
-      'opencode-cli-catalog', 'kimi-configured-aliases', 'unknown',
+      'opencode-cli-catalog', 'pi-cli-catalog', 'kimi-configured-aliases', 'unknown',
     ].includes(value.sourceLabel) ? value.sourceLabel : 'unknown',
     diagnosticCode: normalizeDiagnostic(value.diagnosticCode),
     diagnosticState: ['none', 'unavailable', 'degraded', 'unknown'].includes(value.diagnosticState)

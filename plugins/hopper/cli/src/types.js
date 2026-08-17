@@ -98,7 +98,7 @@
  * @typedef {object} OutputEvidence
  * @property {'verified-complete'|'unknown-completeness'|'no-text'} completeness
  * @property {'structured-envelope'|'event-stream'|'vendor-result-field'|'none'} source
- * @property {'opencode-step-finish'|'opencode-message-completed'|'opencode-result-success'|'claude-result-success'|'grok-end-turn'|'none'} terminalMarker
+ * @property {'opencode-step-finish'|'opencode-message-completed'|'opencode-result-success'|'claude-result-success'|'grok-end-turn'|'pi-agent-settled'|'none'} terminalMarker
  */
 
 /**
@@ -110,6 +110,12 @@
  * @property {'success'|'auth-fail'|'timeout'|'permission-fail'|'unknown-fail'} status
  * @property {OutputEvidence} [outputEvidence] Optional closed parser provenance for text
  * @property {ModelAttestation} [modelAttestation] Optional structured runtime evidence; absent means no runtime proof
+ * @property {string} [sessionId] Optional vendor-reported session identifier for resume, when the
+ *   vendor emits one in its own output (pi does, in its `session` stream header). Persisted to the
+ *   background handoff's `vendor_session_id` so a long dispatch can be resumed instead of re-run.
+ *   VENDOR-CONTROLLED TEXT: the writer sanitizes it against a strict charset before it reaches
+ *   frontmatter (see parsedVendorSessionId in cli/src/handoff-attestation.js). Adapters SHOULD
+ *   attach it to failures too — a ceiling timeout is precisely when resuming is worth the most.
  */
 
 /**

@@ -29,6 +29,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { applyTaskTypeFloor } from '../subprocess.js';
 import { adapterFailure } from '../adapter-diagnostics.js';
+import { diagnosticSignal, heuristicsAllowed, isSuccessfulTerminalReason, isUnsuccessfulTerminalReason } from '../vendor-signal.js';
 
 // Always pass -m explicitly: when -m is omitted the CLI's built-in default is
 // UNCONFIRMED, and retired slugs can silently redirect. Real-world dogfood on
@@ -39,7 +40,7 @@ import { adapterFailure } from '../adapter-diagnostics.js';
 // '<x>': Invalid params: "unknown model id"`. `grok -p ... -m grok-4.5
 // --output-format json` live micro-test on 2026-07-18 (grok CLI v0.2.101)
 // returned `{"text":"OK","stopReason":"EndTurn",...}` — CONFIRMED working.
-const DEFAULT_MODEL = 'grok-4.5';
+const DEFAULT_MODEL = 'grok-4.6';
 
 const GROK_CREDENTIAL_BASENAMES = Object.freeze([
   'config.toml',
@@ -86,6 +87,13 @@ export const grokAdapter = {
   capabilities: {
     modelArg: {
       accepted: 'freeform',
+      // The model hopper prefers for hopper-shaped work. Same value as
+      // DEFAULT_MODEL above (which args() passes when no model is requested), so
+      // a grok dispatch is now pinned to the SAME model whether it arrives via
+      // the sentinel or via the adapter fallback — and the sentinel path RECORDS
+      // it, which the fallback path never did (a swarm panelist showed
+      // `observed_models_json: []` while really running grok-4.5).
+      hopperDefault: DEFAULT_MODEL,
       // knownGood[0] is the `verified-latest` sentinel target (cli/src/dispatch.js
       // resolveAdapterOptsForTask + cli/src/policy.js). The grok model LINE is
       // version-coupled and rotates without notice — xAI retires slugs and this
@@ -94,11 +102,22 @@ export const grokAdapter = {
       // of 2026-06-02, returned `Couldn't set model '<x>': Invalid params:
       // "unknown model id"` by 2026-07-16). Live `--probe grok` (see
       // cli/src/vendor-probe/grok.js) now parses `grok models`' own "Available
-      // models:" listing and is the PREFERRED self-healing source when its cache
-      // is fresh — this static list is the offline/never-probed fallback baseline
-      // only, not the source of truth.
-      knownGood: ['grok-4.5'],
-      sourceNote: 'grok `-m, --model <MODEL>` (CONFIRMED docs.x.ai/build/cli/headless-scripting). V-verified 2026-07-18 via `grok -p "..." -m grok-4.5 --output-format json` live micro-test on grok CLI v0.2.101 → {"text":"OK","stopReason":"EndTurn",...} (real dispatch, not just `grok models` listing it). `grok models` (live, same date) confirms grok-4.5 is also the CLI\'s own default. `grok-build` / `grok-composer-2.5-fast` (the prior knownGood) both now 400 with "unknown model id" — retired sometime between 2026-06-02 and 2026-07-16. CLI built-in default when -m omitted is still UNCONFIRMED as a matter of policy, so this adapter ALWAYS passes -m explicitly. NAME COLLISION: the third-party grok-cli defaults to grok-code-fast-1 and uses different auth/output flags.',
+      // models:" listing.
+      //
+      // **更正 2026-08-13** —— 这里原本写着「实时 probe 是缓存新鲜时的首选自愈来源，
+      // 本静态列表只是离线/未探测过的回退基线，不是事实来源」。**对真正决定派哪个模型
+      // 的那条路径，这两句都是假的。** `cli/src/dispatch.js:868` 调的是
+      // `resolveVerifiedLatest(getAdapter(vendor)?.capabilities?.modelArg)` —— 它读的
+      // 就是这个静态对象，从不查 `~/.hopper/cache/vendor-capabilities.json`。
+      // 2026-08-13 实测：跑完 `--probe grok`（缓存里已写入 `grok-4.6, grok-4.5`）之后，
+      // 紧接着解析出来的仍然是 `grok-4.5`，因为下面那行 `hopperDefault` 才是
+      // `resolveVerifiedLatest` 的返回值。**probe 自愈的是缓存，不是派发。**
+      // 这正是 ISSUE-grok-model-line-rotation-stale-knownGood 点名的根因
+      //（「修复静态数据的唯一机制本身也是静态的」）以更窄的形式存活下来：探针变成实时的
+      // 了，但它的结果从未接进解析路径。已另行登记；此注释存在的意义，是不让下一个读者
+      // 像这一个一样被误导。
+      knownGood: ['grok-4.6', 'grok-4.5'],
+      sourceNote: 'grok `-m, --model <MODEL>` (CONFIRMED docs.x.ai/build/cli/headless-scripting). **grok-4.6 V-verified 2026-08-13** via `grok -p "Reply with exactly: MODELCHECK-46-OK" -m grok-4.6 --output-format json --no-auto-update` live micro-test → {"text":"MODELCHECK-46-OK","stopReason":"end_turn",...} (real dispatch, NOT just `grok models` listing it — that distinction is the whole lesson of ISSUE-grok-model-line-rotation-stale-knownGood). Same-date `--probe grok` lists exactly two: grok-4.6, grok-4.5. Prior baseline: V-verified 2026-07-18 via `grok -p "..." -m grok-4.5 --output-format json` live micro-test on grok CLI v0.2.101 → {"text":"OK","stopReason":"EndTurn",...} (real dispatch, not just `grok models` listing it). `grok models` (live, same date) confirms grok-4.5 is also the CLI\'s own default. `grok-build` / `grok-composer-2.5-fast` (the prior knownGood) both now 400 with "unknown model id" — retired sometime between 2026-06-02 and 2026-07-16. CLI built-in default when -m omitted is still UNCONFIRMED as a matter of policy, so this adapter ALWAYS passes -m explicitly. NAME COLLISION: the third-party grok-cli defaults to grok-code-fast-1 and uses different auth/output flags.',
     },
     reasoningArg: {
       accepted: 'enumerated',
@@ -192,24 +211,39 @@ export const grokAdapter = {
   },
 
   parseResult(raw) {
+    // ── Harness-established failures. Decided by the runner, not by reading
+    // vendor prose, so they run first and are never subject to the veto below.
     if (raw.timedOut) {
       return adapterFailure('timeout', 'adapter-timeout');
     }
-    if (raw.exitCode === 127 || /not found|command not found/i.test(raw.stderr || '')) {
+    // Exit 127 is the shell's own "command not found" and is proof. The substring
+    // test that used to sit beside it was NOT proof: it scanned the whole
+    // transcript for `not found`, a phrase any code reviewer writes ("element not
+    // found"), and filed completed reviews as `adapter-binary-missing`. A missing
+    // binary cannot coexist with a vendor that ran for three minutes and returned
+    // an envelope, so there is nothing to recover by guessing.
+    if (raw.exitCode === 127) {
       return adapterFailure('permission-fail', 'adapter-binary-missing');
     }
-    const signal = `${raw.stdout || ''}\n${raw.stderr || ''}`;
+
     const parsed = extractGrokText(raw.stdout);
     const outputEvidence = grokOutputEvidence(parsed);
-    const stop = String(parsed.stopReason || '').trim();
-    const unsuccessfulStop = /cancel|abort|refus|error|fatal/i.test(stop);
-    if (raw.exitCode === 0 && parsed.parsedJson && !parsed.hasError && !unsuccessfulStop && parsed.text.trim()) {
+    const hasAnswer = Boolean(parsed.parsedJson && !parsed.hasError && parsed.text.trim());
+    const terminalSuccess = isSuccessfulTerminalReason(parsed.stopReason);
+    const unsuccessfulStop = isUnsuccessfulTerminalReason(parsed.stopReason);
+
+    if (raw.exitCode === 0 && hasAnswer && !unsuccessfulStop) {
       const result = parsed.usage
         ? { text: parsed.text, status: 'success', diagnosticCode: 'none', usage: parsed.usage }
         : { text: parsed.text, status: 'success', diagnosticCode: 'none' };
       return outputEvidence ? { ...result, outputEvidence } : result;
     }
-    const status = hasSpecificGrokAuthFailure(signal) ? 'auth-fail' : 'unknown-fail';
+
+    // ── Text heuristics, and only from here down. They may explain a failure;
+    // they may not declare one the vendor already said did not happen.
+    const { text: signal } = diagnosticSignal(raw);
+    const mayGuess = heuristicsAllowed({ exitCode: raw.exitCode, hasAnswer, terminalSuccess });
+    const status = mayGuess && hasSpecificGrokAuthFailure(signal) ? 'auth-fail' : 'unknown-fail';
     const diagnostic = status === 'auth-fail'
       ? 'adapter-auth-failed'
       : (raw.exitCode === 0 ? 'adapter-protocol-invalid' : 'adapter-unknown-failed');
@@ -287,33 +321,75 @@ function extractGrokText(stdout) {
   const tail = trailing === trimmed ? null : parseCandidate(trailing);
   if (tail) return tail;
 
-  // Framed multi-line object (ISSUE-grok-adapter-protocol-invalid-false-fail):
-  // grok --output-format json pretty-prints the result envelope across MANY
-  // lines, and hopper's own runner prepends log lines (e.g. the idle-watchdog
-  // notice) to the captured stdout. Neither the whole-stdout parse nor the
-  // single trailing line sees the object → false adapter-protocol-invalid on
-  // a genuinely successful run. Recover by parsing the span from the FIRST
-  // '{' to the LAST '}' — grok's envelope is one top-level object, and the
-  // recognized-envelope-keys gate above still rejects a mismatched slice.
-  const open = trimmed.indexOf('{');
+  // Framed multi-line object. grok `--output-format json` pretty-prints the result
+  // envelope across MANY lines, and the runner's captured stdout is preceded by log
+  // output (its own notices plus the vendor's startup diagnostics). Neither the
+  // whole-stdout parse nor the single trailing line sees the object.
+  //
+  // The first version of this candidate sliced from the FIRST '{' to the LAST '}'.
+  // That assumed the preamble contains no braces — and Rust's `tracing`, which grok
+  // is built on, prints structs inline: a warning about a malformed
+  // ~/.cursor/hooks.json rendered as `ParseFile { path: ..., detail: ... }` and
+  // became the first '{' in the stream. The slice was garbage, extraction failed,
+  // and a complete run was filed as a failure. Measured on the real log: first '{'
+  // at 145948, actual envelope at 149691.
+  //
+  // Scan BACKWARDS instead. The envelope is the LAST top-level object in the
+  // stream, so the last line-initial '{' that yields a parseable object wins, and
+  // no amount of brace-bearing preamble can shadow it. Bounded so a pathological
+  // stream cannot turn this into a quadratic parse.
   const close = trimmed.lastIndexOf('}');
-  if (open !== -1 && close > open && (open !== 0 || close !== trimmed.length - 1)) {
-    const framed = parseCandidate(trimmed.slice(open, close + 1));
-    if (framed) return framed;
+  if (close !== -1) {
+    const starts = [];
+    for (let i = trimmed.indexOf('\n{'); i !== -1; i = trimmed.indexOf('\n{', i + 1)) starts.push(i + 1);
+    if (trimmed.startsWith('{')) starts.unshift(0);
+    for (const open of starts.slice(-MAX_FRAMED_CANDIDATES).reverse()) {
+      if (open >= close) continue;
+      const framed = parseCandidate(trimmed.slice(open, close + 1));
+      if (framed) return framed;
+    }
   }
   return noSelectedObject;
 }
 
+/**
+ * How many line-initial '{' positions to try, counting back from the end. The
+ * envelope is realistically the last one; the rest is preamble. Bounded so a
+ * stream full of brace-bearing log lines costs a fixed number of parse attempts
+ * rather than one per line.
+ */
+const MAX_FRAMED_CANDIDATES = 40;
+
 function grokOutputEvidence(parsed) {
   if (!parsed?.parsedJson || parsed.hasError || !parsed.text.trim()) return undefined;
-  const normalizedStop = String(parsed.stopReason || '').trim();
-  return normalizedStop === 'EndTurn'
+  // Compared NORMALIZED. This tested `=== 'EndTurn'` while grok's actual envelopes
+  // carry `end_turn`, so a genuinely complete run was filed `unknown-completeness`
+  // purely on casing and an underscore — and the existing tests only ever used the
+  // capitalized spelling, so nothing caught it.
+  return isSuccessfulTerminalReason(parsed.stopReason)
     ? { completeness: 'verified-complete', source: 'vendor-result-field', terminalMarker: 'grok-end-turn' }
     : { completeness: 'unknown-completeness', source: 'vendor-result-field', terminalMarker: 'none' };
 }
 
+/**
+ * A SPECIFIC authentication failure — the name was already a promise the regex did
+ * not keep.
+ *
+ * Two alternatives were doing the damage:
+ *   - `invalid(?:\s+(?:api\s*)?key)?` made the qualifier OPTIONAL, so a bare
+ *     `invalid` matched. That word appears in ordinary vendor startup noise (the
+ *     real case: a warning that ~/.cursor/hooks.json had "invalid matcher groups")
+ *     and in any review that discusses invalid input.
+ *   - `\b(?:HTTP\s*)?(?:401|403)\b` made the HTTP prefix optional, so a bare 401 or
+ *     403 anywhere — a line number, a byte offset, a token count, a port — matched.
+ *
+ * Both qualifiers are now REQUIRED. The cost of a miss is a less specific
+ * `unknown-fail`; the cost of a false positive was a completed, paid review
+ * discarded as an auth error, twice.
+ */
 function hasSpecificGrokAuthFailure(signal) {
-  return /\b(?:unauthorized|invalid(?:\s+(?:api\s*)?key)?|login\s+required|sign[ -]?in\s+required|AuthorizationRequired)\b|\b(?:HTTP\s*)?(?:401|403)\b/i.test(signal);
+  return /\b(?:unauthorized|invalid\s+(?:api\s*)?key|login\s+required|sign[ -]?in\s+required|auth(?:oriz|entic)ation\s+required|AuthorizationRequired)\b/i.test(signal)
+    || /\bHTTP\s*(?:401|403)\b|\bstatus(?:\s*code)?[:=]?\s*(?:401|403)\b/i.test(signal);
 }
 
 function failedGrokOutput(status, diagnosticCode, parsed, outputEvidence) {

@@ -36,6 +36,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { applyTaskTypeFloor } from '../subprocess.js';
 import { adapterFailure } from '../adapter-diagnostics.js';
+import { diagnosticSignal } from '../vendor-signal.js';
 
 // Versioned adapter metadata is the closed allowlist for result fields that are
 // stable enough to attest an actual runtime model. It deliberately names paths,
@@ -81,6 +82,28 @@ export const claudeAdapter = {
   capabilities: {
     modelArg: {
       accepted: 'freeform',
+      // Operator choice (2026-08-11): pin the TOP tier, because work dispatched
+      // through hopper is adversarial review / blindspot hunting / judgment,
+      // where the strongest available model is worth its cost — hopper's
+      // preference deliberately need not match what Claude Code picks for
+      // interactive use.
+      //
+      // NOTE THE DIRECTION. This field exists because the sentinel used to infer
+      // knownGood[0], and knownGood below is an UNORDERED ALIAS SET — `sonnet` is
+      // first because it is the most common alias, NOT because it is the best
+      // model. That inference silently DOWNGRADED an opus-entitled account on
+      // every task-type carrying `Model rule: verified-latest`, which the
+      // scaffold writes for every review type. Pinning `opus` here is the
+      // opposite: a deliberate, stated choice rather than an accident of array
+      // order — which is exactly what declaring the field is for.
+      //
+      // ⚠ ACCOUNT-DEPENDENT. Reachable tiers are a subscription entitlement (see
+      // sourceNote below), so on an account without opus this pin will FAIL
+      // rather than fall back. Override per project with the `Default model`
+      // column in AGENTS.md `## Approved Vendors`, or per machine with
+      // HOPPER_CLAUDE_MODEL; `default` and `best` are in knownGood for exactly
+      // that case (`best` lets the account pick its strongest).
+      hopperDefault: 'opus',
       knownGood: ['sonnet', 'opus', 'haiku', 'fable', 'opusplan', 'best', 'default', 'sonnet[1m]', 'opus[1m]'],
       sourceNote: '`claude --model <NAME>` accepts a latest-model alias (sonnet|opus|haiku|fable) OR a full model id (e.g. claude-sonnet-4-6) — CONFIRMED code.claude.com/docs/en/cli-reference 2026-06-16. The exact ids/tiers an account can reach depend on its subscription/entitlements, so this adapter does NOT hardcode a default: it omits --model unless opts.model is set and lets the CLI pick the account default (mirrors codex, which also leaves the model to the account).',
     },
@@ -187,7 +210,11 @@ export const claudeAdapter = {
     if (raw.timedOut) {
       return adapterFailure('timeout', 'adapter-timeout');
     }
-    if (raw.exitCode === 127 || /not found|command not found/i.test(raw.stderr || '')) {
+    // Exit 127 is the shell's own verdict and is proof. The `not found` substring
+    // test that used to sit beside it was not: in background mode the runner hands
+    // over one interleaved transcript, so it matched the assistant's own prose.
+    // A binary that is missing cannot also have produced output.
+    if (raw.exitCode === 127) {
       return adapterFailure('permission-fail', 'adapter-binary-missing');
     }
     // A completed result object is the authoritative vendor outcome. The
@@ -198,10 +225,11 @@ export const claudeAdapter = {
     if (raw.exitCode === 0 && parsedResult && !parsedResult.isError && parsedResult.text.trim()) {
       return successfulClaudeOutput(parsedResult);
     }
-    const signal = `${raw.stdout || ''}\n${raw.stderr || ''}`;
+    const { text: signal } = diagnosticSignal(raw);
     // Auth failure (the `error` categories the SDK emits include
     // authentication_failed / oauth_org_not_allowed — code.claude.com/docs/en/headless).
-    if (/authentication_failed|oauth_org_not_allowed|invalid api key|invalid x-api-key|ANTHROPIC_API_KEY|not logged in|please run\b.*login|\b401\b|\b403\b/i.test(signal)) {
+    if (/authentication_failed|oauth_org_not_allowed|invalid api key|invalid x-api-key|ANTHROPIC_API_KEY|not logged in|please run\b.*login/i.test(signal)
+      || /\bHTTP\s*(?:401|403)\b|\bstatus(?:\s*code)?[:=]?\s*(?:401|403)\b/i.test(signal)) {
       return failedClaudeOutput('auth-fail', 'adapter-auth-failed', parsedResult);
     }
     // Billing / credit / usage-limit block. Kept as a distinct branch because the

@@ -51,7 +51,7 @@ Expected output includes a runner PID and `.hopper/handoffs/<task-id>-output.md`
 
 ### Notes
 
-Vendor selection comes from `.hopper/AGENTS.md`, not from `--model`. `--reasoning` is honored by codex, mimo, grok, and copilot; OpenCode maps an **explicitly supplied** value to its provider-specific `--variant`, but omits AGENTS/global defaults to protect arbitrary providers. `HOPPER_OPENCODE_VARIANT` has higher precedence and passes through verbatim. Kimi reasoning is config/provider driven in `kimi -p`; `--model` is honored by kimi, opencode, copilot, grok, and mimo. OpenCode/provider validates variants, so tokenbox/DeepSeek support is unverified unless its provider documents it.
+Vendor selection comes from `.hopper/AGENTS.md`, not from `--model`. `--reasoning` is honored by codex, mimo, grok, copilot, and pi; OpenCode maps an **explicitly supplied** value to its provider-specific `--variant`, but omits AGENTS/global defaults to protect arbitrary providers. `HOPPER_OPENCODE_VARIANT` has higher precedence and passes through verbatim. Kimi reasoning is config/provider driven in `kimi -p`; `--model` is honored by kimi, opencode, copilot, grok, mimo, claude, and pi. pi is the one vendor whose `--thinking` enum is a **superset** of hopper's five levels, so an `xhigh` request reaches it unclamped (grok and copilot clamp `xhigh`→`high`). OpenCode/provider validates variants, so tokenbox/DeepSeek support is unverified unless its provider documents it.
 
 ## Recipe 2 - Background dispatch and active progress checks
 
@@ -192,7 +192,7 @@ The current native plugin route remains disabled. A future isolated route requir
 
 **Scenario**: Refresh per-machine model inventory before choosing a model override.
 **Hosts**: standalone, Claude Code through slash commands
-**Vendors involved**: codex, kimi, opencode, copilot, agy, grok, mimo
+**Vendors involved**: codex, kimi, opencode, copilot, agy, grok, mimo, claude, pi
 
 ### Steps
 
@@ -257,7 +257,7 @@ hopper-dispatch --result T-PROG-STALE
 
 **Scenario**: Ask two vendors to review the same spec from different angles, then compare their handoff files.
 **Hosts**: standalone, Claude Code
-**Vendors involved**: codex, kimi, opencode, copilot, agy, grok, mimo
+**Vendors involved**: codex, kimi, opencode, copilot, agy, grok, mimo, claude, pi
 
 ### Steps
 

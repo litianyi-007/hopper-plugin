@@ -86,6 +86,24 @@ function cwdCell(adapter) {
 const PERM_RE = /permission|approve|skip|allow|sandbox|danger|yolo|^-s$|^--agent$/i;
 
 /**
+ * Tokens that MATCH the substring heuristic above but are not permission
+ * controls, so they must not be rendered in the "full-access perms" column.
+ *
+ * `pi --no-approve` is the case that exposed this: it contains "approve", but
+ * it governs PROJECT TRUST — which project-local settings and extensions load
+ * (pi.dev/docs/latest/security) — and has nothing to do with what the model is
+ * allowed to do. Hopper passes it unconditionally as host-isolation, in BOTH
+ * sandbox modes. Listing it as pi's full-access permission argv would state, in
+ * the one table an operator reads to audit sandboxing, that pi has a permission
+ * control it does not have; the honest cell is "not argv-enforced" (pi's only
+ * real restriction is the read-only `--tools` allowlist, a different column).
+ *
+ * Deliberately an exact-token denylist, not a loosened PERM_RE: grok's
+ * `--always-approve` and copilot's `--allow-all-tools` must keep matching.
+ */
+const NON_PERM_TOKENS = new Set(['--no-approve', '-na', '--no-approvals']);
+
+/**
  * Full permission argv a vendor gets for danger-full-access. codex review P2:
  * we show the FULL set (not the delta vs read-only) so flags shared by BOTH
  * modes are not hidden — e.g. grok keeps `--permission-mode bypassPermissions`
@@ -98,6 +116,7 @@ function permsCell(adapter) {
   for (let i = 0; i < full.length; i++) {
     const t = full[i];
     if (t === PROMPT_SENTINEL) continue;
+    if (NON_PERM_TOKENS.has(t)) continue;
     if (PERM_RE.test(t)) {
       out.push(t);
       const next = full[i + 1];
@@ -156,7 +175,7 @@ export function renderRulesMarkdown({ version = pkgVersion() } = {}) {
 
 - \`--model <name>\` — forwarded only to vendors whose **model** column is not "ignored". Exact ids are account/subscription gated; confirm with \`--probe <vendor>\`. Fallback chain when omitted: \`--model\` flag > \`.hopper/AGENTS.md\`'s task-vendor-preference **Model rule** cell > vendor CLI default (no \`--model\` at all). \`Model rule: verified-latest\` is a SENTINEL — it resolves to the bound vendor's adapter \`knownGood[0]\` at dispatch time (the resolved REAL name, not the sentinel, is what reaches argv and \`output.md\` frontmatter). Check pre-dispatch: \`hopper-dispatch --check-model <vendor> <model>\`.
 - \`--reasoning <minimal|low|medium|high|xhigh>\` — **defaults to \`xhigh\`** (override: \`HOPPER_DEFAULT_REASONING\`). Only vendors whose **reasoning** column is not "ignored" consume it. Fallback chain when omitted: \`--reasoning\` flag > \`.hopper/AGENTS.md\`'s **Effort policy** cell (single token like \`medium\`, or a per-vendor table like \`codex:xhigh, grok:high\`) > \`HOPPER_DEFAULT_REASONING\` > \`xhigh\`. **OpenCode is deliberately different:** only an explicit CLI \`--reasoning\` is forwarded as its provider-specific \`--variant\`; a policy/default value is omitted so arbitrary providers remain compatible. \`HOPPER_OPENCODE_VARIANT=<value>\` has highest precedence and is forwarded verbatim. A resolved level outside a vendor's **reasoning** enum is NOT an error — it dispatches and gets clamped, but hopper now prints \`effort X → clamped to Y (<vendor> max/min)\` instead of remapping it silently; \`hopper-dispatch --setup\` also lints Effort policy cells ahead of time ("Task-type policy" section).
-- \`--sandbox <read-only|workspace-write|danger-full-access>\` — **defaults to \`danger-full-access\`**; auto-downgrades to read-only when the task brief/spec says \`read-only\` / \`只读\`. The **full-access perms** column shows the danger-full-access argv each vendor gets. NOTE: read-only is **not always argv-enforceable** — Kimi has no argv permission control, so an effective Kimi read-only dispatch is refused before spawn with \`E_KIMI_READ_ONLY_UNENFORCEABLE\`; Grok still runs with \`bypassPermissions\` (just without \`--always-approve\`). \`--write\` only writes Hopper's synchronous output artifact; it is not a Kimi permission flag or a read-only remedy. For a genuinely locked-down review, use a vendor with enforceable read-only controls or a separately proven Hopper-supported external process guard. **codex is platform-split (2026-07-31):** on macOS/Linux its own \`-s <mode>\` sandbox is verified working and IS argv-enforceable (a real read-only request denies writes); on **Windows** codex's \`-s\` harness cannot spawn child processes at all, so codex always runs full-access there via \`--dangerously-bypass-approvals-and-sandbox\` regardless of the requested mode. \`HOPPER_CODEX_SANDBOX_BYPASS\` flips the default, with **opposite polarity per platform** — \`=0\` disables bypass on Windows, \`=1\` enables it on macOS/Linux (see \`vendors/codex.js\`).
+- \`--sandbox <read-only|workspace-write|danger-full-access>\` — **defaults to \`danger-full-access\`**; auto-downgrades to read-only when the task brief/spec says \`read-only\` / \`只读\`. The **full-access perms** column shows the danger-full-access argv each vendor gets. NOTE: read-only is **not always argv-enforceable** — Kimi has no argv permission control, so an effective Kimi read-only dispatch is refused before spawn with \`E_KIMI_READ_ONLY_UNENFORCEABLE\`; Grok still runs with \`bypassPermissions\` (just without \`--always-approve\`). **pi is the mirror-image case:** its read-only IS argv-enforced (\`--tools read,grep,find,ls\` removes bash/edit/write from the model's toolset), but it has no per-path permission model at all, so \`workspace-write\` is refused before spawn with \`E_PI_WORKSPACE_WRITE_UNENFORCEABLE\` rather than silently becoming unrestricted host access — ask for \`read-only\`, or say \`danger-full-access\` if that is what you mean. pi ships **no OS sandbox**, so even its read-only is a capability restriction inside pi, not a kernel boundary; pair it with \`--subject-root\` on macOS. \`--write\` only writes Hopper's synchronous output artifact; it is not a Kimi permission flag or a read-only remedy. For a genuinely locked-down review, use a vendor with enforceable read-only controls or a separately proven Hopper-supported external process guard. **codex is platform-split (2026-07-31):** on macOS/Linux its own \`-s <mode>\` sandbox is verified working and IS argv-enforceable (a real read-only request denies writes); on **Windows** codex's \`-s\` harness cannot spawn child processes at all, so codex always runs full-access there via \`--dangerously-bypass-approvals-and-sandbox\` regardless of the requested mode. \`HOPPER_CODEX_SANDBOX_BYPASS\` flips the default, with **opposite polarity per platform** — \`=0\` disables bypass on Windows, \`=1\` enables it on macOS/Linux (see \`vendors/codex.js\`).
 - \`--subject-root <absolute-path>\` — opt-in macOS process guard for one specific tree. Valid only with the **effective** \`read-only\` sandbox; it fails closed if \`/usr/bin/sandbox-exec\` or path validation is unavailable. During guarded execution it blocks vendor/child \`file-write*\` in the tree and new subject-scoped \`file-link\` creation (preventing new external hard-link aliases). It cannot revoke a hard link created before the guard: a known alias outside the subject can still mutate the same inode through otherwise allowed outside writes. It also does **not** block reads or network/IPC, and is not a confidentiality boundary.
 - \`--timeout <ms>\` — absolute **ceiling** override (env: \`HOPPER_DISPATCH_TIMEOUT_MS\`). Timeouts are **idle + ceiling**, not a single total cap: a run is killed after \`HOPPER_IDLE_TIMEOUT_MS\` of silence (default 180s) or the ceiling (≥30min), whichever first. The **timeout** column is the per-vendor baseline that seeds the ceiling.
 - \`HOPPER_VENDOR_CWD\` — working directory for the dispatched vendor (default: the repo root that owns \`.hopper/\`). The **cwd** column shows the flag each vendor receives it through.

@@ -15,8 +15,67 @@
 // execute code — discovery is read-only. Users with untrusted PATH should
 // audit `echo $PATH` (POSIX) or `$env:Path` (Windows) before running --check.
 
-import { statSync, accessSync, constants } from 'node:fs';
-import { join, delimiter } from 'node:path';
+import { statSync, accessSync, constants, realpathSync } from 'node:fs';
+import { join, delimiter, resolve } from 'node:path';
+
+/**
+ * Was this module file executed DIRECTLY (`node <file>`), as opposed to imported?
+ *
+ * The naive form — `resolve(process.argv[1]) === fileURLToPath(import.meta.url)` —
+ * has two independent failure modes, BOTH of which fail the same catastrophic way:
+ * `main()` never runs, the process exits 0, and NOTHING is printed. For an
+ * automation caller that is indistinguishable from success.
+ *
+ *   1. SYMLINK / JUNCTION. `path.resolve()` does not follow links, but
+ *      `import.meta.url` is already realpath-resolved. Invoking through
+ *      `<npm-root>/hopper-plugin/cli/bin/hopper-dispatch` (an npm-global link into
+ *      the plugin cache) therefore compares a link path against a real path and
+ *      never matches. Reproduced live 2026-08-05 on the shipped 0.46.0:
+ *      `node <npm-link>/…/hopper-dispatch --help` printed nothing and exited 0,
+ *      while the same call through the realpath printed the usage banner.
+ *
+ *   2. WINDOWS PATH CASE. `realpathSync` on win32 does NOT normalize casing — it
+ *      echoes back whatever casing the caller supplied for each directory
+ *      component (verified: `F:/workspace/…` and `F:/WORKSPACE/…` both resolve,
+ *      and the two results are NOT string-equal). Any launcher that hands over a
+ *      differently-cased argv[1] — a cmd.exe shim, `%~dp0` expansion, a
+ *      lowercase drive letter, a PATH entry typed in another case — silently
+ *      re-creates failure mode 1.
+ *
+ * So: realpath BOTH sides (never just one), and compare case-insensitively on
+ * win32 only (POSIX filesystems are genuinely case-sensitive; folding there would
+ * risk the opposite bug — running main() on a merely similarly-named file).
+ *
+ * Both realpath calls are individually guarded. An unguarded one would throw at
+ * module top level, killing the CLI with a bare stack trace instead of its own
+ * error handling. On failure each side degrades to the lexical `resolve()`, which
+ * is exactly the pre-fix behaviour — a floor, not a regression.
+ *
+ * This must stay STRICT in the false direction: `cli/bin/hopper-dispatch` is
+ * imported by tests (for `parseProbeCacheRecoveryArgs`), and a false positive
+ * would run `main()` inside the test process. Distinct files always compare
+ * unequal under every branch here.
+ *
+ * @param {string|undefined} argv1  process.argv[1]
+ * @param {string} moduleFilename   fileURLToPath(import.meta.url) of the caller
+ * @param {object} [o]
+ * @param {Function} [o.realpath]   injectable for tests
+ * @param {string}   [o.platform]   injectable for tests
+ * @returns {boolean}
+ */
+export function isDirectInvocation(argv1, moduleFilename, { realpath = realpathSync, platform = process.platform } = {}) {
+  if (!argv1 || !moduleFilename) return false;
+  const canon = (p) => {
+    let out;
+    try { out = realpath(resolve(p)); } catch (_) { out = resolve(p); }
+    return platform === 'win32' ? out.toLowerCase() : out;
+  };
+  try {
+    return canon(argv1) === canon(moduleFilename);
+  } catch (_) {
+    return false;
+  }
+}
 
 /**
  * Walk PATH (+ PATHEXT on Windows) for an unqualified command name.
@@ -105,6 +164,70 @@ export function resolveCommandOnPath(cmd) {
 export function isCommandAvailable(cmd) {
   const r = resolveCommandOnPath(cmd);
   return r !== null && r.resolvedPath !== null;
+}
+
+/**
+ * EVERY PATH hit for an unqualified command, in PATH order — not just the first.
+ * Same walk order and same accept/reject rules as resolveCommandOnPath(), so
+ * `resolveAllCommandsOnPath(cmd)[0].resolvedPath` always equals
+ * `resolveCommandOnPath(cmd).resolvedPath` (asserted by a unit test rather than
+ * by sharing code: resolveCommandOnPath sits on the SPAWN path, so it is left
+ * byte-identical rather than refactored under a diagnostic feature).
+ *
+ * Why this exists: a machine can carry several installs of the same vendor CLI
+ * on PATH at different versions, and hopper silently spawns whichever comes
+ * FIRST — which is not necessarily the one the operator's interactive shell
+ * resolves (different shells inherit different PATH order). Observed live
+ * 2026-08-05: `codex` resolved to 0.131.0 for hopper and 0.146.0 for the user's
+ * PowerShell, and every codex dispatch failed against a model that needed
+ * >= 0.144. Nothing in hopper could see it, because only the first hit was ever
+ * looked at. This is the discovery half of that gap (`--setup` renders it; the
+ * version half needs a spawn and therefore lives behind `--deep`).
+ *
+ * Zero subprocess, statSync/accessSync only — safe on the `--setup`
+ * zero-extra-spawn path. Deliberately NOT de-duplicated: this stays a faithful
+ * walk so it keeps mirroring the resolver dispatch uses. A PATH listing the same
+ * directory twice therefore yields the same file twice — collapsing that is the
+ * caller's concern (see vendor-binaries.js `enumerateVendorBinaries`, which
+ * de-dupes by file and reports the repeat count separately).
+ *
+ * @param {string} cmd Unqualified command name (e.g. "codex"). A qualified path
+ *   or a name carrying an extension yields [] — there is no PATH walk to do.
+ * @returns {Array<{ resolvedPath: string, dir: string, direct: boolean }>}
+ *   `direct` = executable by CreateProcessW without a cmd.exe wrapper
+ *   (.exe/.com on Windows; always true on POSIX).
+ */
+export function resolveAllCommandsOnPath(cmd) {
+  if (!cmd || cmd.includes('/') || cmd.includes('\\') || /\.\w+$/.test(cmd)) return [];
+  const isWindows = process.platform === 'win32';
+  const pathDirs = (process.env.PATH || '').split(delimiter).filter(Boolean);
+  const hits = [];
+
+  if (!isWindows) {
+    for (const dir of pathDirs) {
+      const candidate = join(dir, cmd);
+      try {
+        if (!statSync(candidate).isFile()) continue;
+        accessSync(candidate, constants.X_OK);
+        hits.push({ resolvedPath: candidate, dir, direct: true });
+      } catch (_) { /* not found / not executable — continue */ }
+    }
+    return hits;
+  }
+
+  const exts = (process.env.PATHEXT || '.COM;.EXE;.BAT;.CMD').split(';')
+    .map((e) => e.trim()).filter(Boolean);
+  for (const dir of pathDirs) {
+    for (const ext of exts) {
+      const candidate = join(dir, cmd + ext);
+      try {
+        if (!statSync(candidate).isFile()) continue;
+        const lower = ext.toLowerCase();
+        hits.push({ resolvedPath: candidate, dir, direct: lower === '.exe' || lower === '.com' });
+      } catch (_) { /* continue */ }
+    }
+  }
+  return hits;
 }
 
 /**

@@ -4,8 +4,8 @@
 
 > Vendor-neutral background dispatch for AI agents
 
-![License](https://img.shields.io/badge/license-Apache--2.0-blue)
-![Version](https://img.shields.io/badge/version-0.45.2-3DDC97)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Version](https://img.shields.io/badge/version-0.59.0-3DDC97)
 ![Tests](https://img.shields.io/badge/tests-passing-3DDC97)
 ![Hosts](https://img.shields.io/badge/hosts-7-111827)
 
@@ -42,6 +42,33 @@ moonshot、`copilot` / `opencode` / `mimo` / `agy` はマルチバックエン�
 が自分自身と同じアカウント体系にタスクを転送してしまうのを防ぐ。バックグラウンドタスクは
 `hopper-runner` によって起動され、dashboard は同じ `.hopper/` 状態を読み取るだけの
 read-only な消費者である。
+
+## いつ使うか / いつ使わないか
+
+**Hopper が責任を持つのは「結果」であって「過程」ではありません。** spawn は一度きり、
+リトライもフォールバックもなく、vendor は自分のコンテキストを持たない別プロセスで動く
+ため途中で軌道修正できません。追加の問いかけは新しい dispatch になります。
+
+dispatch の前に2つ確認し、どちらか通らなければホスト側で処理してください。
+
+1. **正解を自分で算出できるか。** できるなら自分でやる。ソースの要約、コミット履歴、
+   ファイル検索、バージョン確認は答えが一意に決まる問い合わせであり、dispatch は数分と
+   数ドルを払って**より信頼性の低い**答えを返します。（実測：ある review dispatch は
+   5分16秒 / 153万トークン / $0.74。比較対象の `git log` は 40ms。）
+2. **問い全体を今この場で書き切れるか。** 書けないなら探索的な作業であり、探索に必要な
+   軌道修正は単発 spawn の dispatch では提供できません。
+
+両方通ったら、決め手は**独立性に価値があるか**です。自分のコンテキスト・先入観・誤りを
+共有しない答えが欲しいのかどうか。
+
+判断基準は主題ではなく**成果物**です。コードレビューはソースを読み**ます**が、それは
+手段であり、成果物は判断なので dispatch すべきです。「このモジュールの説明」も
+ソースを読みますが、返るのは自分で作れるデータなので dispatch すべきではありません。
+
+**「使わない」側に対応する task-type は存在せず、その不在こそが実行面の制約です。**
+brief の意図を推測する仕組みは要りません。詳細は
+[`docs/WHEN-TO-USE.md`](docs/WHEN-TO-USE.md)、
+`hopper-dispatch --task-types` も型ごとに同じ「用途/非用途」を表示します。
 
 ## vendor 制御の2層
 
@@ -196,6 +223,7 @@ hopper-dispatch --result   T-PROG-AUDIT
 |---|---|---|---|
 | codex | `-m` | ✓ | **裸の名前のみ受け付ける**:`gpt-5.5`、`gpt-5.4-mini`、`gpt-5.3-codex-spark`。provider プレフィックス付きの id(`openai-codex/…`)は ChatGPT アカウントでは拒否される。 |
 | grok | `-m` | ✓ | low/med/high の列挙値;`xhigh` は `high` に clamp される。 |
+| pi | `--model <model>` または `<provider>/<model>` | ✓ | `--thinking` の列挙値は off/minimal/low/medium/high/xhigh/max——hopper の5段階の**上位集合**なので、`xhigh` は **clamp されない**;そのまま透過される唯一の vendor である。マルチ provider ルーター:使えるモデルは**このマシン**がどこにログインしているかで決まる(`--probe pi` が `pi --list-models` のライブカタログを読む)。`--model` を渡さない場合は `~/.pi/agent/settings.json` の `defaultProvider`/`defaultModel` にフォールバックする。**⚠ `openai` と `openai-codex` は別の provider** であり、gpt-5.6 系は `openai`(API キー)ではなく `openai-codex`(ChatGPT の OAuth)の下にある;prefix を間違えると `No API key found` で即失敗する。下の「pi のモデル指定」を参照。 |
 | mimo | `--model` | ✓ | `xhigh` → `--variant max`。**製品サポート範囲外**(2026-07-31 決定)——後述。 |
 | copilot | `--model` | ✓ | low/med/high の列挙値;`xhigh` は `high` に clamp される。生の上書き値:`HOPPER_COPILOT_EFFORT`。**製品サポート範囲外**(2026-07-31 決定)——後述。 |
 | opencode | `--model <provider/model>` | 明示的に渡した場合のみ有効 | 呼び出し側が渡した `--reasoning high` は `--variant high` に変換される;Hopper は provider 互換性を保つため、意図的に OpenCode へデフォルトの `xhigh` を送らない。`HOPPER_OPENCODE_VARIANT=<v>` でそのまま上書きできる。**製品サポート範囲外**(2026-07-31 決定)——後述。 |
@@ -213,6 +241,49 @@ hopper-dispatch --capabilities codex    # 単一 vendor の model/effort/perms �
 hopper-dispatch --probe codex           # このアカウントのリアルタイムの model カタログ
 hopper-dispatch --check-model codex gpt-5.5   # 派遣前にモデルをアサート:verified(0) | catalog-only(2) | not-found(1)
 ```
+
+### pi のモデル指定
+
+pi はマルチ provider ルーターであり、`--model` には3つの書き方がある:裸の id、
+`provider/id`、`id:<thinking>`。**pi 公式ドキュメントは解決アルゴリズムを規定していない**
+ため、以下は 2026-08-10 に pi 0.84.1 上で実測した挙動である。
+
+実際に刺さるのはこの1点:
+
+> **`openai` と `openai-codex` は別の provider である。** `openai` は API キー
+> (`OPENAI_API_KEY`)、`openai-codex` は ChatGPT サブスクリプションの OAuth 経路。
+> **gpt-5.6 系(terra / sol / luna)は `openai-codex` の下にある。** `openai-codex` が
+> ログイン済みのマシンでも `--model openai/gpt-5.6-terra` は
+> `No API key found for openai.` で exit 1 になる——prefix を書いた時点で provider が
+> **固定**され、別の provider へのフォールバックは起きない。
+
+hopper はその一部を吸収する。すでに `knownGood` にあるモデルなら、3つの書き方はすべて
+同じ値に正規化される:
+
+| 書いた値 | hopper が pi に渡す値 |
+|---|---|
+| `gpt-5.6-terra`(裸) | `openai-codex/gpt-5.6-terra` |
+| `openai-codex/gpt-5.6-terra` | そのまま |
+| `openai/gpt-5.6-terra`(prefix 誤り) | `openai-codex/gpt-5.6-terra` ← **自動訂正** |
+| `GPT 5.6 Terra`(緩い表記) | `openai-codex/gpt-5.6-terra` |
+
+**しかし `knownGood` に無いモデル(新しく出たもの)はそのまま透過される**——つまり
+`openai/gpt-5.7-xxx` は誤った prefix のまま pi に届き、そのまま失敗する。この非対称性が
+唯一の落とし穴なので、派遣前に確認する:
+
+```bash
+# hopper が実際に pi へ何を渡すかは --json の normalized フィールドで確認できる:
+hopper-dispatch --check-model pi "openai/gpt-5.6-terra" --json
+#   {"model":"openai/gpt-5.6-terra","normalized":"openai-codex/gpt-5.6-terra","verdict":"verified",...}
+
+hopper-dispatch --check-model pi openai/gpt-5.7-xxx   # → not-found、exit 1
+hopper-dispatch --probe pi                            # このマシンがログイン済みの provider
+pi auth check --provider openai-codex --json          # 個別 provider のログイン状態
+```
+
+`--model` を渡さない場合、pi は `~/.pi/agent/settings.json` の `defaultProvider` /
+`defaultModel` にフォールバックする(`pi --help` が表示する `google` ではない——あれは
+設定が一切無いときだけ効く)。
 
 環境変数によるチューニング:
 
@@ -308,16 +379,16 @@ prompt frame が携える1つの指示にすぎない。それが本当に強制
 **7種のホスト**すべてが dispatch を開始できる:Claude Code、Codex CLI、OpenCode、
 Copilot CLI、Grok Build、Cursor CLI、そして standalone shell。
 
-**8個の vendor adapter** が登録されているが、製品として実際に推奨されているのは
-そのうち4個だけである:
+**9個の vendor adapter** が登録されているが、製品として実際に推奨されているのは
+そのうち5個だけである:
 
-> **製品としてサポートされている vendor の集合(2026-07-31 決定):`codex` / `grok` /
-> `claude` / `kimi`。**
+> **製品としてサポートされている vendor の集合:`codex` / `grok` / `claude` / `kimi`
+> (2026-07-31 決定)に加えて `pi`(2026-08-10 追加)。**
 > `agy` / `copilot` / `mimo` / `opencode` は**サポート範囲に含まれない**——これは
 > 積極的にメンテナンスする利用範囲を絞り込む製品判断であり、コードレベルの制限では
 > ない。それらの adapter ファイルは**削除されていない**(削除すると既存のテストや
-> 履歴記録が壊れる);依然として登録されたままであり、`--vendors` は今も8社すべてを
-> 列挙し、コード中のどこにも「この4社しか認めない」というハードコードは存在しない
+> 履歴記録が壊れる);依然として登録されたままであり、`--vendors` は今も9社すべてを
+> 列挙し、コード中のどこにも「この5社しか認めない」というハードコードは存在しない
 > (そうしてしまうと本当の実行判定ポイントと重複し、食い違いを起こしかねない)。
 > ある**具体的なプロジェクト**が誰に派遣できるかの実行判定ポイントは、そのプロジェクトの
 > `.hopper/AGENTS.md` にある **`Approved Vendors`** 表である——fail-closed:この
@@ -431,4 +502,4 @@ probe、古いタスクの掃除、そしてマルチ vendor レビューとい�
 - v1.1(dashboard 統合 + システム toast + ドキュメント):GA
 - v1.2(pipe+tee + stream-parser + より多くの provider):計画中
 
-ライセンス:Apache-2.0。[LICENSE](LICENSE) を参照。
+ライセンス:MIT。[LICENSE](LICENSE) を参照。

@@ -22,8 +22,19 @@ test('plugins/hopper vendored copy stays in sync with main source (codex#17066 d
     `plugins/hopper/ drifted from the main source. Fix: \`node scripts/sync-vendored-plugin.mjs\` then commit plugins/hopper/.\n${r.stdout}\n${r.stderr}`);
 });
 
-test('0.45.2 release metadata and static command surfaces stay aligned', () => {
-  const version = '0.45.2';
+test('release metadata and static command surfaces stay aligned across every manifest', () => {
+  // The version was HARDCODED here until 0.47.0, which made this test a manual
+  // step in every release: bump six manifests, then remember to bump the literal
+  // that guards them. The sibling test below already learned this the expensive
+  // way — 0.37.0 and 0.38.0 shipped with a stale kimi.plugin.json precisely
+  // because this test hardcoded its version and never covered that manifest — and
+  // fixed itself by reading package.json. Doing the same here removes the manual
+  // step and the whole class of miss.
+  //
+  // package.json is the source of truth, so this can no longer catch "package.json
+  // itself was not bumped". Nothing here ever could: that is covered independently
+  // by the smoke.md drift detector, which anchors on the CLI's VERSION constant.
+  const version = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).version;
   const manifests = [
     'package.json',
     '.claude-plugin/plugin.json',

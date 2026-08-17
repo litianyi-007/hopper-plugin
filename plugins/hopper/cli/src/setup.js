@@ -9,6 +9,10 @@
 //   - adapter.args()         : derive sandbox-control + web-search support (pure)
 //   - compatCheckForAdapter  : flag/param drift — ONLY in the opt-in `deep` tier,
 //                              which spawns `<vendor> --help` once per vendor.
+//   - enumerateVendorBinaries: every PATH entry answering to the vendor's command
+//                              name + which one dispatch spawns (filesystem only,
+//                              no spawn). probeBinaryVersions() adds the version
+//                              of each and DOES spawn, so it is `deep`-only.
 //
 // One place to answer "is each vendor ready, and what can it do" before a
 // dispatch: installed? · auth? · models? · capability fresh? · full-access? ·
@@ -18,10 +22,13 @@ import { listAdapters, getAdapter, installCheckForAdapter, capabilitiesForAdapte
 import { getVendorCache, setVendorCache } from './cache.js';
 import { projectInventoryEntry } from './inventory-contract.js';
 import { compatCheckForAdapter } from './vendor-compat.js';
+import { enumerateVendorBinaries, probeBinaryVersions, summarizeBinaryDrift } from './vendor-binaries.js';
+import { compareVersionDesc } from './version.js';
 import { reconcileModels } from './model-normalize.js';
 import { parseAgentsFile } from './agents.js';
 import { listTaskTypes } from './tasks.js';
-import { parseEffortPolicyCell, parseModelRuleCell, isOobCell, MODEL_SENTINELS } from './policy.js';
+import { missingTaskFrames } from './workspace-drift.js';
+import { parseEffortPolicyCell, parseModelRuleCell, isOobCell, MODEL_SENTINELS, resolveVerifiedLatest, computeEffortClamp } from './policy.js';
 import { join } from 'node:path';
 
 // Permission/approval flags that grant UNCONDITIONAL write access no matter what `sandbox`
@@ -169,15 +176,51 @@ export async function buildVendorReadiness({ deep = false, only = null, now = ne
       dispatchDisabled: adapter && adapter.dispatchDisabled
         ? { reason: adapter.dispatchDisabled.reason, enableEnv: adapter.dispatchDisabled.enableEnv }
         : null,
-      inventory: projectInventoryEntry(name, cache || {
-        provenance: { source_kind: 'static', binary_availability: 'unknown', binary_basename: null },
+      // Binary provenance is OBSERVED, not assumed. Until 2026-08-05 this passed a
+      // literal `binary_availability: 'unknown', binary_basename: null` whenever the
+      // probe cache was absent, so `--setup` and every handoff frontmatter reported
+      // both fields as unknown on every machine — including the one where hopper was
+      // silently spawning a 15-versions-stale codex. installCheckForAdapter already
+      // knew the answer; nothing was asking it. `binary_basename` stays the adapter's
+      // canonical command name (the closed contract rejects anything else, and an
+      // absolute path must never enter this projection — see inventory-contract.js).
+      inventory: projectInventoryEntry(name, {
+        ...(cache || {}),
+        provenance: {
+          ...((cache && cache.provenance) || { source_kind: 'static' }),
+          // AVAILABILITY is an observation — live check wins over whatever a cache
+          // remembers, because "the cache said present" is exactly the class of
+          // stale claim this work exists to stop.
+          binary_availability: install ? (install.binaryFound ? 'present' : 'missing') : 'unknown',
+          // BASENAME is not an observation: it is the adapter's own command name,
+          // a static property of the vendor. So it is reported whether or not the
+          // binary was found — "we looked for `claude` and it is missing" carries
+          // strictly more information than "we looked for null". Tying it to
+          // binaryFound broke the closed-projection contract test on POSIX only:
+          // that test plants its fixture binary with writeFileSync's default mode,
+          // i.e. WITHOUT the exec bit, and resolveCommandOnPath deliberately skips
+          // non-executable same-named files (correctly) — while Windows has no
+          // exec bit and found it. The projection still validates the value
+          // against BINARY_BASENAMES, so nothing arbitrary can reach it.
+          binary_basename: install ? install.command : null,
+        },
       }, cache ? 'ok-v1' : 'missing'),
+      // Zero-spawn on the default tier: enumeration is a pure PATH walk. Versions
+      // require a spawn each, so they are filled in below only under `deep`.
+      binaries: (() => { try { return enumerateVendorBinaries(name); } catch (_) { return null; } })(),
       error,
       compat: null,
     };
     if (deep) {
       try { row.compat = compatCheckForAdapter(name); }
       catch (e) { row.compat = { ran: false, reason: String((e && e.message) || e) }; }
+
+      // Version-probe every DISTINCT binary this vendor's name resolves to (not
+      // just the one dispatch picks) — a second install at a different version is
+      // only visible by comparing them. One spawn per distinct file.
+      if (row.binaries) {
+        try { probeBinaryVersions(row.binaries); } catch (_) { /* advisory; entries keep version:null */ }
+      }
 
       // V3: live-enumerate the vendor's models, reconcile vs hardcoded knownGood.
       const kg = (caps && caps.modelArg && Array.isArray(caps.modelArg.knownGood)) ? caps.modelArg.knownGood : [];
@@ -247,6 +290,18 @@ export function formatModelDrift(row) {
   if (rec.missingFromLive.length) parts.push(`STALE default(s) not in live catalog: ${rec.missingFromLive.join(', ')}`);
   if (rec.newOnLive.length) parts.push(`NEW live model(s) absent from defaults: ${rec.newOnLive.slice(0, 8).join(', ')}${rec.newOnLive.length > 8 ? '…' : ''}`);
   const verdict = (rec.missingFromLive.length || rec.newOnLive.length) ? 'DRIFT' : 'OK';
+  // Close the loop: DRIFT means the vendor moved and hopper's shipped preset has
+  // not caught up. Say what to DO about it, since the whole point of the
+  // per-vendor `Default model` column is that a project need not wait for a
+  // hopper release to use a model the vendor already shipped.
+  if (verdict === 'DRIFT' && row.name) {
+    const suggestion = rec.newOnLive[0] || null;
+    parts.push(
+      'to use a live model now, set it per-project in .hopper/AGENTS.md `## Approved Vendors` → `Default model`'
+      + (suggestion ? ` (e.g. \`| \`${row.name}\` | yes | … | ${suggestion} |\`)` : '')
+      + ` — or per-machine with HOPPER_${String(row.name).toUpperCase()}_MODEL`,
+    );
+  }
   return { verdict, detail: parts.join('; ') };
 }
 
@@ -283,6 +338,12 @@ export function buildRuntimeReport({
   return { nodeVersion, nodeMajor, nodeOk, minNodeMajor: MIN_NODE_MAJOR, platform, arch, version };
 }
 
+// Re-exported so setup.js's existing callers and tests keep their import site; the
+// definition lives in version.js because three modules needed the same comparator,
+// and three hand-copies of a version comparator is how one of them ends up
+// lexicographic while the others are not.
+export { compareVersionDesc } from './version.js';
+
 /**
  * Concrete, ordered next-steps derived from the readiness rows + summary — the actionable tail
  * a setup command should leave the user with (install, authenticate, probe, enable, scaffold).
@@ -298,6 +359,41 @@ export function buildNextSteps(rows, sum, { hopperDir = null } = {}) {
   }
   if (sum.authMissing.length) {
     steps.push(`Authenticate: ${sum.authMissing.join(', ')} — \`hopper-dispatch --check ${sum.authMissing[0]}\` shows the fix.`);
+  }
+  // Workspace frame drift, raised HERE because it is otherwise invisible until a
+  // dispatch dies on it. Live 2026-08-10: a `--swarm --task-type decision-review`
+  // failed 2/2 with "Task-type frame not found" and the host silently downgraded
+  // the panel to a different review type — this readiness surface had listed only
+  // the frames that DO exist and said nothing about the ones that do not.
+  if (hopperDir) {
+    try {
+      const missing = missingTaskFrames(hopperDir);
+      if (missing.length) {
+        steps.push(
+          `This workspace is missing ${missing.length} task-type frame(s) hopper ships: ${missing.join(', ')}. `
+          + 'Dispatching one of those types will FAIL until they exist — install with '
+          + '`hopper-dispatch --migrate-config` (dry run) then `--yes`.',
+        );
+      }
+    } catch (_) { /* unreadable workspace — the other steps still apply */ }
+  }
+  // Version conflict outranks the optional/hygiene steps below it: a stale duplicate
+  // on PATH does not look like a failure anywhere else — dispatch just quietly runs
+  // the wrong binary and the vendor rejects the request for reasons that read as a
+  // model or account problem (live 2026-08-05: codex 0.131.0 shadowing 0.146.0 cost
+  // a full day of misdiagnosis). Only raised when versions were actually observed.
+  for (const r of rows) {
+    if (!r.binaries) continue;
+    const s = summarizeBinaryDrift(r.binaries);
+    if (s.verdict !== 'conflict') continue;
+    const newest = [...s.distinctVersions].sort(compareVersionDesc)[0];
+    const shadowed = s.spawnedVersion && newest && s.spawnedVersion !== newest;
+    steps.push(
+      `${r.name}: ${s.entryCount} installs on PATH at ${s.distinctVersions.length} different versions `
+      + `(${s.distinctVersions.join(', ')})${shadowed ? ` — dispatch spawns ${s.spawnedVersion}, NOT the newest (${newest})` : ''}. `
+      + 'PATH order decides, and it differs per shell. Remove or repoint the shadowing entry '
+      + '(see the Vendor binaries section for exact paths).',
+    );
   }
   const unprobed = rows.filter((r) => r.installed && (!r.models || r.models.length === 0)).map((r) => r.name);
   if (unprobed.length) {
@@ -396,4 +492,199 @@ export async function buildTaskTypePolicyReport(hopperDir) {
   }
 
   return { applicable: true, rows, warnings };
+}
+
+// ─── `--capabilities <vendor>` report ─────────────────────────────────────
+//
+// WHY THIS EXISTS (2026-08-10). `--capabilities <vendor>` printed four fixed
+// lines — a version banner, the closed inventory projection, a HARDCODED
+// "Selector metadata: declared", and the no-spawn footer. It never showed the
+// models, the reasoning enum, the feature matrix, or the sourceNotes, i.e. none
+// of the "capabilities" its name promises. The adapters carry all of it; nothing
+// rendered it. `Selector metadata: declared` was additionally a plain untruth
+// for every adapter that declares none (which today is all of them).
+//
+// PRIVACY BOUNDARY (tests/unit/model-attestation-contract.test.js). This report
+// reads ONLY the adapter's static, repo-authored capability object. It must
+// never render probe-cache content: that test plants a poisoned cache whose
+// `sourceNote`, `models_source`, `binary_path` and `stderr` fields carry private
+// paths and secrets, and asserts none of it reaches these discovery surfaces.
+// Cache-derived state stays confined to the closed `renderSafeInventory()`
+// projection the caller prints separately, and the cached model catalog remains
+// `--models`' job. Keep it that way: read the ADAPTER here, never the cache.
+
+/**
+ * Wrap prose to `width`, indenting continuation lines, for terminal notes.
+ * ` || ` in a sourceNote is a paragraph break (these notes are long enough that
+ * one unbroken block is unreadable) and becomes a blank line.
+ */
+function wrapNote(text, width = 96, indent = '    ') {
+  const out = [];
+  const paragraphs = String(text ?? '').split(/\s*\|\|\s*/).filter((p) => p.trim());
+  paragraphs.forEach((paragraph, i) => {
+    if (i > 0) out.push('');
+    const words = paragraph.split(/\s+/).filter(Boolean);
+    let line = '';
+    for (const w of words) {
+      if (line && (line.length + 1 + w.length) > width) { out.push(indent + line); line = w; }
+      else line = line ? `${line} ${w}` : w;
+    }
+    if (line) out.push(indent + line);
+  });
+  return out;
+}
+
+/** `yes`/`no` for a declared boolean, `?` when the adapter says nothing. */
+function triState(value) {
+  return value === true ? 'yes' : value === false ? 'no' : '?';
+}
+
+/**
+ * The model an UNPINNED dispatch to this vendor actually lands on, and where
+ * that came from. Mirrors the resolution order in resolveAdapterOptsForTask so
+ * the readiness surfaces cannot drift from what dispatch really does.
+ *
+ * Deliberately omits the two most specific levels (`--model`, and the task-type
+ * `Model rule` cell): both are per-dispatch and cannot be reported for "the
+ * vendor" in general. This answers "what do I get if I ask for nothing".
+ *
+ * @param {string} vendor
+ * @param {{projectDefault?: string|null, env?: Record<string,string|undefined>}} [o]
+ * @returns {{ value: string|null, source: 'env'|'project'|'adapter'|'none' }}
+ */
+export function effectiveModelDefault(vendor, { projectDefault = null, env = process.env } = {}) {
+  const envKey = `HOPPER_${String(vendor).toUpperCase()}_MODEL`;
+  const fromEnv = typeof env[envKey] === 'string' && env[envKey].trim() ? env[envKey].trim() : null;
+  if (fromEnv) return { value: fromEnv, source: 'env' };
+  if (typeof projectDefault === 'string' && projectDefault.trim()) {
+    return { value: projectDefault.trim(), source: 'project' };
+  }
+  let declared = null;
+  try { declared = resolveVerifiedLatest(capabilitiesForAdapter(vendor)?.modelArg); } catch (_) { declared = null; }
+  return declared ? { value: declared, source: 'adapter' } : { value: null, source: 'none' };
+}
+
+/** Human label for where a default came from, including how to change it. */
+function modelDefaultSourceLabel(vendor, source) {
+  if (source === 'env') return `from HOPPER_${String(vendor).toUpperCase()}_MODEL (this machine)`;
+  if (source === 'project') return "from .hopper/AGENTS.md '## Approved Vendors' → 'Default model' (this project)";
+  if (source === 'adapter') return 'from the adapter (hopper ships this preference)';
+  return 'nothing pinned — the vendor/account picks';
+}
+
+/**
+ * Full static capability report for one vendor, as terminal lines.
+ *
+ * Pure: no I/O, no spawn, no cache read — so it is unit-testable and cannot
+ * leak machine state. The caller renders the cache-backed inventory line.
+ *
+ * @param {string} vendor
+ * @param {{ defaultReasoning?: string }} [o] `defaultReasoning` is the effort a
+ *   dispatch would resolve to when nothing overrides it; used to show whether
+ *   this vendor clamps it. Injectable so the report is deterministic in tests.
+ * @returns {string[]}
+ */
+export function buildCapabilityReport(vendor, {
+  defaultReasoning = process.env.HOPPER_DEFAULT_REASONING || 'xhigh',
+  projectDefault = null,
+} = {}) {
+  const adapter = getAdapter(vendor);          // throws on unknown vendor
+  const caps = capabilitiesForAdapter(vendor);
+  const out = [];
+  if (!caps) return ['(this adapter declares no static capabilities)'];
+
+  // Selector metadata: DERIVED, not asserted. This is the line that used to lie.
+  out.push(`Selector metadata: ${adapter.selectorMetadata ? 'declared' : 'not declared (selector classification will report `unknown`)'}`);
+  out.push(`Sandbox control:   ${sandboxControl(adapter)}   (argv = hopper can force read-only; full = always full-access; native = vendor policy only)`);
+  out.push(`Web search:        ${webSearchSupport(adapter)}`);
+
+  const delivery = [
+    `stdin-prompt=${adapter.promptStdin === 'supported' ? (adapter.promptStdinDefault === false ? 'opt-in' : 'default-on') : 'no'}`,
+    `buffered-output=${adapter.bufferedOutput === true ? 'yes' : 'no'}`,
+  ];
+  out.push(`Delivery hints:    ${delivery.join('  ')}`);
+
+  // ── model selector ──
+  const modelArg = caps.modelArg || {};
+  const knownGood = Array.isArray(modelArg.knownGood) ? modelArg.knownGood : [];
+  out.push('', `Model selector (--model): ${modelArg.accepted || '?'}`);
+  // The model a dispatch actually lands on when nothing overrides it. Rendered
+  // ahead of the catalog because it is the question a caller is usually asking.
+  const effective = effectiveModelDefault(vendor, { projectDefault });
+  out.push(`  effective default: ${effective.value || '(none)'}   ${modelDefaultSourceLabel(vendor, effective.source)}`);
+  out.push('  ↑ what `verified-latest` and an unpinned dispatch both resolve to. Override order:');
+  out.push(`      --model <id>  >  HOPPER_${String(vendor).toUpperCase()}_MODEL  >  AGENTS.md 'Default model'  >  adapter preset`);
+  if (effective.source === 'adapter' || effective.source === 'none') {
+    out.push("      To pin your own (survives a newer vendor model shipping before hopper updates its preset),");
+    out.push(`      add a 'Default model' column to '## Approved Vendors' in .hopper/AGENTS.md:  | \`${vendor}\` | yes | … | <model-id> |`);
+  }
+  // A platform router takes `<provider>/<model>`, and the provider ids are NOT
+  // guessable — so print them. Without this the caller has to know that "Kimi"
+  // is `kimi-coding` and that the ChatGPT plan is `openai-codex`, not `openai`.
+  const providers = Array.isArray(modelArg.platformProviders) ? modelArg.platformProviders : [];
+  if (providers.length) {
+    out.push('');
+    out.push(`  ${vendor} is a multi-provider platform: \`--model <provider>/<model-id>\`. Common provider ids —`);
+    out.push('  (guessing does NOT work: kimi / moonshot / qwen / gemini / claude / grok / copilot are all rejected)');
+    const width = Math.max(...providers.map((p) => p.id.length));
+    for (const p of providers) {
+      out.push(`      ${p.id.padEnd(width)}  ${p.label}`);
+      out.push(`      ${' '.repeat(width)}  auth: ${p.auth}`);
+    }
+    out.push(`  Verify one with \`pi auth check --provider <id> --json\`; list your reachable models with \`--probe ${vendor}\`.`);
+  }
+  if (knownGood.length) {
+    out.push(...wrapNote(`known-good: ${knownGood.join(', ')}`, 96, '  '));
+  } else {
+    out.push('  known-good: (none declared — the vendor account default is used)');
+  }
+  if (Array.isArray(modelArg.driftExpected) && modelArg.driftExpected.length) {
+    out.push(...wrapNote(`drift-expected (not flagged STALE/NEW by --probe): ${modelArg.driftExpected.join(', ')}`, 96, '  '));
+  }
+
+  // ── reasoning ──
+  const reasoningArg = caps.reasoningArg || {};
+  const reasoningKg = Array.isArray(reasoningArg.knownGood) ? reasoningArg.knownGood : [];
+  out.push('', `Reasoning (--reasoning): ${reasoningArg.accepted || '?'}`);
+  if (reasoningKg.length) {
+    out.push(`  known-good: ${reasoningKg.join(' | ')}`);
+    const clamp = computeEffortClamp(vendor, defaultReasoning, reasoningKg);
+    out.push(clamp.clamped
+      ? `  default '${defaultReasoning}' -> CLAMPED to '${clamp.clamped}'`
+      : `  default '${defaultReasoning}' -> forwarded unclamped`);
+  } else {
+    out.push('  known-good: (none — this adapter forwards no reasoning flag; effort is config/model driven)');
+  }
+
+  // ── features ──
+  const features = caps.features || {};
+  const featureKeys = Object.keys(features);
+  if (featureKeys.length) {
+    out.push('', 'Features:');
+    for (const key of featureKeys) {
+      const f = features[key] || {};
+      out.push(`  ${key}: ${triState(f.supported)}`);
+      if (f.mechanism) out.push(...wrapNote(f.mechanism, 92, '      '));
+    }
+  }
+
+  // ── provenance notes ──
+  // Static, repo-authored prose (NOT the probe cache — see the privacy note
+  // above). For several adapters this is the only written record of behavior the
+  // vendor's own documentation does not specify.
+  const notes = [
+    ['model', modelArg.sourceNote],
+    ['reasoning', reasoningArg.sourceNote],
+    ['web-search', caps.webSearch && caps.webSearch.how],
+  ].filter(([, v]) => typeof v === 'string' && v.trim());
+  if (notes.length) {
+    out.push('', 'Capability notes (static adapter metadata; not from the probe cache):');
+    for (const [label, text] of notes) {
+      out.push(`  ${label}:`);
+      out.push(...wrapNote(text, 92, '    '));
+    }
+  }
+
+  if (caps.staleAfter) out.push('', `Static hints stale after ${caps.staleAfter} — re-verify against the vendor CLI past that date.`);
+  return out;
 }

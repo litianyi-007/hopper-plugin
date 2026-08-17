@@ -6,6 +6,15 @@ argument-hint: <task-id> [--background] [--write] [--force] [--web-search] [--mo
 
 This command runs inside a Claude Code session and invokes the host-agnostic `hopper-dispatch` CLI to dispatch one task.
 
+## First: should this be dispatched at all
+
+**Hopper is accountable for a result; it is not a place to run a process you need to steer.** Check both before running anything:
+
+1. **Could the host compute the one correct answer itself?** (source summary, commit log, file search, version lookup) → do it in-host. A dispatch costs minutes and dollars and returns a less reliable answer.
+2. **Can the whole question be stated now?** If not, it is exploratory — and a single-spawn, no-retry dispatch offers no steering.
+
+Judge by the deliverable, not the topic: reading source as the *method* of producing a judgment is exactly what review task-types are for; reading source to hand back a *summary* is not. There is deliberately no task-type for the latter, and that absence is the enforcement — see `docs/WHEN-TO-USE.md`.
+
 ## What this command does
 
 1. Read `.hopper/queue.md` to find the task and validate eligibility (pending + deps done)
@@ -27,7 +36,7 @@ This command runs inside a Claude Code session and invokes the host-agnostic `ho
    - Value flag: `--reasoning <level>` (consumes next token) — `<level>` must be exactly one of `minimal`, `low`, `medium`, `high`, `xhigh`
    - Value flag: `--sandbox <mode>` (consumes next token) — `<mode>` must be exactly one of `read-only`, `workspace-write`, `danger-full-access`
    - Value flag: `--subject-root <absolute-path>` (consumes next token) — only legal when the **effective** sandbox is `read-only`; the existing real path must be a specific project directory, not `/`, a filesystem root, or the home directory. On macOS Hopper fails closed unless `/usr/bin/sandbox-exec` can deny `file-write*` and new subject-scoped `file-link` creation during guarded execution.
-   - Value flag: `--vendor <name>` (consumes next token) — `<name>` must be a lowercase registered vendor: `codex`, `kimi`, `opencode`, `copilot`, `agy`, `grok`, `mimo`, `claude` (overrides the routed vendor; host≠vendor is enforced — see the note below on what that means for a Claude Code session specifically). **`agy` is DISABLED by default** (headless output unsupported on 1.0.12) — dispatching to it errors unless `HOPPER_ENABLE_AGY=1` is set.
+   - Value flag: `--vendor <name>` (consumes next token) — `<name>` must be a lowercase registered vendor: `codex`, `kimi`, `opencode`, `copilot`, `agy`, `grok`, `mimo`, `claude`, `pi` (overrides the routed vendor; host≠vendor is enforced — see the note below on what that means for a Claude Code session specifically). **`agy` is DISABLED by default** (headless output unsupported on 1.0.12) — dispatching to it errors unless `HOPPER_ENABLE_AGY=1` is set.
    - Reject anything else.
 4. If validation fails: STOP. Print the offending input verbatim and ask the user to correct it. Do **not** invoke Bash with rejected input.
 

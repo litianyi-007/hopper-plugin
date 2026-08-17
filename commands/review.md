@@ -12,7 +12,7 @@ One-shot code review via hopper's **ad-hoc** dispatch (no `queue.md` row). The t
 3. Surface the **full** verdict with `--result <id> --full`.
 
 ## Steps
-1. Parse `$ARGUMENTS`: the leading text is the review TARGET. Optional `--vendor <name>` overrides the reviewer; `--adversarial` selects the adversarial task-type. Validate `--vendor` is a lowercase registered vendor (codex/kimi/opencode/copilot/agy/grok/mimo/claude).
+1. Parse `$ARGUMENTS`: the leading text is the review TARGET. Optional `--vendor <name>` overrides the reviewer; `--adversarial` selects the adversarial task-type. Validate `--vendor` is a lowercase registered vendor (codex/kimi/opencode/copilot/agy/grok/mimo/claude/pi).
 2. Task-type: `code-review-adversarial` if `--adversarial`, else `code-review-acceptance`.
 3. Compose a focused brief: name the target and tell the reviewer how to see it (e.g. "run `git show <ref>` / read `<path>`"); state the acceptance criteria, or for adversarial: "hunt for defects the author would miss." If the user pasted code, include it. Review only — no edits.
 4. Pick a short id matching `^[A-Za-z][A-Za-z0-9._-]{0,99}$`, e.g. `review-<8-char-slug>`.

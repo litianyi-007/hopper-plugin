@@ -179,7 +179,14 @@ function isVendorLockStale(lockPath) {
  * @param {string} args.command          CLI command (e.g. "codex", "kimi", "agy")
  * @param {string[]} args.args           Argv array
  * @param {string|null} args.stdinInput  Input to pipe to stdin (null = none)
- * @param {number} args.timeoutMs        Hard timeout
+ * @param {number} args.timeoutMs        Hard timeout (absolute ceiling)
+ * @param {number} [args.idleMs]         Idle (silence) timeout; 0/falsy disables the idle watchdog
+ * @param {boolean} [args.bufferedOutput] Adapter-declared hint (mirrors hopper-runner's
+ *   `adapter.bufferedOutput`, ISSUE-grok-claude-buffered-output-idle-falsekill): when true, skip
+ *   arming the idle watchdog entirely — an end-buffered vendor writes stdout/stderr ONCE at exit,
+ *   so idle-on-silence would otherwise degenerate into an unconditional kill ~idleMs after spawn.
+ *   The absolute ceiling (timeoutMs) still applies as the safety net. ADDITIVE: default false, so
+ *   existing callers that only pass idleMs/timeoutMs keep today's single-ceiling-or-idle behavior.
  * @param {object} [args.env]            Extra env vars (merged with process.env)
  * @param {string} [args.cwd]            Working directory
  * @param {string|null} [args.logFilePath]  Path to vendor --log-file (read after exit if set)
@@ -195,6 +202,7 @@ export async function runSubprocessOnce({
   stdinInput,
   timeoutMs,
   idleMs = 0,
+  bufferedOutput = false,
   env,
   cwd,
   logFilePath = null,
@@ -281,8 +289,18 @@ export async function runSubprocessOnce({
     // idleMs of total silence (hung / reverse-pressured). ADDITIVE: when idleMs
     // is falsy this is a no-op, so callers/tests passing only timeoutMs keep the
     // legacy single-ceiling behavior unchanged.
+    //
+    // bufferedOutput (ISSUE-grok-claude-buffered-output-idle-falsekill): mirrors
+    // hopper-runner's `idlePoll = (idleMs > 0 && !bufferedOutput) ? ... : null`
+    // (cli/bin/hopper-runner). grok/claude `--output-format json` are END-BUFFERED
+    // — stdout/stderr are written ONCE at process exit, never incrementally — so
+    // for those vendors this in-process idle watchdog (armed on spawn, reset only
+    // by a 'data' event) would otherwise fire unconditionally ~idleMs after spawn,
+    // before the vendor ever gets a chance to produce output. Skipping the arm
+    // entirely leaves the absolute ceiling timer (below) as the sole, still-fully-
+    // active safety net for a genuinely hung buffered vendor.
     const armIdle = () => {
-      if (!(idleMs > 0) || timedOut) return;
+      if (!(idleMs > 0) || bufferedOutput || timedOut) return;
       if (idleTimer) clearTimeout(idleTimer);
       idleTimer = setTimeout(() => claimTimeout('idle'), idleMs);
       if (idleTimer.unref) idleTimer.unref();

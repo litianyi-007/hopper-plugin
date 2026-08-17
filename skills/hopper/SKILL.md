@@ -7,6 +7,19 @@ description: "Use when the user asks to operate Hopper or llm-hopper broadly, tr
 
 Use Hopper as a thin, file-backed dispatcher. State lives in the target project's `.hopper/` directory. The dispatcher must not add hidden state, retry a failed vendor automatically, or switch vendors unless the user explicitly asks for that separate action.
 
+## Should This Be Dispatched At All
+
+Answer this before any of the mechanics below. **Hopper is accountable for a result; it is not a place to run a process you need to steer.**
+
+1. **Could you compute the one correct answer yourself?** If yes — do it yourself. Source summaries, commit logs, file searches and version lookups are determinate queries; a dispatch costs minutes and dollars to return a *less* reliable answer. (Measured on one machine: a review dispatch ran 5m16s / 1.53M tokens / $0.74, against 40ms for the `git log` it was being compared to.)
+2. **Can you state the whole question right now?** If no — it is exploratory, and exploration needs steering a single-spawn, no-retry dispatch cannot give you. A follow-up is a *new* dispatch.
+
+Both pass → the deciding question is **whether independence is the point**: is the value in an answer that does not share your context, priors and mistakes?
+
+The discriminator is the deliverable, not the topic. A code review *reads source* — that is its method; its deliverable is a judgment, so dispatch it. "Tell me what this module does" also reads source, but hands back data you can produce directly, so do not.
+
+**There is no task-type for the "do not" cases, and that absence is the enforcement** — nothing has to guess at a brief's intent. If a request has no matching task-type, that is the answer, not a gap to work around. Full rationale: `docs/WHEN-TO-USE.md` in the hopper repository; `hopper-dispatch --task-types` prints the same for/not-for note per type.
+
 ## First Run And After An Upgrade
 
 Run this check before anything else in a session — it decides which of the two situations below applies, and both are silent otherwise (no `.hopper/` prompts for a path; a pre-v0.40.0 project fails dispatch with an opaque error unless you know to look here).

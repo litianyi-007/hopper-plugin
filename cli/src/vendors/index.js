@@ -13,6 +13,7 @@ import { agyAdapter } from './agy.js';
 import { grokAdapter } from './grok.js';
 import { mimoAdapter } from './mimo.js';
 import { claudeAdapter } from './claude.js';
+import { piAdapter } from './pi.js';
 // Phase 6b probe entry points — each module exports an async probe() fn.
 // Imported lazily by probeVendor() below so that --check / --capabilities
 // (which don't probe) don't pull these subprocess-capable modules into
@@ -30,6 +31,7 @@ const REGISTRY = {
   grok: grokAdapter,
   mimo: mimoAdapter,
   claude: claudeAdapter,
+  pi: piAdapter,
 };
 
 /**
@@ -74,7 +76,7 @@ export function listAdapters() {
  *
  * @type {readonly string[]}
  */
-export const PRODUCT_SUPPORTED_VENDORS = Object.freeze(['codex', 'grok', 'claude', 'kimi']);
+export const PRODUCT_SUPPORTED_VENDORS = Object.freeze(['codex', 'grok', 'claude', 'kimi', 'pi']);
 
 /**
  * Phase 6a: install-check helper. Runs in-process binary + auth checks

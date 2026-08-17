@@ -135,10 +135,53 @@ export function findLatestVendorProgressEvent(chunk) {
   return latest;
 }
 
+/**
+ * Vendor stream `type`/`kind` tokens that count as a lifecycle transition.
+ *
+ * WHY THIS IS A NAMED CONSTANT NOW (2026-08-10). It used to be an inline
+ * `new Set([...])` rebuilt on every parsed line, holding only opencode's
+ * `step_*` and claude's `result`. Measured against a REAL 12-minute pi
+ * background review (194 background tasks in that project, 616 progress events
+ * total): `source: "vendor-stream"` appeared **zero** times, for any vendor. The
+ * poll ran every ~5s, read the newly-appended bytes, handed them here, and this
+ * set matched nothing — so a 25-turn, 176-tool-call run reported exactly two
+ * progress events, "queued" and "done". The operator's workaround was to poll
+ * `--jobs` and `wc -c` the raw log by hand.
+ *
+ * WHAT MAY BE ADDED: a token that names a PHASE TRANSITION. Nothing else. The
+ * caller mirrors only `event` and `reason` into the file-backed protocol, both
+ * pushed through `protocolToken()` — no prompt, tool argument, tool result, or
+ * model text may ever reach a progress record. That is why `text`, `thinking`,
+ * `message_update`, `toolcall_delta` and friends are deliberately absent: they
+ * are content, not lifecycle, and they are also far too chatty.
+ *
+ * SAFETY NOTE on the pi entries: `tool_execution_start` carries `args` and
+ * `toolName`, `tool_execution_end` carries `result` — real file paths and file
+ * contents. Only `type` and `reason` are read here, and pi sets no `reason` on
+ * either (verified on a real 15.9MB stream), so nothing escapes. Listing
+ * `tool_execution_end` explicitly is additionally a HARDENING: without it, the
+ * recursion below would descend into its `result` field hunting for a nested
+ * lifecycle event, which is exactly where tool output lives.
+ */
+const LIFECYCLE_EVENT_TOKENS = Object.freeze(new Set([
+  // opencode / mimo
+  'step_start', 'step_finish',
+  // claude (+ generic wrappers)
+  'session_start', 'session_started', 'result',
+  // pi (`--mode json`) — the whole reason this set stopped being opencode-shaped
+  'agent_start', 'agent_end', 'agent_settled',
+  'turn_start', 'turn_end',
+  'tool_execution_start', 'tool_execution_end',
+  // pi context compaction. The one pi event that DOES carry a reason, and it is
+  // a clean protocol token (`overflow`) — "the vendor is compacting because it
+  // overflowed" is exactly the kind of thing a 12-minute silence should surface.
+  'compaction_start', 'compaction_end',
+]));
+
 function findLifecycleEvent(node, depth = 0) {
   if (!node || typeof node !== 'object' || depth > 4) return null;
   const event = protocolToken(node.type ?? node.kind);
-  if (new Set(['step_start', 'step_finish', 'session_start', 'session_started', 'result']).has(event)) {
+  if (LIFECYCLE_EVENT_TOKENS.has(event)) {
     return { event, reason: protocolToken(node.part?.reason ?? node.reason) || null };
   }
   for (const key of ['event', 'data', 'payload', 'result']) {

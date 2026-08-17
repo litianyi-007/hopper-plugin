@@ -573,3 +573,68 @@ test('orphan frontmatter repair refuses zero/multiple/mismatched terminal events
     rmSync(state.tmp, { recursive: true, force: true });
   }
 });
+
+// ── vendor_session_id: declared in v1, hardcoded null until 2026-08-10 ──
+
+test('a vendor-reported session id is persisted to vendor_session_id', () => {
+  // pi hands its session id over on the first line of its stream; the field had
+  // been sitting `null` for every vendor since v1 ("reserved for v1.2"). With it
+  // written, a 12-minute background review can be resumed with `--session <id>`
+  // instead of re-run and re-paid.
+  const ctx = setup(`T-session-${Math.abs(Math.round(process.hrtime()[1]))}`);
+  finalizeTerminalAttestation({
+    hopperDir: ctx.hopperDir,
+    taskId: ctx.taskId,
+    outputMdPath: ctx.outputMdPath,
+    parsed: { ...parsed(), sessionId: '019fea74-c6c9-7dc3-b538-db5c6c014279' },
+    completion: completion(),
+    now: new Date(NOW),
+  });
+  const fm = readFrontmatter(ctx.outputMdPath);
+  assert.equal(fm.vendor_session_id, '019fea74-c6c9-7dc3-b538-db5c6c014279');
+});
+
+test('an absent session id leaves vendor_session_id alone instead of clobbering it', () => {
+  const ctx = setup(`T-session-${Math.abs(Math.round(process.hrtime()[1]))}`);
+  writeFrontmatter(ctx.outputMdPath, { ...readFrontmatter(ctx.outputMdPath), vendor_session_id: 'preexisting-id' });
+  finalizeTerminalAttestation({
+    hopperDir: ctx.hopperDir,
+    taskId: ctx.taskId,
+    outputMdPath: ctx.outputMdPath,
+    parsed: parsed(),                       // no sessionId — most adapters report none
+    completion: completion(),
+    now: new Date(NOW),
+  });
+  assert.equal(readFrontmatter(ctx.outputMdPath).vendor_session_id, 'preexisting-id');
+});
+
+test('a malformed or hostile session id is REFUSED, not escaped into frontmatter', () => {
+  // This is vendor-controlled text entering a YAML-ish file. An id is an opaque
+  // handle, so anything carrying a newline, a quote, a colon or absurd length is
+  // not a mangled id worth salvaging — it is something with no business in this
+  // field, and validating beats escaping.
+  for (const hostile of [
+    'id\nstatus: done',                       // frontmatter injection
+    'id: "quoted"',
+    'id with spaces',
+    'C:/PRIVATE/path/to/session',             // a path is not an id
+    'x'.repeat(129),                          // over the length bound
+    '',
+    42,
+    null,
+  ]) {
+    const ctx = setup(`T-session-${Math.abs(Math.round(process.hrtime()[1]))}`);
+    finalizeTerminalAttestation({
+      hopperDir: ctx.hopperDir,
+      taskId: ctx.taskId,
+      outputMdPath: ctx.outputMdPath,
+      parsed: { ...parsed(), sessionId: hostile },
+      completion: completion(),
+      now: new Date(NOW),
+    });
+    const fm = readFrontmatter(ctx.outputMdPath);
+    assert.notEqual(fm.vendor_session_id, hostile, `must refuse ${JSON.stringify(hostile)}`);
+    assert.equal(fm.status, 'done', 'frontmatter must remain structurally intact');
+    assert.equal(fm.task_id, ctx.taskId);
+  }
+});

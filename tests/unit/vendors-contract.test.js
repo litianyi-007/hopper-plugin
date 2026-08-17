@@ -13,9 +13,9 @@ import { listAdapters, getAdapter } from '../../cli/src/vendors/index.js';
 import { mimoAnswerCompleted } from '../../cli/src/vendors/mimo.js';
 import { ADAPTER_DIAGNOSTIC_CODES, adapterDiagnostic } from '../../cli/src/adapter-diagnostics.js';
 
-const VENDORS = ['codex', 'kimi', 'opencode', 'copilot', 'agy', 'grok', 'mimo', 'claude'];
+const VENDORS = ['codex', 'kimi', 'opencode', 'copilot', 'agy', 'grok', 'mimo', 'claude', 'pi'];
 
-test('registry lists exactly the 8 functional vendors', () => {
+test('registry lists exactly the 9 functional vendors', () => {
   const names = listAdapters().sort();
   assert.deepEqual(names, [...VENDORS].sort(),
     `expected ${VENDORS.join(',')}; got ${names.join(',')}`);
@@ -77,7 +77,7 @@ for (const name of VENDORS) {
       durationMs: 30000,
     });
     assert.equal(result.status, 'timeout', `${name}: timeout case must map to status='timeout'`);
-    if (['kimi', 'opencode', 'claude', 'grok'].includes(name)) {
+    if (['kimi', 'opencode', 'claude', 'grok', 'pi'].includes(name)) {
       assert.equal(result.diagnosticCode, 'adapter-timeout', `${name}: timeout must carry a closed diagnostic`);
       assert.equal(result.error, 'adapter-timeout', `${name}: timeout error is the closed diagnostic`);
     }
@@ -93,7 +93,7 @@ for (const name of VENDORS) {
       durationMs: 50,
     });
     assert.equal(result.status, 'permission-fail', `${name}: 127 must map to permission-fail`);
-    if (['kimi', 'opencode', 'claude', 'grok'].includes(name)) {
+    if (['kimi', 'opencode', 'claude', 'grok', 'pi'].includes(name)) {
       assert.equal(result.diagnosticCode, 'adapter-binary-missing', `${name}: missing binary must carry a closed diagnostic`);
       assert.equal(result.error, 'adapter-binary-missing', `${name}: binary error is the closed diagnostic`);
     } else {
@@ -110,6 +110,14 @@ for (const name of VENDORS) {
       ].join('\n')
       : name === 'grok'
         ? JSON.stringify({ text: 'HELLO_RESPONSE', stopReason: 'EndTurn' })
+      : name === 'pi'
+        ? [
+          JSON.stringify({
+            type: 'message_end',
+            message: { role: 'assistant', content: [{ type: 'text', text: 'HELLO_RESPONSE' }], stopReason: 'stop' },
+          }),
+          JSON.stringify({ type: 'agent_settled' }),
+        ].join('\n')
       : 'HELLO_RESPONSE';
     const result = a.parseResult({
       exitCode: 0,
@@ -510,7 +518,7 @@ test('grok and claude declare bufferedOutput:true (end-buffered --output-format 
 });
 
 test('other adapters do NOT declare bufferedOutput (streaming/incremental vendors keep the idle poll armed)', () => {
-  for (const name of ['codex', 'kimi', 'opencode', 'copilot', 'agy', 'mimo']) {
+  for (const name of ['codex', 'kimi', 'opencode', 'copilot', 'agy', 'mimo', 'pi']) {
     assert.notEqual(getAdapter(name).bufferedOutput, true, `${name} must NOT declare bufferedOutput`);
   }
 });
@@ -576,8 +584,9 @@ test('grok adapter args() builds headless json invocation with explicit default 
   // Always passes explicit -m (avoids retired-slug grok-4.3 billing redirect)
   assert.ok(argv.includes('-m'));
   // ISSUE-grok-model-line-rotation-stale-knownGood.md: grok-build retired
-  // ("unknown model id"); default moved to grok-4.5 (V-verified 2026-07-18).
-  assert.ok(argv.includes('grok-4.5'), 'default model must be grok-4.5');
+  // ("unknown model id"); default moved to grok-4.5 (V-verified 2026-07-18)，
+  // 再于 2026-08-13 移到 grok-4.6（V-verified 同日 live micro-test）。
+  assert.ok(argv.includes('grok-4.6'), 'default model must be grok-4.6');
   // Headless dispatch needs an explicit permission mode (and --always-approve for
   // full-access) or grok stalls with stopReason:"Cancelled" (vendor-preset
   // feedback 2026-06-15).

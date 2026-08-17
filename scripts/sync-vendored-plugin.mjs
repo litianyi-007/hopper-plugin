@@ -61,10 +61,20 @@ for (const vf of walk(VENDOR)) {
 // ./governance.js that was never vendored). So require the EXECUTABLE cli/ subtree
 // to be COMPLETE. (docs/assets is deliberately a curated subset — we do NOT mirror
 // it wholesale, or we'd pull in cookbook.md and every diagram.)
+//
+// `skills/` is completeness-required for the same reason, found the same way:
+// the drift loop UPDATES a vendored skill but never ADDS one, so a newly authored
+// skill was silently absent from the codex marketplace copy — present for Claude
+// Code users, missing for codex users, with nothing failing. (`commands/` is
+// deliberately NOT vendored: those are Claude Code slash-commands and codex plugins
+// consume skills instead. `docs/assets` stays a curated subset on purpose — mirroring
+// it wholesale would drag in the cookbook and every diagram.)
 const added = [];
-const CLI_TREE = join(REPO, 'cli');
-if (existsSync(CLI_TREE)) {
-  for (const sf of walk(CLI_TREE)) {
+const COMPLETE_TREES = ['cli', 'skills'];
+for (const treeName of COMPLETE_TREES) {
+  const tree = join(REPO, treeName);
+  if (!existsSync(tree)) continue;
+  for (const sf of walk(tree)) {
     const rel = relative(REPO, sf).split('\\').join('/');
     const vfile = join(VENDOR, rel);
     if (!existsSync(vfile)) {
@@ -79,7 +89,7 @@ if (check) {
   if (problems) {
     console.error(`plugins/hopper/ is OUT OF SYNC with the main source (${problems} file(s)):`);
     for (const d of drifted) console.error(`  drift:   ${d}`);
-    for (const a of added) console.error(`  missing: ${a}  (cli/ runtime file absent from vendored copy)`);
+    for (const a of added) console.error(`  missing: ${a}  (completeness-required tree; absent from vendored copy)`);
     console.error('\nFix: node scripts/sync-vendored-plugin.mjs   (then commit plugins/hopper/)');
     process.exit(1);
   }

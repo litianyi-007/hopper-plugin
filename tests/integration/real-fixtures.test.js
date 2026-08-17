@@ -10,6 +10,7 @@ import { resolveDispatch, getStatus } from '../../cli/src/dispatch.js';
 import { parseAgentsFile, resolveVendor } from '../../cli/src/agents.js';
 import { loadTaskFrame, verifyFrameAntiPersona, listTaskTypes } from '../../cli/src/tasks.js';
 import { parseQueue, findEligibleTask } from '../../cli/src/queue.js';
+import { SCAFFOLD_TASK_TYPES } from '../../cli/src/scaffold.js';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 
@@ -42,7 +43,15 @@ test('integration: real queue.md uses v2 Task-type schema (not v1 Role)', async 
 
 test('integration: all real task-type frames pass anti-persona check', async () => {
   const types = await listTaskTypes(HOPPER_DIR);
-  assert.equal(types.length, 6, `expected 6 frames, got ${types.length}`);
+  // Derived from the shipped registry, not a hardcoded count. The literal `6` here
+  // turned every task-type addition into a CI failure discovered only after push —
+  // and `npm test` globs tests/unit/ only, so it could not be seen locally either.
+  // What this test is actually for is the anti-persona check below; the count is a
+  // guard that the fixture workspace has not silently lost its frames.
+  assert.equal(types.length, SCAFFOLD_TASK_TYPES.length,
+    `this repo's own .hopper/tasks/ should hold one frame per shipped task-type; `
+    + `got ${types.length} of ${SCAFFOLD_TASK_TYPES.length}. `
+    + 'Run `hopper-dispatch --migrate-config --yes` to add the missing ones.');
 
   for (const type of types) {
     const frame = await loadTaskFrame(HOPPER_DIR, type);

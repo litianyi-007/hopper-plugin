@@ -1,0 +1,137 @@
+---
+task_id: T-PI-FINAL
+adapter: pi
+model: openai-codex/gpt-5.6-terra
+requested_selector: openai-codex/gpt-5.6-terra
+effective_selector: openai-codex/gpt-5.6-terra
+effective_selector_source: user-argv
+selector_kind: unknown
+catalog_source_kind: unknown
+catalog_source_label: unknown
+catalog_observed_at: null
+catalog_freshness: unknown
+binary_availability: unknown
+binary_basename: null
+status: done
+mode: sync
+start_time: "2026-08-10T05:07:37.587Z"
+end_time: "2026-08-10T05:07:49.031Z"
+terminal_event_emitted: true
+observed_models_json: "[\"openai-codex/gpt-5.6-terra\"]"
+model_attestation_source: pi.message.provider-model
+model_attestation_observed_at: "2026-08-10T05:07:49.002Z"
+resolution_status: unverified
+resolution_detail: selector-kind-unknown
+diagnostic_code: selector-metadata-cache-missing
+adapter_diagnostic_code: none
+recovered_output: false
+recovered_output_state: no-text
+recovered_output_source: none
+phase: done
+exit_code: 0
+signal: null
+duration_ms: 11402
+adapter_status: success
+last_progress_at: "2026-08-10T05:07:49.031Z"
+last_progress: Task completed successfully.
+progress_seq: 1
+---
+# T-PI-FINAL — code-review-adversarial Output (vendor: pi)
+
+## Summary
+
+In one sentence, state what makes a vendor adapter's success-detection fail-closed rather than fail-open. Then output the literal line: PI_FINAL_OK
+
+_Recipient to fill: 2-4 sentences describing what was actually delivered._
+
+## Files touched
+
+_Recipient to fill — list created/modified files with one-line rationale each._
+
+- (none recorded by dispatcher; Leader/Recipient updates this section after review)
+
+## Acceptance verification (N/N)
+
+_Recipient to verify each acceptance criterion from `.hopper/handoffs/leader-tasklist.md` for this task._
+
+1. ⏳ Criterion 1: ...
+2. ⏳ Criterion 2: ...
+
+## Decisions / deviations from spec
+
+_Recipient to fill — any judgment calls or scope changes vs leader-tasklist._
+
+- none
+
+## Open questions for Leader
+
+_(Recipient fills in any questions for Leader, or "none")_
+
+- none
+
+## Commit
+
+_(Leader fills in after commit lands; format: `<sha> <subject>`)_
+
+## Verdict
+
+_(Recipient: PASS | PASS_WITH_NOTE | REWORK | FAIL — fill after verifying acceptance criteria)_
+
+## Checks
+
+- Vendor dispatch status: `success` [OK]
+- Subprocess exit code: 0
+- Subprocess duration: 11402ms
+- Single-spawn invariant: per executeDispatch spec §3 #4, one dispatch = one subprocess (E2E counter-tested)
+- (Recipient to add task-specific checks: tests pass, grep guards, build clean, etc.)
+
+## Next recommendation
+
+_(Recipient fills in after verdict; e.g. "proceed to T-XX" or "REWORK before T-XX")_
+
+---
+
+## Dispatcher execution metadata _(auto-generated)_
+
+- Task ID: `T-PI-FINAL`
+- Task-type: `code-review-adversarial`
+- Resolved vendor: `pi`
+- Resolved model: `openai-codex/gpt-5.6-terra`
+- Output status: `success`
+- Subprocess exit: 0
+- Duration: 11402ms
+- Timed out: false
+- Stdout bytes: 26835
+- Stderr bytes: 0
+- Log file bytes: n/a (no log file)
+- Output text length: 178 chars
+- Dispatched: 2026-08-10
+
+## Vendor output text _(preview, 178/178 chars)_
+
+```
+A vendor adapter is fail-closed when it reports success only on explicit, verified completion signals and treats missing, malformed, or ambiguous signals as failure.
+
+PI_FINAL_OK
+```
+
+
+
+## Suggested protocol edits _(auto-generated)_
+
+The dispatcher proposes the following edits. **Per spec §11 unified user-action gate: apply only after manual review.** The dispatcher cannot mark this task done unilaterally.
+
+### Suggested queue.md row edit
+
+```
+# Find row for T-PI-FINAL in .hopper/queue.md
+# Change status column: 'pending' -> 'done'
+# Also append to Activity log section:
+#   - 2026-08-10: T-PI-FINAL dispatched via hopper-dispatch; vendor=(resolved from AGENTS.md); status=success; see .hopper/handoffs/T-PI-FINAL-output.md
+```
+
+### Suggested COST-LOG.md row (append under current Phase section)
+
+```
+| 2026-08-10 | T-PI-FINAL | code-review-adversarial | pi | ~2212 | n/a | n/a | success; duration 11.4s |
+```

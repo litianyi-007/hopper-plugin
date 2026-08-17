@@ -4,8 +4,8 @@
 
 > Vendor-neutral background dispatch for AI agents
 
-![License](https://img.shields.io/badge/license-Apache--2.0-blue)
-![Version](https://img.shields.io/badge/version-0.45.2-3DDC97)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Version](https://img.shields.io/badge/version-0.59.0-3DDC97)
 ![Tests](https://img.shields.io/badge/tests-passing-3DDC97)
 ![Hosts](https://img.shields.io/badge/hosts-7-111827)
 
@@ -44,6 +44,34 @@ deliberately left unfamilied. Same family means dispatch is refused, so a host
 can't route a task back into its own account family. Background jobs are
 started by `hopper-runner`; the dashboard is a read-only consumer of that same
 `.hopper/` state.
+
+## When to use it — and when not to
+
+**Hopper is accountable for a result. It is not a place to run a process you need to
+steer.** One spawn, no retry, no fallback; the vendor runs in a separate process with
+none of your context and cannot be redirected mid-flight — a follow-up is a new dispatch.
+
+Two questions before dispatching. Either one failing means do it in-host:
+
+1. **Could you compute the one correct answer yourself?** If yes, do it. Source
+   summaries, commit logs, file searches and version lookups are determinate queries; a
+   dispatch spends minutes and dollars to return a *less* reliable answer. (Measured: a
+   review dispatch ran 5m16s / 1.53M tokens / $0.74 against the 40ms `git log` it was
+   being compared with.)
+2. **Can you state the whole question right now?** If no, the work is exploratory, and
+   exploration needs steering a single-spawn dispatch cannot provide.
+
+Both pass → the deciding question is **whether independence is the point**: is the value
+in an answer that does not share your context, priors and mistakes?
+
+Judge by the **deliverable**, not the topic. A code review *must* read source — that is
+its method; the deliverable is a judgment, so dispatch it. "Tell me what this module
+does" also reads source but hands back data you can produce directly, so do not.
+
+**There is no task-type for the "do not" cases, and that absence is the enforcement** —
+nothing has to guess at a brief's intent. Full rationale:
+[`docs/WHEN-TO-USE.md`](docs/WHEN-TO-USE.md); `hopper-dispatch --task-types` prints the
+same for/not-for note per type.
 
 ## Two layers of vendor control
 
@@ -204,6 +232,7 @@ Not every CLI exposes both knobs. What each vendor honors:
 |---|---|---|---|
 | codex | `-m` | ✓ | **bare names only**: `gpt-5.5`, `gpt-5.4-mini`, `gpt-5.3-codex-spark`. Provider-prefixed ids (`openai-codex/…`) are rejected on ChatGPT accounts. |
 | grok | `-m` | ✓ | enum low/med/high; `xhigh` clamps to `high`. |
+| pi | `--model <model>` or `<provider>/<model>` | ✓ | `--thinking` enum is off/minimal/low/medium/high/xhigh/max — a **superset** of hopper's five levels, so `xhigh` is **never clamped**; pi is the only vendor that receives it verbatim. Multi-provider router: which models are reachable depends on what **this machine** is logged into (`--probe pi` reads the live `pi --list-models` catalog). With no `--model`, pi falls back to `defaultProvider`/`defaultModel` in `~/.pi/agent/settings.json`. **⚠ `openai` and `openai-codex` are different providers** — the gpt-5.6 family lives under `openai-codex` (ChatGPT OAuth), not `openai` (API key); a wrong prefix fails outright with `No API key found`. See "Spelling a pi model" below. |
 | mimo | `--model` | ✓ | `xhigh` → `--variant max`. **Not supported** (product decision, 2026-07-31) — see below. |
 | copilot | `--model` | ✓ | enum low/med/high; `xhigh` clamps to `high`. Raw override: `HOPPER_COPILOT_EFFORT`. **Not supported** (product decision, 2026-07-31) — see below. |
 | opencode | `--model <provider/model>` | explicit only | a caller-supplied `--reasoning high` becomes `--variant high`; Hopper omits policy/default `xhigh` for provider compatibility. `HOPPER_OPENCODE_VARIANT=<v>` overrides it verbatim. **Not supported** (product decision, 2026-07-31) — see below. |
@@ -221,6 +250,49 @@ hopper-dispatch --capabilities codex    # one vendor's model/effort/perms contra
 hopper-dispatch --probe codex           # your account's live model catalog
 hopper-dispatch --check-model codex gpt-5.5   # assert one model before dispatch: verified (0) | catalog-only (2) | not-found (1)
 ```
+
+### Spelling a pi model
+
+pi is a multi-provider router. `--model` takes three forms: a bare id, `provider/id`,
+or `id:<thinking>`. **pi's own docs do not specify its resolution algorithm**, so the
+below is behavior verified against pi 0.84.1 on 2026-08-10.
+
+One thing actually bites:
+
+> **`openai` and `openai-codex` are different providers.** `openai` uses an API key
+> (`OPENAI_API_KEY`); `openai-codex` is the ChatGPT-subscription OAuth path. **The
+> gpt-5.6 family (terra / sol / luna) lives under `openai-codex`.** On a machine where
+> `openai-codex` is logged in, `--model openai/gpt-5.6-terra` exits 1 with
+> `No API key found for openai.` — writing a prefix **pins** the provider, and pi does
+> not fall back to another one.
+
+hopper absorbs part of that. For any model already in `knownGood`, all three spellings
+normalize to the same value:
+
+| You write | What hopper sends pi |
+|---|---|
+| `gpt-5.6-terra` (bare) | `openai-codex/gpt-5.6-terra` |
+| `openai-codex/gpt-5.6-terra` | unchanged |
+| `openai/gpt-5.6-terra` (wrong prefix) | `openai-codex/gpt-5.6-terra` ← **auto-corrected** |
+| `GPT 5.6 Terra` (loose) | `openai-codex/gpt-5.6-terra` |
+
+**But a model NOT in `knownGood` (a newly released one) passes through verbatim** — so
+`openai/gpt-5.7-xxx` reaches pi with the wrong prefix and fails outright. That asymmetry
+is the only real footgun; check before dispatch:
+
+```bash
+# To see what hopper will actually send pi, read the --json `normalized` field:
+hopper-dispatch --check-model pi "openai/gpt-5.6-terra" --json
+#   {"model":"openai/gpt-5.6-terra","normalized":"openai-codex/gpt-5.6-terra","verdict":"verified",...}
+
+hopper-dispatch --check-model pi openai/gpt-5.7-xxx   # → not-found, exit 1
+hopper-dispatch --probe pi                            # which providers this machine is logged into
+pi auth check --provider openai-codex --json          # confirm one provider's login state
+```
+
+With no `--model`, pi falls back to `defaultProvider` / `defaultModel` in
+`~/.pi/agent/settings.json` — not the `google` shown in `pi --help`, which only applies
+when nothing is configured.
 
 Tuning via environment variables:
 
@@ -317,16 +389,17 @@ true on your machine.
 **7 host classes** can initiate dispatch: Claude Code, Codex CLI, OpenCode,
 Copilot CLI, Grok Build, Cursor CLI, and a standalone shell.
 
-**8 vendor adapters** are registered, but only 4 of them are actually
+**9 vendor adapters** are registered, but only 5 of them are actually
 product-recommended:
 
-> **Product-supported vendor set (2026-07-31 decision): `codex` / `grok` /
-> `claude` / `kimi`.** `agy` / `copilot` / `mimo` / `opencode` are **not
+> **Product-supported vendor set: `codex` / `grok` / `claude` / `kimi`
+> (2026-07-31 decision) plus `pi` (added 2026-08-10).** `agy` / `copilot` /
+> `mimo` / `opencode` are **not
 > supported** — a product decision to narrow the actively-supported set, not
 > a code-level restriction. Their adapter files are NOT deleted (deleting
 > them would break existing tests and history); they remain registered,
-> `--vendors` still lists all 8, and nothing in the code hardcodes "only
-> these 4" (that would duplicate, and could conflict with, the actual
+> `--vendors` still lists all 9, and nothing in the code hardcodes "only
+> these 5" (that would duplicate, and could conflict with, the actual
 > enforcement point). The enforcement point for what a given **project** may
 > dispatch to is that project's `.hopper/AGENTS.md` **`Approved Vendors`**
 > table — fail-closed: a missing section, or a vendor absent/not-`yes`
@@ -439,4 +512,4 @@ Status:
 - v1.1 (dashboard integration + OS toast + docs): GA
 - v1.2 (pipe+tee + stream-parser + more providers): planned
 
-License: Apache-2.0. See [LICENSE](LICENSE).
+License: MIT. See [LICENSE](LICENSE).

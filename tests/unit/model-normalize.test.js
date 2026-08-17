@@ -165,11 +165,27 @@ test('V4 resolveAdapterOptsForTask retains raw/effective selector provenance', (
   assert.equal(explicit.effectiveSelector, 'gpt-5.5');
   assert.equal(explicit.effectiveSelectorSource, 'user-argv');
 
-  const fallback = resolveAdapterOptsForTask(
+  // 2026-08-11: an unpinned dispatch to a vendor that DECLARES a hopper default
+  // now carries a real effective selector. This is the whole point — a null
+  // effective selector is unattestable, which is how a swarm panelist ran pi on
+  // gpt-5.5 with `requested_selector: null` and nobody could tell from the
+  // handoff. `requestedSelector` stays null: the user asked for nothing, and
+  // runtime attestation must never compare against a value hopper invented.
+  const hopperDefaulted = resolveAdapterOptsForTask(
     { vendor: 'codex', task: { taskType: 'code-impl', brief: 'x' }, taskSpec: '', policy: { modelRule: '' } },
     {},
   );
-  assert.equal(fallback.requestedSelector, null);
-  assert.equal(fallback.effectiveSelector, null);
-  assert.equal(fallback.effectiveSelectorSource, 'vendor-default');
+  assert.equal(hopperDefaulted.requestedSelector, null, 'the user requested nothing — do not backfill an audit value');
+  assert.equal(hopperDefaulted.effectiveSelector, 'gpt-5.6-sol');
+  assert.equal(hopperDefaulted.effectiveSelectorSource, 'policy');
+
+  // A vendor that declares NO hopper default still reports a fully unpinned
+  // dispatch honestly, rather than inventing a selector.
+  const unpinnable = resolveAdapterOptsForTask(
+    { vendor: 'opencode', task: { taskType: 'code-impl', brief: 'x' }, taskSpec: '', policy: { modelRule: '' } },
+    {},
+  );
+  assert.equal(unpinnable.requestedSelector, null);
+  assert.equal(unpinnable.effectiveSelector, null);
+  assert.equal(unpinnable.effectiveSelectorSource, 'vendor-default');
 });

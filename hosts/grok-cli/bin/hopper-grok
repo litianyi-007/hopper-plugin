@@ -22,7 +22,7 @@ Arguments:
 Environment:
   HOPPER_PLUGIN_ROOT   Override plugin root (defaults to wrapper-relative)
   HOPPER_DIR           Override .hopper/ location (passed through)
-  GROK_HOST_MODEL      OUTER grok host model (default: grok-4.5; explicit value overrides)
+  GROK_HOST_MODEL      OUTER grok host model (default: grok-4.6; explicit value overrides)
 EOF
 }
 
@@ -150,4 +150,4 @@ After the command returns:
 # so without it grok can stall and return stopReason:"Cancelled" with
 # Auth(AuthorizationRequired) (vendor-preset feedback 2026-06-15). --always-approve
 # alone is insufficient.
-exec grok -p "$PROMPT" --permission-mode bypassPermissions --always-approve --output-format plain -m "${GROK_HOST_MODEL:-grok-4.5}"
+exec grok -p "$PROMPT" --permission-mode bypassPermissions --always-approve --output-format plain -m "${GROK_HOST_MODEL:-grok-4.6}"

@@ -52,7 +52,7 @@ another session may not be inherited by that Node parent. Do not treat `READY`
 or an `auth_context` value as a login verdict; a successful dispatch is the only
 runtime evidence for that separate question.
 
-The outer host model defaults to `grok-4.5`. Set `GROK_HOST_MODEL` to an explicit
+The outer host model defaults to `grok-4.6`. Set `GROK_HOST_MODEL` to an explicit
 alternative only when the installed Grok Build CLI supports it; the wrapper passes
 that value through as `-m <model>`.
 

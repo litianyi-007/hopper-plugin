@@ -12,7 +12,7 @@ export const OUTPUT_SOURCES = Object.freeze([
 
 export const OUTPUT_TERMINAL_MARKERS = Object.freeze([
   'opencode-step-finish', 'opencode-message-completed', 'opencode-result-success',
-  'claude-result-success', 'grok-end-turn', 'none',
+  'claude-result-success', 'grok-end-turn', 'pi-agent-settled', 'none',
 ]);
 
 const CONTROL_BYTES = /[\u0000-\u001f\u007f-\u009f]/g;

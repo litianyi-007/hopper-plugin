@@ -80,7 +80,7 @@ catch-all `hopper` skill gained a first-run/after-upgrade path that points at
 at `## Approved Vendors` and this file. Two doc defects were corrected:
 `skills/hopper-dispatch/SKILL.md` described `--check` as taking a task-id (it
 takes an optional vendor) and neither doc mentioned that `--resolve` ignores
-`--vendor` (see `ISSUE-resolve-ignores-vendor-override.md` — a confirmed
+`--vendor` (see [`resolve-ignores-vendor-override`](docs/archive/ISSUES.md#resolve-ignores-vendor-override) — a confirmed
 defect, recorded rather than fixed this round).
 
 **Will your project break?** No. Nothing in an existing `.hopper/` is read

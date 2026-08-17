@@ -356,7 +356,7 @@ async function main() {
       // Stream progress is advisory; terminal frontmatter remains authoritative.
     }
   };
-  // 乙: idle + ceiling instead of one total cap. Per codex Phase 5 audit F2,
+  // NOTE: idle + ceiling instead of one total cap. Per codex Phase 5 audit F2,
   // adapter.timeoutMs honors --reasoning xhigh; it now SEEDS the ceiling (floored
   // to ≥30min by resolveDispatchTimeouts). The real "stuck" detector is idle:
   // the runner pipes vendor stdio straight to logPath (no in-process 'data'
@@ -528,16 +528,33 @@ async function main() {
     // Per codex Phase 5 audit P1 #2: read log + invoke adapter.parseResult
     // so exit-0 failure modes (kimi HTTP 402, agy silent auth-fail) are
     // classified correctly. Without this, false-success status leaks through.
+    // STREAM PROVENANCE (2026-08-05). logPath is a four-way merge: this runner's
+    // own notices, plus the vendor's stdout and stderr — the parent opens it twice
+    // for the runner (background.js) and the runner opens it twice more for the
+    // vendor, all with raw fds so the OS interleaves them. They are NOT separable
+    // after the fact.
+    //
+    // This used to be handed to parseResult as BOTH `stdout` and `stderr`. That is
+    // a lie with teeth: every classifier written as "scan stderr for trouble" was
+    // in fact scanning the assistant's own prose. It cost two completed, paid grok
+    // reviews, filed as `auth-fail` because the vendor's startup warning about a
+    // malformed ~/.cursor/hooks.json contained the word "invalid".
+    //
+    // `stderr` is now EMPTY and the transcript is passed as `combined`, flagged
+    // `streamsSeparated: false`. Adapters must opt into `combined` through
+    // cli/src/vendor-signal.js and gate on it knowingly. Physically separating the
+    // streams needs an in-process tee, which lives in the same code region as the
+    // idle-watchdog false-kill issue and is deliberately NOT bundled with a parser
+    // fix — see docs/archive/ISSUES.md.
     let stdoutTail = '';
-    let stderrTail = '';
+    let combinedTail = '';
     let logFileContent;
     try {
       if (existsSync(logPath)) {
         const full = readFileSync(logPath, 'utf-8');
-        // log holds BOTH stdout and stderr interleaved; pass it as both for
-        // adapters that pattern-match (kimi looks at stdout; agy at stderr/log)
+        // The answer, when there is one, is in here — extraction still needs it.
         stdoutTail = full;
-        stderrTail = full;
+        combinedTail = full;
         logFileContent = full;
       }
     } catch (_) {
@@ -552,7 +569,12 @@ async function main() {
       parsedResult = adapter.parseResult({
         exitCode: code === null ? -1 : code,
         stdout: stdoutTail,
-        stderr: stderrTail,
+        // Empty on purpose — see the provenance note above. A classifier that
+        // wants the transcript must ask for `combined` and handle
+        // `streamsSeparated: false`.
+        stderr: '',
+        combined: combinedTail,
+        streamsSeparated: false,
         timedOut,
         timeoutReason,            // 'idle' | 'ceiling' | null — lets mimo classify an idle reap-after-completion as success
         durationMs: duration_ms,

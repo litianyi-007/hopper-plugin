@@ -207,8 +207,11 @@ test('useStdinPrompt: only on cmd-shim for a stdin-capable, enabled vendor', () 
 
 test('P5 invariant: only stdin-capable vendors route to stdin on cmd-shim; agy NEVER (hang guard); native/posix never', () => {
   // Default-ON stdin vendors today (copilot is opt-in → default OFF; kimi/opencode/
-  // grok/agy = argv). mimo 0.1.3+ reads stdin. Locks the channel matrix against drift.
-  const STDIN_ON_CMDSHIM = new Set(['codex', 'claude', 'mimo']);
+  // grok/agy = argv). mimo 0.1.3+ reads stdin. pi reads the prompt from stdin when
+  // `-p` is given with no positional (V-verified 2026-08-10 on pi 0.84.1) — and it
+  // needs to, since npm installs it as `pi.cmd` on Windows, i.e. always cmd-shim.
+  // Locks the channel matrix against drift.
+  const STDIN_ON_CMDSHIM = new Set(['codex', 'claude', 'mimo', 'pi']);
   for (const name of listAdapters()) {
     const a = getAdapter(name);
     const routed = useStdinPrompt(a, 'cmd-shim', {}); // default env (no opt-in/opt-out)

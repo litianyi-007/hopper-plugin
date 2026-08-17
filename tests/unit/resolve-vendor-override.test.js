@@ -1,4 +1,4 @@
-// ISSUE-resolve-ignores-vendor-override.md fix.
+// docs/archive/ISSUES.md#resolve-ignores-vendor-override fix.
 // Anchor: tests/unit/resolve-vendor-override.test.js
 //
 // `--resolve <task-id> --vendor <v>` used to silently ignore --vendor and print
@@ -59,10 +59,13 @@ function makeHopper({ routedVendor = 'codex', approvedVendors = ['codex', 'grok'
   const hopperDir = join(root, '.hopper');
   mkdirSync(join(hopperDir, 'tasks'), { recursive: true });
   mkdirSync(join(hopperDir, 'handoffs'), { recursive: true });
+  // Brief must be non-empty: with no Brief and no leader-tasklist.md entry the task
+  // has no content and dispatch fails closed, which would mask the --vendor override
+  // behavior these tests are actually about.
   writeFileSync(join(hopperDir, 'queue.md'), [
-    '| ID | Task-type | Status | Vendor |',
-    '|----|-----------|--------|--------|',
-    `| T-RVO | code-impl | pending | ${routedVendor} |`,
+    '| ID | Task-type | Status | Vendor | Brief |',
+    '|----|-----------|--------|--------|-------|',
+    `| T-RVO | code-impl | pending | ${routedVendor} | resolve the override |`,
     '',
   ].join('\n'));
   writeFileSync(join(hopperDir, 'tasks', 'code-impl.md'), '# code-impl\n\nDo the work described in the spec.\n');
@@ -93,6 +96,12 @@ test('--resolve <id> --vendor <approved-other> prints the OVERRIDE, not the rout
     assert.equal(r.exitCode, 0, `expected success, got stderr: ${r.stderr}`);
     assert.match(r.stdout, /Vendor:\s+grok\b/);
     assert.doesNotMatch(r.stdout, /Vendor:\s+codex\b/);
+    // Positive check that the override MARKER itself renders, not just that the
+    // overridden vendor name won. Without this, the marker could vanish from the
+    // CLI entirely and this test would still pass — the only other assertion on
+    // the marker (below, "no override" test) is a doesNotMatch, which is
+    // satisfied just as well by "the marker never prints for anyone".
+    assert.match(r.stdout, /\(--vendor override\)/i);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -105,6 +114,7 @@ test('--vendor <approved-other> --resolve <id> also applies the override (vendor
     assert.equal(r.exitCode, 0, `expected success, got stderr: ${r.stderr}`);
     assert.match(r.stdout, /Vendor:\s+grok\b/);
     assert.doesNotMatch(r.stdout, /Vendor:\s+codex\b/);
+    assert.match(r.stdout, /\(--vendor override\)/i);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -164,8 +174,11 @@ test('--resolve <id> with NO --vendor still prints the routed vendor (regression
     const r = runCli(['--resolve', 'T-RVO'], { hopperDir });
     assert.equal(r.exitCode, 0, `expected success, got stderr: ${r.stderr}`);
     assert.match(r.stdout, /Vendor:\s+codex\b/);
-    // No override marker when there was no override.
-    assert.doesNotMatch(r.stdout, /override/i);
+    // No override marker when there was no override. Match the marker itself, not
+    // the bare word: stdout also echoes absolute paths under the mkdtemp prefix
+    // ('hopper-resolve-override-…'), so a bare /override/i is a false positive on
+    // the fixture's own directory name.
+    assert.doesNotMatch(r.stdout, /\(--vendor override\)/i);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

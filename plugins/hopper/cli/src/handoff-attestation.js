@@ -21,7 +21,7 @@ const SAFE_CATALOG_FIELDS = Object.freeze([
   'catalog_source_kind', 'catalog_source_label', 'catalog_observed_at',
   'catalog_freshness', 'binary_availability', 'binary_basename',
 ]);
-const PUBLIC_VENDORS = new Set(['agy', 'claude', 'codex', 'copilot', 'grok', 'kimi', 'mimo', 'opencode']);
+const PUBLIC_VENDORS = new Set(['agy', 'claude', 'codex', 'copilot', 'grok', 'kimi', 'mimo', 'opencode', 'pi']);
 const PUBLIC_PHASES = new Set(['starting', 'running', 'done', 'failed', 'cancelled', 'orphaned', 'timeout', 'unknown']);
 const PUBLIC_EVENT_KINDS = new Set(['finding', 'progress', 'terminal', 'process_alive', 'status', 'unknown']);
 const PUBLIC_RESOLUTION_DETAILS = new Set([
@@ -493,6 +493,32 @@ export function repairOrphanTerminalHandoff({ hopperDir, taskId, outputMdPath, i
   return { repaired: true, event };
 }
 
+/**
+ * Charset a vendor-reported session id must fully match to be persisted.
+ *
+ * `vendor_session_id` was declared in the v1 background frontmatter and then
+ * hardcoded `null` for every vendor ("reserved for v1.2"), even though pi hands
+ * its id over on the first line of its stream. Wiring it up means vendor-
+ * controlled text now reaches a YAML-ish frontmatter file, so it is validated
+ * rather than escaped: an id is an opaque handle (pi's is a UUID), so anything
+ * outside this charset — a newline, a quote, a colon — is not a mangled id worth
+ * salvaging, it is something that has no business in this field. Bounded length
+ * for the same reason.
+ */
+const VENDOR_SESSION_ID_RE = /^[A-Za-z0-9._:-]{1,128}$/;
+
+/**
+ * The vendor's own session identifier, or null when absent/unusable.
+ * @param {{sessionId?: unknown}} parsed
+ * @returns {string|null}
+ */
+function parsedVendorSessionId(parsed) {
+  const raw = parsed?.sessionId;
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  return VENDOR_SESSION_ID_RE.test(trimmed) ? trimmed : null;
+}
+
 function parsedModelAttestation(parsed) {
   const attestation = parsed?.modelAttestation;
   if (!attestation || typeof attestation !== 'object' || Array.isArray(attestation)) {
@@ -566,8 +592,12 @@ function buildCanonicalTerminalRecord({ fm, startupSnapshot, parsed, completion,
     resolution_detail: resolved.resolutionDetail,
     ...recoveryProjection,
   };
+  // Only written when the vendor actually reported one — an absent id must leave
+  // whatever the startup snapshot already holds (null) rather than overwrite it.
+  const vendorSessionId = parsedVendorSessionId(parsed);
   const attestationFrontmatter = {
     ...snapshot.frontmatter,
+    ...(vendorSessionId ? { vendor_session_id: vendorSessionId } : {}),
     selector_kind: resolved.selectorKind,
     observed_models_json: JSON.stringify(resolved.observedModels),
     model_attestation_source: evidence.source,
