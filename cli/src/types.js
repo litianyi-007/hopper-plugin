@@ -86,6 +86,16 @@
  */
 
 /**
+ * Pi CLI session-effective reasoning observation. This is intentionally NOT a
+ * provider terminal attestation: Pi emits it from `thinking_level_changed`
+ * after applying its model-capability clamp to the local agent session.
+ * @typedef {object} SessionEffectiveReasoning
+ * @property {'off'|'minimal'|'low'|'medium'|'high'|'xhigh'|'max'} level Pi session-effective level
+ * @property {'pi-cli-session-effective'} source Fixed Pi CLI/session provenance
+ * @property {string} observedAt ISO-8601 adapter observation time
+ */
+
+/**
  * Sanitized versioned selector metadata used for zero-spawn classification.
  * @typedef {object} SelectorMetadataEnvelope
  * @property {number} schema_version Currently 1
@@ -110,6 +120,7 @@
  * @property {'success'|'auth-fail'|'timeout'|'permission-fail'|'unknown-fail'} status
  * @property {OutputEvidence} [outputEvidence] Optional closed parser provenance for text
  * @property {ModelAttestation} [modelAttestation] Optional structured runtime evidence; absent means no runtime proof
+ * @property {SessionEffectiveReasoning} [sessionEffectiveReasoning] Optional Pi CLI session observation. It is not provider-produced terminal effort evidence and must not be used as such.
  * @property {string} [sessionId] Optional vendor-reported session identifier for resume, when the
  *   vendor emits one in its own output (pi does, in its `session` stream header). Persisted to the
  *   background handoff's `vendor_session_id` so a long dispatch can be resumed instead of re-run.

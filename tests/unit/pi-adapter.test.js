@@ -227,6 +227,46 @@ test('pi parseResult() extracts assistant text, usage and runtime model from a h
   assert.deepEqual(validateOutputEvidence(r.text, r.outputEvidence), r.outputEvidence);
 });
 
+test('pi parseResult() captures only Pi CLI session-effective thinking evidence with explicit provenance', () => {
+  const valid = pi.parseResult(ok([
+    ev({ type: 'session', version: 3, id: 's-effective' }),
+    ev({ type: 'thinking_level_changed', level: 'high' }),
+    successStream('SESSION_EFFECTIVE_OK'),
+  ].join('\n')));
+  assert.equal(valid.status, 'success');
+  assert.deepEqual(valid.sessionEffectiveReasoning, {
+    level: 'high', source: 'pi-cli-session-effective', observedAt: valid.sessionEffectiveReasoning.observedAt,
+  });
+  assert.match(valid.sessionEffectiveReasoning.observedAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(valid.modelAttestation.source, 'pi.message.provider-model',
+    'session-effective provenance stays separate from terminal runtime-model evidence');
+
+  const absent = pi.parseResult(ok(successStream('NO_SESSION_EFFECTIVE_EVENT')));
+  assert.equal(absent.sessionEffectiveReasoning, undefined, 'never infer this from --thinking or a terminal message');
+
+  const malformed = pi.parseResult(ok([
+    ev({ type: 'thinking_level_changed', level: 'requested-high-but-not-a-pi-level' }),
+    successStream('MALFORMED_SESSION_EFFECTIVE_EVENT'),
+  ].join('\n')));
+  assert.equal(malformed.sessionEffectiveReasoning, undefined, 'unknown event values are not persisted');
+});
+
+test('pi session-effective thinking evidence does not convert a vendor failure into success', () => {
+  const message = {
+    role: 'assistant', content: [], provider: 'openai-codex', model: 'not-a-real-model',
+    stopReason: 'error', errorMessage: 'model is not supported',
+  };
+  const result = pi.parseResult(ok([
+    ev({ type: 'thinking_level_changed', level: 'high' }),
+    ev({ type: 'turn_end', message, toolResults: [] }),
+    ev({ type: 'agent_settled' }),
+  ].join('\n')));
+  assert.equal(result.status, 'unknown-fail');
+  assert.equal(result.sessionEffectiveReasoning.level, 'high');
+  assert.equal(result.sessionEffectiveReasoning.source, 'pi-cli-session-effective');
+  assert.equal(result.modelAttestation, undefined, 'failed vendor terminal data is still not runtime model evidence');
+});
+
 test('pi parseResult(): exit 0 with stopReason "error" is a FAILURE, not a silent empty success', () => {
   // THE reason this adapter never trusts the exit code. Captured verbatim from a
   // real run (`--model openai-codex/not-a-real-model`): pi exited 0, emitted a

@@ -30,6 +30,8 @@ const PUBLIC_RESOLUTION_DETAILS = new Set([
   'concrete-runtime-unverifiable', 'concrete-no-runtime-metadata', 'concrete-runtime-exact',
   'concrete-runtime-mismatch',
 ]);
+const PI_SESSION_EFFECTIVE_REASONING_SOURCE = 'pi-cli-session-effective';
+const PI_SESSION_EFFECTIVE_REASONING_LEVELS = new Set(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
 
 function nullableString(value) {
   return typeof value === 'string' ? value : null;
@@ -164,6 +166,29 @@ function publicRecoveredOutput(projection) {
     state: projection.recovered_output_state,
     source: projection.recovered_output_source,
   };
+}
+
+function isIsoUtcTimestamp(value) {
+  return typeof value === 'string'
+    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)
+    && Number.isFinite(Date.parse(value));
+}
+
+/**
+ * Closed persistence boundary for the Pi CLI session event. It intentionally
+ * refuses every other vendor/source/value combination so a requested setting,
+ * an arbitrary progress payload, or a provider-terminal claim cannot be
+ * smuggled into the session-effective record.
+ */
+function sessionEffectiveReasoningFromRecord(record, vendor) {
+  if (vendor !== 'pi' || !record || typeof record !== 'object') return null;
+  const level = record.session_effective_reasoning_level ?? record.level;
+  const source = record.session_effective_reasoning_source ?? record.source;
+  const observedAt = record.session_effective_reasoning_observed_at ?? record.observedAt;
+  if (!PI_SESSION_EFFECTIVE_REASONING_LEVELS.has(level)
+    || source !== PI_SESSION_EFFECTIVE_REASONING_SOURCE
+    || !isIsoUtcTimestamp(observedAt)) return null;
+  return { level, source, observedAt };
 }
 
 function nonEmptyString(value) {
@@ -369,6 +394,7 @@ export function readCanonicalAttestation({ hopperDir, taskId, outputMdPath } = {
     terminalEvent?.status ?? fmStatus,
   );
   const recoveredOutput = publicRecoveredOutput(recoveryProjection);
+  const sessionEffectiveReasoning = sessionEffectiveReasoningFromRecord(terminalEvent ?? fm, adapter);
   const safeCatalog = safeCatalogFromFrontmatter(fm);
   return {
     taskId,
@@ -380,6 +406,7 @@ export function readCanonicalAttestation({ hopperDir, taskId, outputMdPath } = {
     adapter,
     adapterDiagnosticCode,
     recoveredOutput,
+    sessionEffectiveReasoning,
     selector,
     observedModels: evidence,
     resolution,
@@ -393,6 +420,7 @@ export function readCanonicalAttestation({ hopperDir, taskId, outputMdPath } = {
       adapter,
       adapterDiagnosticCode,
       recoveredOutput,
+      sessionEffectiveReasoning,
       displayStatus,
       phase,
       selector: {
@@ -434,6 +462,7 @@ function repairablePartialFrontmatter(fm, taskId) {
 function repairFrontmatterFromEvent(fm, taskId, event) {
   const observedModels = normalizeObservedModels(event.observed_models, publicVendor(event.vendor));
   const recoveryProjection = persistedRecoveredOutputProjection(event, event.status);
+  const sessionEffectiveReasoning = sessionEffectiveReasoningFromRecord(event, publicVendor(event.vendor));
   return {
     task_id: taskId,
     adapter: nullableNonEmptyString(event.vendor) ?? 'unknown',
@@ -451,6 +480,9 @@ function repairFrontmatterFromEvent(fm, taskId, event) {
     observed_models_json: JSON.stringify(observedModels),
     model_attestation_source: nullableNonEmptyString(event.model_attestation_source),
     model_attestation_observed_at: nullableNonEmptyString(event.model_attestation_observed_at),
+    session_effective_reasoning_level: sessionEffectiveReasoning?.level ?? null,
+    session_effective_reasoning_source: sessionEffectiveReasoning?.source ?? null,
+    session_effective_reasoning_observed_at: sessionEffectiveReasoning?.observedAt ?? null,
     resolution_status: normalizeResolutionStatus(event.resolution_status),
     resolution_detail: nullableNonEmptyString(event.resolution_detail),
     diagnostic_code: nullableNonEmptyString(event.diagnostic_code),
@@ -531,6 +563,12 @@ function parsedModelAttestation(parsed) {
   };
 }
 
+function parsedSessionEffectiveReasoning(parsed, vendor) {
+  const observation = parsed?.sessionEffectiveReasoning;
+  if (!observation || typeof observation !== 'object' || Array.isArray(observation)) return null;
+  return sessionEffectiveReasoningFromRecord(observation, vendor);
+}
+
 function existingTerminalEvents(readEvents, hopperDir, taskId) {
   return readEvents({ hopperDir, taskId })
     .filter((event) => event && event.terminal === true && event.kind === 'terminal' && event.task_id === taskId);
@@ -545,6 +583,7 @@ function buildCanonicalTerminalRecord({ fm, startupSnapshot, parsed, completion,
   const snapshot = startupSnapshot ?? startupSnapshotFromFrontmatter(fm);
   const evidence = parsedModelAttestation(parsed);
   const vendor = scalar(completion.vendor ?? fm.adapter);
+  const sessionEffectiveReasoning = parsedSessionEffectiveReasoning(parsed, vendor);
   const observedModels = normalizeObservedModels(evidence.observedModels, vendor);
   const resolved = resolveAttestation({
     effectiveSelector: snapshot.effectiveSelector,
@@ -588,6 +627,9 @@ function buildCanonicalTerminalRecord({ fm, startupSnapshot, parsed, completion,
     observed_models: resolved.observedModels,
     model_attestation_source: evidence.source,
     model_attestation_observed_at: evidence.observedAt,
+    session_effective_reasoning_level: sessionEffectiveReasoning?.level ?? null,
+    session_effective_reasoning_source: sessionEffectiveReasoning?.source ?? null,
+    session_effective_reasoning_observed_at: sessionEffectiveReasoning?.observedAt ?? null,
     resolution_status: resolved.resolutionStatus,
     resolution_detail: resolved.resolutionDetail,
     ...recoveryProjection,
@@ -602,6 +644,9 @@ function buildCanonicalTerminalRecord({ fm, startupSnapshot, parsed, completion,
     observed_models_json: JSON.stringify(resolved.observedModels),
     model_attestation_source: evidence.source,
     model_attestation_observed_at: evidence.observedAt,
+    session_effective_reasoning_level: sessionEffectiveReasoning?.level ?? null,
+    session_effective_reasoning_source: sessionEffectiveReasoning?.source ?? null,
+    session_effective_reasoning_observed_at: sessionEffectiveReasoning?.observedAt ?? null,
     resolution_status: resolved.resolutionStatus,
     resolution_detail: resolved.resolutionDetail,
     diagnostic_code: resolved.diagnosticCode,

@@ -79,6 +79,22 @@ const PI_RUNTIME_MODEL_METADATA = Object.freeze({
 });
 
 /**
+ * Closed metadata for Pi's own session-level thinking event. This is
+ * intentionally separate from PI_RUNTIME_MODEL_METADATA: Pi emits
+ * `thinking_level_changed` while configuring its local agent session, before
+ * any provider terminal result exists. Its `level` is useful because Pi has
+ * already clamped it to the selected model's advertised capabilities, but it
+ * must never be presented as a provider-produced terminal effort declaration.
+ */
+const PI_SESSION_EFFECTIVE_REASONING_METADATA = Object.freeze({
+  schemaVersion: 1,
+  streamVersion: 3,
+  eventType: 'thinking_level_changed',
+  levelField: 'level',
+  source: 'pi-cli-session-effective',
+});
+
+/**
  * Built-in tool names pi grants a read-only run. pi has **no built-in sandbox**
  * (CONFIRMED pi.dev/docs/latest/security: "Pi does not include a built-in
  * sandbox. Built-in tools can read files, write files, edit files, and run shell
@@ -655,12 +671,21 @@ export const piAdapter = {
     // that produced no answer at all. Attach it to failures too — a ceiling
     // timeout on a 12-minute review is exactly when `--session <id>` is worth
     // the most, and discarding the id there would force a full, re-paid re-run.
-    const withSession = (result) => (outcome.sessionId ? { ...result, sessionId: outcome.sessionId } : result);
+    // The thinking event is a Pi CLI session observation, not a terminal
+    // provider result. Preserve it independently on every parsed outcome where
+    // Pi actually emitted it; a failure/timeout must not erase that provenance,
+    // and its presence must not promote the task to success.
+    const sessionEffectiveReasoning = extractPiSessionEffectiveReasoning(outcome);
+    const withSessionEvidence = (result) => ({
+      ...result,
+      ...(outcome.sessionId ? { sessionId: outcome.sessionId } : {}),
+      ...(sessionEffectiveReasoning ? { sessionEffectiveReasoning } : {}),
+    });
 
     // ── Harness-established failure. Decided by the runner, not by reading
     // vendor prose, so it is never subject to the heuristic veto below.
     if (raw.timedOut) {
-      return withSession(adapterFailure('timeout', 'adapter-timeout'));
+      return withSessionEvidence(adapterFailure('timeout', 'adapter-timeout'));
     }
     const outputEvidence = piOutputEvidence(outcome);
     const hasAnswer = Boolean(outcome.terminal && outcome.text.trim());
@@ -687,7 +712,7 @@ export const piAdapter = {
         : { text: outcome.text, status: 'success', diagnosticCode: 'none' };
       const withEvidence = outputEvidence ? { ...result, outputEvidence } : result;
       const modelAttestation = extractPiModelAttestation(outcome);
-      return withSession(modelAttestation ? { ...withEvidence, modelAttestation } : withEvidence);
+      return withSessionEvidence(modelAttestation ? { ...withEvidence, modelAttestation } : withEvidence);
     }
 
     // ── Text heuristics, and only from here down (cli/src/vendor-signal.js).
@@ -704,7 +729,7 @@ export const piAdapter = {
     const diagnostic = authFailed
       ? 'adapter-auth-failed'
       : (raw.exitCode === 0 ? 'adapter-protocol-invalid' : 'adapter-unknown-failed');
-    return withSession(failedPiOutput(status, diagnostic, outcome, outputEvidence));
+    return withSessionEvidence(failedPiOutput(status, diagnostic, outcome, outputEvidence));
   },
 };
 
@@ -735,13 +760,14 @@ const PROVIDER_KEY_ENV = Object.freeze([
 ]);
 
 /**
- * Only these event types are parsed. Everything else on the stream — the
+ * Only terminal-result event types plus Pi's one explicitly allowlisted
+ * session-effective thinking event are parsed. Everything else on the stream — the
  * `message_update` deltas that make up the bulk of it, tool execution events,
  * compaction and queue notices — is skipped without a JSON.parse, so parse cost
  * stays proportional to the handful of terminal events rather than to stream
  * length.
  */
-const PI_TERMINAL_EVENT_RE = /"type"\s*:\s*"(?:session|message_end|turn_end|agent_end|agent_settled)"/;
+const PI_RESULT_EVENT_RE = /"type"\s*:\s*"(?:session|thinking_level_changed|message_end|turn_end|agent_end|agent_settled)"/;
 
 /**
  * Reconstruct the outcome of a `pi -p --mode json` run from its NDJSON stream.
@@ -766,25 +792,28 @@ const PI_TERMINAL_EVENT_RE = /"type"\s*:\s*"(?:session|message_end|turn_end|agen
  * @param {string} stdout
  * @returns {{ text: string, stopReason: string|undefined, errorMessage: string|undefined,
  *             provider: string|undefined, model: string|undefined, usage: object|undefined,
- *             sessionId: string|undefined, settled: boolean, terminal: object|null }}
+ *             sessionId: string|undefined, sessionEffectiveReasoningLevel: string|undefined,
+ *             settled: boolean, terminal: object|null }}
  */
 function extractPiOutcome(stdout) {
   const empty = {
     text: '', stopReason: undefined, errorMessage: undefined,
     provider: undefined, model: undefined, usage: undefined,
-    sessionId: undefined, settled: false, terminal: null,
+    sessionId: undefined, sessionEffectiveReasoningLevel: undefined,
+    settled: false, terminal: null,
   };
   const trimmed = String(stdout || '').trim();
   if (!trimmed) return empty;
 
   let settled = false;
   let sessionId;
+  let sessionEffectiveReasoningLevel;
   let fromAgentEnd = null;
   let fromTurnEnd = null;
   let fromMessageEnd = null;
 
   for (const line of trimmed.split(/\r?\n/)) {
-    if (!PI_TERMINAL_EVENT_RE.test(line)) continue;
+    if (!PI_RESULT_EVENT_RE.test(line)) continue;
     let event;
     try { event = JSON.parse(line.trim()); } catch (_) { continue; }
     if (!event || typeof event !== 'object' || Array.isArray(event)) continue;
@@ -795,6 +824,15 @@ function extractPiOutcome(stdout) {
       case 'session':
         if (typeof event.id === 'string' && event.id.trim()) sessionId = event.id.trim();
         break;
+      case 'thinking_level_changed': {
+        // Pi emits this after it has clamped the requested level to the active
+        // model's supported levels. Last valid event wins: an interactive Pi
+        // session may change the level more than once, and this parser records
+        // only the final observed session state, never our requested argv value.
+        const level = normalizePiSessionEffectiveReasoningLevel(event.level);
+        if (level) sessionEffectiveReasoningLevel = level;
+        break;
+      }
       case 'agent_end': {
         const last = lastAssistantMessage(event.messages);
         if (last) fromAgentEnd = last;
@@ -812,7 +850,7 @@ function extractPiOutcome(stdout) {
   }
 
   const terminal = fromTurnEnd || fromAgentEnd || fromMessageEnd;
-  if (!terminal) return { ...empty, settled, sessionId };
+  if (!terminal) return { ...empty, settled, sessionId, sessionEffectiveReasoningLevel };
   return {
     text: piMessageText(terminal),
     stopReason: typeof terminal.stopReason === 'string' ? terminal.stopReason : undefined,
@@ -821,6 +859,7 @@ function extractPiOutcome(stdout) {
     model: typeof terminal.model === 'string' ? terminal.model : undefined,
     usage: piUsage(terminal.usage),
     sessionId,
+    sessionEffectiveReasoningLevel,
     settled,
     terminal,
   };
@@ -925,6 +964,28 @@ function extractPiModelAttestation(outcome) {
     source: PI_RUNTIME_MODEL_METADATA.source,
     observedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Pi-only session-effective reasoning observation. The source label is fixed
+ * and deliberately names the CLI/session boundary; it is NOT a vendor terminal
+ * effort attestation. `observedAt` is the adapter's parse-time observation,
+ * because Pi's event itself carries no timestamp.
+ */
+function extractPiSessionEffectiveReasoning(outcome) {
+  const level = normalizePiSessionEffectiveReasoningLevel(outcome.sessionEffectiveReasoningLevel);
+  if (!level) return undefined;
+  return {
+    level,
+    source: PI_SESSION_EFFECTIVE_REASONING_METADATA.source,
+    observedAt: new Date().toISOString(),
+  };
+}
+
+function normalizePiSessionEffectiveReasoningLevel(value) {
+  if (typeof value !== 'string') return null;
+  const level = value.trim();
+  return PI_THINKING_LEVELS.has(level) ? level : null;
 }
 
 function normalizePiIdentityComponent(value) {

@@ -52,7 +52,7 @@ function catalog() {
   };
 }
 
-function setup(taskId = 'T-attestation') {
+function setup(taskId = 'T-attestation', adapter = 'claude') {
   const tmp = mkdtempSync(join(tmpdir(), 'hopper-attestation-'));
   const hopperDir = join(tmp, '.hopper');
   const handoffs = join(hopperDir, 'handoffs');
@@ -60,7 +60,7 @@ function setup(taskId = 'T-attestation') {
   const outputMdPath = join(handoffs, `${taskId}-output.md`);
   writeFrontmatter(outputMdPath, {
     task_id: taskId,
-    adapter: 'claude',
+    adapter,
     status: 'in-progress',
     mode: 'background',
     terminal_event_emitted: false,
@@ -81,6 +81,14 @@ function parsed() {
     modelAttestation: {
       observedModels: ['claude-opus-4-6', 'claude-opus-4-6'],
       source: 'claude.result.modelUsage.keys', observedAt: NOW,
+    },
+  };
+}
+
+function piSessionEffectiveParsed() {
+  return {
+    sessionEffectiveReasoning: {
+      level: 'high', source: 'pi-cli-session-effective', observedAt: NOW,
     },
   };
 }
@@ -186,6 +194,55 @@ test('finalizeTerminalAttestation persists one closed recovered-output projectio
     assert.deepEqual(readCanonicalAttestation(state).public.recoveredOutput, {
       recovered: true, state: 'unknown-completeness', source: 'event-stream',
     });
+  } finally {
+    rmSync(state.tmp, { recursive: true, force: true });
+  }
+});
+
+test('Pi CLI session-effective reasoning survives a terminal record without becoming provider-terminal evidence', () => {
+  const state = setup('T-pi-session-effective', 'pi');
+  try {
+    const completed = finalizeTerminalAttestation({
+      hopperDir: state.hopperDir,
+      taskId: state.taskId,
+      outputMdPath: state.outputMdPath,
+      parsed: piSessionEffectiveParsed(),
+      completion: { ...completion(), vendor: 'pi' },
+      now: NOW,
+    });
+    assert.equal(completed.event.session_effective_reasoning_level, 'high');
+    assert.equal(completed.event.session_effective_reasoning_source, 'pi-cli-session-effective');
+    assert.equal(completed.event.session_effective_reasoning_observed_at, NOW);
+
+    const fm = readFrontmatter(state.outputMdPath);
+    assert.equal(fm.session_effective_reasoning_level, 'high');
+    assert.equal(fm.session_effective_reasoning_source, 'pi-cli-session-effective');
+    assert.equal(fm.session_effective_reasoning_observed_at, NOW);
+    assert.equal(fm.observed_effort, undefined, 'the record must not relabel a Pi CLI session field as vendor effort');
+
+    assert.deepEqual(readCanonicalAttestation(state).public.sessionEffectiveReasoning, {
+      level: 'high', source: 'pi-cli-session-effective', observedAt: NOW,
+    });
+  } finally {
+    rmSync(state.tmp, { recursive: true, force: true });
+  }
+});
+
+test('terminal finalization rejects a forged session-effective provenance record', () => {
+  const state = setup('T-invalid-session-effective', 'pi');
+  try {
+    const out = finalizeTerminalAttestation({
+      hopperDir: state.hopperDir,
+      taskId: state.taskId,
+      outputMdPath: state.outputMdPath,
+      parsed: { sessionEffectiveReasoning: {
+        level: 'high', source: 'vendor-produced-terminal-effort', observedAt: NOW,
+      } },
+      completion: { ...completion(), vendor: 'pi' },
+      now: NOW,
+    });
+    assert.equal(out.event.session_effective_reasoning_level, null);
+    assert.equal(readCanonicalAttestation(state).public.sessionEffectiveReasoning, null);
   } finally {
     rmSync(state.tmp, { recursive: true, force: true });
   }
